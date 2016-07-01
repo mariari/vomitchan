@@ -23,7 +23,7 @@ Note: you can build and run this without Stack of course, figure it out for your
 DetoniaBot requires `data/networks.json` to store information about IRC networks to connect to.
 This file should look like the following:
 
-```JSON
+```json
 [
   { "netServer" : "irc.freenode.net"
   , "netPort" : 6667
