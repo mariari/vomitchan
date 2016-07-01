@@ -19,7 +19,7 @@ Note: you can build and run this without Stack of course, figure it out for your
 - clone this repo using `git clone git@gitla.in:MrDetonia/detoniabot.git`
 - run `cd detoniabot && stack setup && stack build` to compile
 
-### Configuration Files
+## Configuration
 DetoniaBot requires `data/networks.json` to store information about IRC networks to connect to.
 This file should look like the following:
 
