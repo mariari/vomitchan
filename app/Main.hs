@@ -56,14 +56,17 @@ data Message = Message
              } deriving (Show)
 
 -- converts a string to a Message
-toMessage ∷ T.Text → Message
-toMessage s = Message nick user host chan content
-  where
-    nick    = drop 1 . takeWhile (/= '!') $ T.unpack s
-    user    = drop 1 . dropWhile (/= '~') . takeWhile (/= '@') $ T.unpack s
-    host    = drop 1 . dropWhile (/= '@') . takeWhile (/= ' ') $ T.unpack s
-    chan    = takeWhile (/= ' ') . dropWhile (/= '#') $ T.unpack s
-    content = T.drop 1 . T.dropWhile (/= ':') . T.drop 1 $ s
+toMessage :: T.Text -> Message
+toMessage str = Message nick user host chan content
+    where
+        (head:content:_) = T.splitOn ":" (T.drop 1 str)
+        (nick:_:user:host:_:chan:_) = map T.unpack $ T.split delims head
+        delims c = case c of
+                        ' ' -> True
+                        '!' -> True
+                        '~' -> True
+                        '@' -> True
+                        _   -> False
 
 
 -- IRC NETWORK TABLE --------------------------------------------------------------------------
