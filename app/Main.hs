@@ -59,14 +59,15 @@ data Message = Message
 toMessage :: T.Text -> Message
 toMessage str = Message nick user host chan content
     where
-        (head:content:_) = T.splitOn ":" (T.drop 1 str)
+        (head,body)                 = T.breakOn ":" (T.drop 1 str)
+        content                     = T.drop 1 body
         (nick:_:user:host:_:chan:_) = map T.unpack $ T.split delims head
-        delims c = case c of
-                        ' ' -> True
-                        '!' -> True
-                        '~' -> True
-                        '@' -> True
-                        _   -> False
+        delims c                    = case c of
+                                           ' ' -> True
+                                           '!' -> True
+                                           '~' -> True
+                                           '@' -> True
+                                           _   -> False
 
 
 -- IRC NETWORK TABLE --------------------------------------------------------------------------
