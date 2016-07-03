@@ -99,7 +99,7 @@ write h (act,args) = do
 handlePM ∷ Message → Maybe (T.Text, T.Text)
 handlePM s
   | prefix ".quit" && msgUser s == "MrDetonia" = Just ("QUIT","")
-  | prefix ".bots" = Just ("PRIVMSG", dest `T.append` " :I am a bot written by MrDetonia in Haskell")
+  | prefix ".bots" = Just ("PRIVMSG", dest `T.append` " :I am a bot written by MrDetonia in Haskell | https://gitla.in/MrDetonia/detoniabot")
   | otherwise = Nothing
   where
     prefix p = p `T.isPrefixOf` msgContent s
