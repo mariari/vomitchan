@@ -25,13 +25,13 @@ import           System.IO
 -- TYPES --------------------------------------------------------------------------------------
 
 -- types for IRC data
-type Server = String
+type Server = T.Text
 type Port   = Integer
-type Nick   = String
-type User   = String
-type Host   = String
-type Pass   = String
-type Chan   = String
+type Nick   = T.Text
+type User   = T.Text
+type Host   = T.Text
+type Pass   = T.Text
+type Chan   = T.Text
 
 -- IRC network table
 data IRCNetwork = IRCNetwork
@@ -61,7 +61,7 @@ toMessage str = Message nick user host chan content
     where
         (head,body)                 = T.breakOn ":" (T.drop 1 str)
         content                     = T.drop 1 body
-        (nick:_:user:host:_:chan:_) = map T.unpack $ T.split delims head
+        (nick:_:user:host:_:chan:_) = T.split delims head
         delims c                    = case c of
                                            ' ' -> True
                                            '!' -> True
@@ -90,28 +90,29 @@ saveNetworks file nts = B.writeFile file (JSON.encode nts)
 -- SOCKET OPERATIONS --------------------------------------------------------------------------
 
 -- takes a String, sends to socket
-write ∷ Handle → (String, String) → IO ()
+write ∷ Handle → (T.Text, T.Text) → IO ()
 write h (act,args) = do
   T.hprint h "{} {}\r\n" [act, args]
   T.print "> {} {}\n" [act, args]
 
 -- handles privmsgs and creates responses
-handlePM ∷ Message → Maybe String
+handlePM ∷ Message → Maybe (T.Text, T.Text)
 handlePM s
-  | prefix ".quit" && msgUser s == "MrDetonia" = Just "QUIT"
-  | prefix ".bots" = Just $ msgChan s ++ " :I am a bot written by MrDetonia in Haskell"
+  | prefix ".quit" && msgUser s == "MrDetonia" = Just ("QUIT","")
+  | prefix ".bots" = Just ("PRIVMSG", dest `T.append` " :I am a bot written by MrDetonia in Haskell")
   | otherwise = Nothing
   where
     prefix p = p `T.isPrefixOf` msgContent s
+    dest = if "#" `T.isPrefixOf` msgChan s then msgChan s else msgNick s
 
 -- takes an IRC message and generates the correct response
-respond ∷ T.Text → Maybe (String, String)
+respond ∷ T.Text → Maybe (T.Text, T.Text)
 respond s
-  | "PING: " `T.isPrefixOf` s = Just ("PONG", ':' : drop 6 (T.unpack s))
+  | "PING" `T.isPrefixOf` s = Just ("PONG", ':' `T.cons` T.drop 6 s)
   | "PRIVMSG" `T.isInfixOf` s = do
     let res = handlePM $ toMessage s
     case res of
-         Just msg -> Just ("PRIVMSG", msg)
+         Just msg -> Just msg
          Nothing  -> Nothing
   | otherwise = Nothing
 
@@ -122,8 +123,8 @@ listen h = forever $ do
   T.putStrLn s
   let res = respond s
   case res of
-       Just x  -> if snd x == "QUIT"
-                     then write h ("QUIT",":Exiting") >> exitSuccess
+       Just x  -> if fst x == "QUIT"
+                     then write h ("QUIT",":Exiting") >> hClose h >> exitSuccess
                      else write h x
        Nothing -> return ()
 
@@ -141,12 +142,11 @@ joinNetwork nts sv = do
   case nt of
        Nothing -> return Nothing
        Just nt -> do
-         h <- connectTo (netServer nt) (PortNumber (fromIntegral (netPort nt)))
+         h <- connectTo (T.unpack $ netServer nt) (PortNumber (fromIntegral (netPort nt)))
          hSetBuffering h NoBuffering
          write h ("NICK", netNick nt)
-         write h ("USER", netNick nt ++ " 0 * :connected")
-         write h ("NICKSERV :IDENTIFY", netPass nt)
-         waitForAuth h
+         write h ("USER", netNick nt `T.append` " 0 * :connected")
+         unless (T.null $ netPass nt) (write h ("NICKSERV :IDENTIFY", netPass nt) >> waitForAuth h)
          mapM_ (write h) (zip (repeat "JOIN") (netChans nt))
          return $ Just h
   where
