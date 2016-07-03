@@ -98,7 +98,7 @@ write h (act,args) = do
 -- handles privmsgs and creates responses
 handlePM ∷ Message → Maybe (T.Text, T.Text)
 handlePM s
-  | prefix ".quit" && msgUser s == "MrDetonia" = Just ("QUIT","")
+  | prefix ".quit" && msgUser s == "MrDetonia" = Just ("QUIT",":Exiting")
   | prefix ".bots" = Just ("PRIVMSG", dest `T.append` " :I am a bot written by MrDetonia in Haskell | https://gitla.in/MrDetonia/detoniabot")
   | otherwise = Nothing
   where
@@ -119,9 +119,9 @@ listen h = forever $ do
   T.putStrLn s
   let res = respond s
   case res of
-       Just x  -> if fst x == "QUIT"
-                     then write h ("QUIT",":Exiting") >> hClose h >> exitSuccess
-                     else write h x
+       Just x  -> do
+           write h x
+           unless (fst x /= "QUIT") (hClose h >> exitSuccess)
        Nothing -> return ()
 
 -- finds a network by name and maybe returns it
