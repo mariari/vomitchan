@@ -109,11 +109,7 @@ handlePM s
 respond ∷ T.Text → Maybe (T.Text, T.Text)
 respond s
   | "PING" `T.isPrefixOf` s = Just ("PONG", ':' `T.cons` T.drop 6 s)
-  | "PRIVMSG" `T.isInfixOf` s = do
-    let res = handlePM $ toMessage s
-    case res of
-         Just msg -> Just msg
-         Nothing  -> Nothing
+  | "PRIVMSG" `T.isInfixOf` s = handlePM $ toMessage s
   | otherwise = Nothing
 
 -- simply listens to a socket forever
