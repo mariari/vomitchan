@@ -17,13 +17,21 @@ import           Bot.Socket
 --- FUNCTIONS ---
 -- creates a thread and adds its thread ID to an MVar list, kills all
 -- listed threads when finished
-forkWithKill :: C.MVar[C.ThreadId] -> IO () -> IO ()
-forkWithKill tids act = void $ C.forkFinally spawn (\_ -> mapM_ C.killThread =<< C.readMVar tids)
+forkWithKill :: C.MVar[C.ThreadId] -> IO () -> IO (C.MVar())
+forkWithKill tids act = do
+  handle <- C.newEmptyMVar
+  void $ C.forkFinally spawn (\_ -> kill >> C.putMVar handle ())
+  return handle
 
-  where spawn = do
-          tid <- C.myThreadId
-          C.modifyMVar_ tids (\x -> return $ tid:x)
-          act
+  where
+    spawn = do
+      tid <- C.myThreadId
+      C.modifyMVar_ tids (\x -> return $ tid:x)
+      act
+
+    kill = do
+      threads <- C.readMVar tids
+      mapM_ C.killThread threads
 
 
  --- ENTRY POINT ---
@@ -32,11 +40,12 @@ main = do
   nets <- readNetworks "data/networks.json"
 
   case nets of
-       Nothing  -> putStrLn "ERROR loading servers from JSON"
+       Nothing       -> putStrLn "ERROR loading servers from JSON"
 
        Just networks -> do
          tids <- C.newMVar []
-         mapM_ (forkWithKill tids . connect) networks
+         handles <- mapM (forkWithKill tids . connect) networks
+         mapM_ C.takeMVar handles
 
   where connect n = do
           h <- joinNetwork n
