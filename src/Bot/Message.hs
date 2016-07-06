@@ -74,7 +74,7 @@ handlePM msg
 
   where
     prefix p = p `T.isPrefixOf` msgContent msg
-    dest = if "#" `T.isPrefixOf` msgChan msg then msgChan msg else msgNick msg
+    dest     = if "#" `T.isPrefixOf` msgChan msg then msgChan msg else msgNick msg
 
 
 -- takes an IRC message and generates the correct response

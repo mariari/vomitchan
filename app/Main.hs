@@ -20,7 +20,7 @@ import           Bot.Socket
 forkWithKill :: C.MVar[C.ThreadId] -> IO () -> IO (C.MVar())
 forkWithKill tids act = do
   handle <- C.newEmptyMVar
-  void $ C.forkFinally spawn (\_ -> kill >> C.putMVar handle ())
+  C.forkFinally spawn (\_ -> kill >> C.putMVar handle ())
   return handle
 
   where
@@ -31,7 +31,8 @@ forkWithKill tids act = do
 
     kill = do
       threads <- C.readMVar tids
-      mapM_ C.killThread threads
+      mytid <- C.myThreadId
+      mapM_ C.killThread [t | t <- threads, t /= mytid ]
 
 
  --- ENTRY POINT ---
@@ -43,7 +44,7 @@ main = do
        Nothing       -> putStrLn "ERROR loading servers from JSON"
 
        Just networks -> do
-         tids <- C.newMVar []
+         tids    <- C.newMVar []
          handles <- mapM (forkWithKill tids . connect) networks
          mapM_ C.takeMVar handles
 

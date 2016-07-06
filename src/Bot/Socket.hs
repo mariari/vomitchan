@@ -32,6 +32,7 @@ write h (act,args) = do
 
 -- simply listens to a socket forever
 listen :: Handle -> IO ()
+-- TODO: use untilM
 listen h = forever $ do
     s <- T.hGetLine h
     T.putStrLn s
