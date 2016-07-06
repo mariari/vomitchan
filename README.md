@@ -35,7 +35,7 @@ This file should look like the following:
 ```
 
 You can add multiple networks if you please.  
-**NOTE: joining multiple networks is currently buggy - expect it to not work**
+**NOTE: multiple network support is experimental - expect everything to break horribly**
 
 ## Running
 The bot can be started within ghci by running `stack ghci` in the project directory. Once at the prompt, run the `main` function.  
