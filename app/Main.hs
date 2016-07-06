@@ -1,6 +1,5 @@
 {-# LANGUAGE Haskell2010       #-}
 {-# LANGUAGE OverloadedStrings #-}
-{-# LANGUAGE UnicodeSyntax     #-}
 
 
 --- MODULE DEFINITION ---
@@ -18,7 +17,7 @@ import           Bot.Socket
 --- FUNCTIONS ---
 -- creates a thread and adds its thread ID to an MVar list, kills all
 -- listed threads when finished
-forkWithKill ∷ C.MVar[C.ThreadId] → IO () → IO ()
+forkWithKill :: C.MVar[C.ThreadId] -> IO () -> IO ()
 forkWithKill tids act = void $ C.forkFinally spawn (\_ -> mapM_ C.killThread =<< C.readMVar tids)
 
   where spawn = do
@@ -28,7 +27,7 @@ forkWithKill tids act = void $ C.forkFinally spawn (\_ -> mapM_ C.killThread =<<
 
 
  --- ENTRY POINT ---
-main ∷ IO ()
+main :: IO ()
 main = do
   nets <- readNetworks "data/networks.json"
 

@@ -1,6 +1,5 @@
 {-# LANGUAGE Haskell2010       #-}
 {-# LANGUAGE OverloadedStrings #-}
-{-# LANGUAGE UnicodeSyntax     #-}
 
 
 --- MODULE DEFINITION ---
@@ -52,7 +51,7 @@ data Message = Message
 --- FUNCTIONS ---
 
 -- converts a string to a Message
-toMessage ∷ T.Text → Message
+toMessage :: T.Text -> Message
 toMessage str = Message nick user host chan content
     where
         (head,body)                 = T.breakOn ":" (T.drop 1 str)
@@ -67,11 +66,11 @@ toMessage str = Message nick user host chan content
 
 
 -- handles privmsgs and creates responses
-handlePM ∷ Message → Maybe (T.Text, T.Text)
+handlePM :: Message -> Maybe (T.Text, T.Text)
 handlePM msg
   | prefix ".quit" && msgUser msg == "MrDetonia" = Just ("QUIT",":Exiting")
-  | prefix ".bots" = Just ("PRIVMSG", dest `T.append` " :I am a bot written by MrDetonia in Haskell | https://gitla.in/MrDetonia/detoniabot")
-  | otherwise = Nothing
+  | prefix ".bots"                               = Just ("PRIVMSG", dest `T.append` " :I am a bot written by MrDetonia in Haskell | https://gitla.in/MrDetonia/detoniabot")
+  | otherwise                                    = Nothing
 
   where
     prefix p = p `T.isPrefixOf` msgContent msg
@@ -79,8 +78,8 @@ handlePM msg
 
 
 -- takes an IRC message and generates the correct response
-respond ∷ T.Text → Maybe (T.Text, T.Text)
+respond :: T.Text -> Maybe (T.Text, T.Text)
 respond msg
-    | "PING" `T.isPrefixOf` msg = Just ("PONG", ':' `T.cons` T.drop 6 msg)
+    | "PING" `T.isPrefixOf` msg   = Just ("PONG", ':' `T.cons` T.drop 6 msg)
     | "PRIVMSG" `T.isInfixOf` msg = handlePM $ toMessage msg
-    | otherwise = Nothing
+    | otherwise                   = Nothing

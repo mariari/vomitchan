@@ -1,6 +1,5 @@
 {-# LANGUAGE Haskell2010       #-}
 {-# LANGUAGE OverloadedStrings #-}
-{-# LANGUAGE UnicodeSyntax     #-}
 
 
 --- MODULE DEFINITION ---
@@ -25,14 +24,14 @@ import           Bot.Message
 --- FUNCTIONS ---
 
 -- takes a Handle and an (Action, Args) tuple and sends to socket
-write ∷ Handle → (T.Text, T.Text) → IO ()
+write :: Handle -> (T.Text, T.Text) -> IO ()
 write h (act,args) = do
   T.hprint h "{} {}\r\n" [act, args]
   T.print "{} {}\n" [act,args]
 
 
 -- simply listens to a socket forever
-listen ∷ Handle → IO ()
+listen :: Handle -> IO ()
 listen h = forever $ do
     s <- T.hGetLine h
     T.putStrLn s

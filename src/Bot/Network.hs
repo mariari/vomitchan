@@ -1,7 +1,6 @@
 {-# LANGUAGE DeriveGeneric     #-}
 {-# LANGUAGE Haskell2010       #-}
 {-# LANGUAGE OverloadedStrings #-}
-{-# LANGUAGE UnicodeSyntax     #-}
 
 
 --- MODULE DEFINITION ---
@@ -49,7 +48,7 @@ instance JSON.ToJSON IRCNetwork
 --- FUNCTIONS ---
 
 -- read IRC networks from file
-readNetworks ∷ FilePath → IO (Maybe [IRCNetwork])
+readNetworks :: FilePath -> IO (Maybe [IRCNetwork])
 readNetworks file = do
     jsonData <- (JSON.eitherDecode <$> B.readFile file) :: IO (Either String [IRCNetwork])
 
@@ -61,12 +60,12 @@ readNetworks file = do
 
 
 -- save IRC networks to file
-saveNetworks ∷ FilePath → [IRCNetwork] → IO ()
+saveNetworks :: FilePath -> [IRCNetwork] -> IO ()
 saveNetworks file nets = B.writeFile file (JSON.encode nets)
 
 
 -- joins a network and returns a handle
-joinNetwork ∷ IRCNetwork → IO Handle
+joinNetwork :: IRCNetwork -> IO Handle
 joinNetwork net = do
   h <- connectTo (T.unpack $ netServer net) (PortNumber (fromIntegral (netPort net)))
   hSetBuffering h NoBuffering
@@ -88,7 +87,7 @@ joinNetwork net = do
 --- HELPER FUNCTIONS / UNUSED ---
 
 -- finds a network by name and maybe returns it
-findNetwork ∷ [IRCNetwork] → Server → Maybe IRCNetwork
+findNetwork :: [IRCNetwork] -> Server -> Maybe IRCNetwork
 findNetwork (nt:nts) sv
     | netServer nt == sv = Just nt
     | null nts           = Nothing
