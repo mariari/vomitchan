@@ -45,6 +45,4 @@ The bot can be started within ghci by running `stack ghci` in the project direct
 ## Planned Features
 - Versioning
 - Support for the 'major' IRC networks (Freenode, Rizon, IRCNet, QuakeNet, Etc.)
-- Nicer way of defining bot commands
 - Per-channel rate limiting, to prevent spam
-- Refactor the ugly handlePM function
