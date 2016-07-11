@@ -1,6 +1,7 @@
 # vomitchan
-An IRC bot written in Haskell.  
-\*cheek pinch\*
+An IRC bot written in Haskell.  *cheek pinch*
+
+---
 
 ![vomitchan running in IRC](https://u.pomf.is/fkwwgf.png)
 
