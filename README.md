@@ -7,7 +7,7 @@ An IRC bot written in Haskell.
 ## Building
 ### Requirements
 - Stack
-- Haskell packages (install with `stack install`):
+- Haskell packages (stack should install these for you):
   - network
   - text
   - text-format
