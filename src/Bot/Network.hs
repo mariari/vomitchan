@@ -24,7 +24,7 @@ import           GHC.Generics
 import           Network
 import           System.IO
 
-import           Bot.Message
+import           Bot.MessageType
 import           Bot.Socket
 
 
