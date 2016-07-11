@@ -40,7 +40,7 @@ You can add multiple networks if you please.
 
 ## Running
 The bot can be started within ghci by running `stack ghci` in the project directory. Once at the prompt, run the `main` function.  
-`stack build` should also create an executable that can be started with `stack exec detoniabot-exe`
+`stack build` should also create an executable that can be started with `stack exec vomitchan-exe`
 
 ## Planned Features
 - Versioning
