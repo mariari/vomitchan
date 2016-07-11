@@ -52,9 +52,9 @@ getCmd :: Message -> Maybe CmdFunc
 getCmd msg = foldr testFunc Nothing cmdList
 
     where
-        testFunc (p, cmd) _
+        testFunc (p, cmd) func
             | p `T.isPrefixOf` msgContent msg = Just cmd
-            | otherwise                       = Nothing
+            | otherwise                       = func
 
 
 --- HELPER FUNCTIONS ---
