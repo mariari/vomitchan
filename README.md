@@ -1,7 +1,8 @@
-# DetoniaBot
-A basic IRC bot written in Haskell that does absolutely nothing.
+# vomitchan
+An IRC bot written in Haskell.  
+\*cheek pinch\*
 
-![DetoniaBot running in IRC](https://u.pomf.is/fkwwgf.png)
+![vomitchan running in IRC](https://u.pomf.is/fkwwgf.png)
 
 ## Building
 ### Requirements
@@ -16,20 +17,20 @@ A basic IRC bot written in Haskell that does absolutely nothing.
 Note: you can build and run this without Stack of course, figure it out for yourself.
 
 ### Building on Linux
-- clone this repo using `git clone git@gitla.in:MrDetonia/detoniabot.git`
-- run `cd detoniabot && stack setup && stack build` to compile
+- clone this repo using `git clone https://gitla.in/MrDetonia/vomitchan.git`
+- run `cd vomitchan && stack setup && stack build` to compile
 
 ## Configuration
-DetoniaBot requires `data/networks.json` to store information about IRC networks to connect to.
+vomitchan requires `data/networks.json` to store information about IRC networks to connect to.
 This file should look like the following:
 
 ```json
 [
   { "netServer" : "irc.freenode.net"
   , "netPort" : 6667
-  , "netNick" : "bot_nick"
-  , "netPass" : "nickserv_password"
-  , "netChans" : [ "#chans", "#to", "#join"]
+  , "netNick" : "vomitchan"
+  , "netPass" : "password"
+  , "netChans" : [ "#lainchan", "#extra-chan"]
   }
 ]
 ```
@@ -43,7 +44,7 @@ The bot can be started within ghci by running `stack ghci` in the project direct
 
 ## Planned Features
 - Versioning
-- Support for joining multiple networks
 - Support for the 'major' IRC networks (Freenode, Rizon, IRCNet, QuakeNet, Etc.)
 - Nicer way of defining bot commands
 - Per-channel rate limiting, to prevent spam
+- Refactor the ugly handlePM function

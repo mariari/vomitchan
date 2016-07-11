@@ -1,13 +1,13 @@
-name:                detoniabot
+name:                vomitchan
 version:             0.0.1.0
-synopsis:            Simple IRC bot written in Haskell
+synopsis:            IRC bot written in Haskell
 description:         Please see README.md
-homepage:            https://gitla.in/MrDetonia/detoniabot
+homepage:            https://gitla.in/MrDetonia/vomitchan
 license:             BSD3
 license-file:        LICENSE
-author:              MrDetonia
-maintainer:          mrdetonia@27b-a.xyz
-copyright:           2016 Zac Herd
+author:              MrDetonia & nymphet
+maintainer:          mrdetonia@27b-a.xyz, nymphet@protonmail.com
+copyright:           2016 MrDetonia & nymphet
 category:            Web
 build-type:          Simple
 -- extra-source-files:
@@ -24,14 +24,14 @@ library
                      , bytestring
   default-language:    Haskell2010
 
-executable detoniabot-exe
+executable vomitchan-exe
   hs-source-dirs:      app
   main-is:             Main.hs
   ghc-options:         -threaded -rtsopts -with-rtsopts=-N
   build-depends:       base
-                     , detoniabot
+                     , vomitchan
   default-language:    Haskell2010
 
 source-repository head
   type:     git
-  location: git@gitla.in:MrDetonia/detoniabot.git
+  location: git@gitla.in:MrDetonia/vomitchan.git
