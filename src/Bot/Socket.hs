@@ -12,6 +12,7 @@ module Bot.Socket (
 --- IMPORTS ---
 import qualified Control.Concurrent as C
 import           Control.Monad
+import Control.Monad.Loops
 import qualified Data.Text          as T
 import qualified Data.Text.Format   as T
 import qualified Data.Text.IO       as T
@@ -31,18 +32,13 @@ write h (act,args) = T.hprint h "{} {}\r\n" [act, args]
 
 -- simply listens to a socket forever
 listen :: Handle -> IO ()
--- TODO: use untilM
-listen h = forever $ do
-  s <- T.hGetLine h
-  T.putStrLn s
+listen h = iterateUntil (== "QUIT") resLoop >> hClose h
+  where
+    resLoop = do
+      s <- T.hGetLine h
+      T.putStrLn s
 
-  res <- respond s
-  case res of
-    Just x  -> do
-      write h x
-      when (fst x == "QUIT") $ do
-        hClose h
-        myid <- C.myThreadId
-        C.killThread myid
-
-    Nothing -> return ()
+      res <- respond s
+      case res of
+           Just x  -> write h x >> return (fst x)
+           Nothing -> return ""

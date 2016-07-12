@@ -14,6 +14,7 @@ An IRC bot written in Haskell.  *cheek pinch*
   - text-format
   - bytestring
   - aeson
+  - monad-loops
 
 Note: you can build and run this without Stack of course, figure it out for yourself.
 
