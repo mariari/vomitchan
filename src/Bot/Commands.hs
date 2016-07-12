@@ -49,7 +49,7 @@ getCmd msg = foldr testFunc Nothing cmdList
 
 -- print bot info
 cmdBots :: CmdFunc
-cmdBots msg = Just ("PRIVMSG", msgDest msg `T.append` " :I am a queasy bot written in Haskell | https://gitla.in/MrDetonia/vomitchan")
+cmdBots = composeMsg " :I am a queasy bot written in Haskell | https://gitla.in/MrDetonia/vomitchan" 
 
 -- quit
 cmdQuit :: CmdFunc
@@ -57,6 +57,16 @@ cmdQuit msg
   | msgUser msg `elem` admins = Just ("QUIT", ":Exiting")
   | otherwise              = Nothing
 
+-- TODO: add a *vomits* function that grabs random images/links from the channel that it's from and produces rainbow text before and after
+
+-- TODO: add a *cheek pinch* function that puts the bot into reality mode
+
+-- TODO: make reality mode make vomitchan only speak in nods
+
+-- TODO: Reality/*dame* that posts quotes of not moving on and staying locked up
+-- TODO: Slumber/*dame* that posts quotes of escapeism
+
+-- TODO: add a *zzz* function that causes the bot go into slumber mode 
 
 --- HELPER FUNCTIONS ---
 
@@ -65,3 +75,8 @@ msgDest :: Message -> T.Text
 msgDest msg
   | "#" `T.isPrefixOf` msgChan msg = msgChan msg
   | otherwise                      = msgNick msg
+
+-- composes the format that the final send message will be
+composeMsg :: T.Text -> CmdFunc
+composeMsg str msg =
+  Just ("PRIVMSG", msgDest msg `T.append` str)
