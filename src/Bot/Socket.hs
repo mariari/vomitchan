@@ -12,7 +12,7 @@ module Bot.Socket (
 --- IMPORTS ---
 import qualified Control.Concurrent as C
 import           Control.Monad
-import Control.Monad.Loops
+import           Control.Monad.Loops
 import qualified Data.Text          as T
 import qualified Data.Text.Format   as T
 import qualified Data.Text.IO       as T
@@ -35,7 +35,7 @@ listen :: Handle -> IO ()
 listen h = iterateUntil (== "QUIT") resLoop >> hClose h
   where
     resLoop = do
-      s <- T.hGetLine h
+      s   <- T.hGetLine h
       T.putStrLn s
 
       res <- respond s
