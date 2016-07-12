@@ -23,9 +23,6 @@ module Bot.MessageType (
 
 --- IMPORTS ---
 import qualified Data.Text        as T
-import qualified Data.Text.Format as T
-import qualified Data.Text.IO     as T
-
 
 --- TYPES ---
 
@@ -52,17 +49,16 @@ data Message = Message
 
 
 --- FUNCTIONS ---
-
 -- converts a string to a Message
 toMessage :: T.Text -> Message
 toMessage str = Message nick user host chan content
     where
         (head,body)                 = T.breakOn ":" (T.drop 1 str)
         content                     = T.drop 1 body
-        (nick:user:host:_:chan:_)   = [x | x <- T.split delims head, not $ T.null x]
+        (nick:_:user:host:_:chan:_) = T.split delims head
         delims c                    = case c of
-                                           ' ' -> True
-                                           '!' -> True
-                                           '~' -> True
-                                           '@' -> True
-                                           _   -> False
+                                        ' ' -> True
+                                        '!' -> True
+                                        '~' -> True
+                                        '@' -> True
+                                        _   -> False
