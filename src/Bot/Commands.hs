@@ -38,7 +38,7 @@ cmdList =  [ (".bots", cmdBots)
 -- FUNCTIONS ---
 
 -- returns a corresponding command function from a message
---getCmd :: Message -> IO (Maybe CmdFunc)
+runCmd :: CmdFunc
 runCmd msg = foldr testFunc (return Nothing) cmdList
   where
     testFunc (p, cmd) k
