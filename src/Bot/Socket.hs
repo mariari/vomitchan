@@ -36,7 +36,7 @@ listen h = forever $ do
   s <- T.hGetLine h
   T.putStrLn s
 
-  let res = respond s
+  res <- respond s
   case res of
     Just x  -> do
       write h x

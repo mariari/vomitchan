@@ -18,7 +18,7 @@ import           Bot.MessageType
 --- TYPES ---
 
 -- type of all command functions
-type CmdFunc = Message -> Maybe (T.Text, T.Text)
+type CmdFunc = Message -> IO (Maybe (T.Text, T.Text))
 
 
 --- DATA ---
@@ -38,8 +38,8 @@ cmdList =  [ (".bots", cmdBots)
 -- FUNCTIONS ---
 
 -- returns a corresponding command function from a message
-getCmd :: Message -> Maybe CmdFunc
-getCmd msg = foldr testFunc Nothing cmdList
+getCmd :: Message -> IO (Maybe CmdFunc)
+getCmd msg = return $ foldr testFunc Nothing cmdList
   where
     testFunc (p, cmd) func
       | p `T.isPrefixOf` msgContent msg = Just cmd
@@ -54,8 +54,8 @@ cmdBots = composeMsg " :I am a queasy bot written in Haskell | https://gitla.in/
 -- quit
 cmdQuit :: CmdFunc
 cmdQuit msg
-  | msgUser msg `elem` admins = Just ("QUIT", ":Exiting")
-  | otherwise                 = Nothing
+  | msgUser msg `elem` admins = return $ Just ("QUIT", ":Exiting")
+  | otherwise                 = return Nothing
 
 -- TODO: add a *vomits* function that grabs random images/links from the channel that it's from and produces rainbow text before and after
 
@@ -78,4 +78,4 @@ msgDest msg
 
 -- composes the format that the final send message will be
 composeMsg :: T.Text -> CmdFunc
-composeMsg str msg = Just ("PRIVMSG", msgDest msg `T.append` str)
+composeMsg str msg = return $ Just ("PRIVMSG", msgDest msg `T.append` str)
