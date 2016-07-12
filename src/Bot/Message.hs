@@ -4,7 +4,6 @@
 
 --- MODULE DEFINITION ---
 module Bot.Message (
-  handlePM,
   respond
 ) where
 
@@ -20,17 +19,9 @@ import           Bot.MessageType
 
 --- FUNCTIONS ---
 
--- handles privmsgs and creates responses
-handlePM :: Message -> IO (Maybe (T.Text, T.Text))
-handlePM msg = do
-    res <- getCmd msg
-    case res of
-         Just cmd -> cmd msg
-         Nothing  -> return Nothing
-
 -- takes an IRC message and generates the correct response
 respond :: T.Text -> IO (Maybe (T.Text, T.Text))
 respond msg
   | "PING"   `T.isPrefixOf` msg = return $ Just ("PONG", T.drop 5 msg)
-  | "PRIVMSG" `T.isInfixOf` msg = handlePM $ toMessage msg
+  | "PRIVMSG" `T.isInfixOf` msg = runCmd $ toMessage msg
   | otherwise                   = return Nothing

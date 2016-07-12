@@ -3,7 +3,7 @@
 
 --- MODULE DEFINITION ---
 module Bot.Commands (
-  getCmd,
+  runCmd,
 ) where
 
 
@@ -38,12 +38,12 @@ cmdList =  [ (".bots", cmdBots)
 -- FUNCTIONS ---
 
 -- returns a corresponding command function from a message
-getCmd :: Message -> IO (Maybe CmdFunc)
-getCmd msg = return $ foldr testFunc Nothing cmdList
+--getCmd :: Message -> IO (Maybe CmdFunc)
+runCmd msg = foldr testFunc (return Nothing) cmdList
   where
-    testFunc (p, cmd) func
-      | p `T.isPrefixOf` msgContent msg = Just cmd
-      | otherwise                       = func
+    testFunc (p, cmd) k
+      | p `T.isPrefixOf` msgContent msg = cmd msg
+      | otherwise                       = k
 
 --- COMMAND FUNCTIONS ---
 
