@@ -39,11 +39,11 @@ listen h = forever $ do
 
     let res = respond s
     case res of
-         Just x  -> do
-             write h x
-             unless (fst x /= "QUIT") $ do
-                 hClose h
-                 myid <- C.myThreadId
-                 C.killThread myid
+      Just x  -> do
+        write h x
+        when (fst x == "QUIT") $ do
+          hClose h
+          myid <- C.myThreadId
+          C.killThread myid
 
-         Nothing -> return ()
+      Nothing -> return ()

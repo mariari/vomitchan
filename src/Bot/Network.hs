@@ -78,8 +78,8 @@ joinNetwork net = do
   return h
 
   where
-    waitForAuth h = T.hGetLine h >>= \line -> T.putStrLn line >>
-                                              unless (":You are now identified" `T.isInfixOf` line) (waitForAuth h)
+    waitForAuth h = T.hGetLine h >>= \line -> T.putStrLn line
+                                           >> unless (":You are now identified" `T.isInfixOf` line) (waitForAuth h)
 
 --- HELPER FUNCTIONS / UNUSED ---
 
