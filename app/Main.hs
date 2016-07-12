@@ -16,7 +16,7 @@ import           Bot.Socket
 
 --- FUNCTIONS ---
 -- creates a thread and adds its thread ID to an MVar list, kills all
--- listed threads when finished  DICKS 
+-- listed threads when finished  DICKS
 forkWithKill :: C.MVar[C.ThreadId] -> IO () -> IO (C.MVar())
 forkWithKill tids act = do
   handle <- C.newEmptyMVar
@@ -48,6 +48,4 @@ main = do
          handles <- mapM (forkWithKill tids . connect) networks
          mapM_ C.takeMVar handles
 
-  where connect n = do
-          h <- joinNetwork n
-          listen h
+  where connect n = joinNetwork n >>= \h -> listen h

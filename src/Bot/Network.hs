@@ -53,9 +53,7 @@ readNetworks file = do
   jsonData <- (JSON.eitherDecode <$> B.readFile file) :: IO (Either String [IRCNetwork])
 
   case jsonData of
-    Left err -> do
-      putStrLn err
-      return Nothing
+    Left err   -> putStrLn err >> return Nothing
     Right nets -> return $ Just nets
 
 

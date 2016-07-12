@@ -29,7 +29,7 @@ admins :: [T.Text]
 admins = ["MrDetonia", "loli"]
 
 -- list of prefixes and corresponding command functions
--- TODO: if the cmdList has over 50~ commands, put it into a hash table instead 
+-- TODO: if the cmdList has over 50~ commands, put it into a hash table instead
 cmdList :: [ (T.Text, CmdFunc)]
 cmdList =  [ (".bots", cmdBots)
            , (".quit", cmdQuit)]
@@ -49,13 +49,13 @@ getCmd msg = foldr testFunc Nothing cmdList
 
 -- print bot info
 cmdBots :: CmdFunc
-cmdBots = composeMsg " :I am a queasy bot written in Haskell | https://gitla.in/MrDetonia/vomitchan" 
+cmdBots = composeMsg " :I am a queasy bot written in Haskell | https://gitla.in/MrDetonia/vomitchan"
 
 -- quit
 cmdQuit :: CmdFunc
 cmdQuit msg
   | msgUser msg `elem` admins = Just ("QUIT", ":Exiting")
-  | otherwise              = Nothing
+  | otherwise                 = Nothing
 
 -- TODO: add a *vomits* function that grabs random images/links from the channel that it's from and produces rainbow text before and after
 
@@ -66,7 +66,7 @@ cmdQuit msg
 -- TODO: Reality/*dame* that posts quotes of not moving on and staying locked up
 -- TODO: Slumber/*dame* that posts quotes of escapeism
 
--- TODO: add a *zzz* function that causes the bot go into slumber mode 
+-- TODO: add a *zzz* function that causes the bot go into slumber mode
 
 --- HELPER FUNCTIONS ---
 
@@ -78,5 +78,4 @@ msgDest msg
 
 -- composes the format that the final send message will be
 composeMsg :: T.Text -> CmdFunc
-composeMsg str msg =
-  Just ("PRIVMSG", msgDest msg `T.append` str)
+composeMsg str msg = Just ("PRIVMSG", msgDest msg `T.append` str)
