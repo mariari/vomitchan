@@ -22,7 +22,7 @@ module Bot.MessageType (
 
 
 --- IMPORTS ---
-import qualified Data.Text        as T
+import qualified Data.Text as T
 
 --- TYPES ---
 
@@ -52,13 +52,13 @@ data Message = Message
 -- converts a string to a Message
 toMessage :: T.Text -> Message
 toMessage str = Message nick user host chan content
-    where
-        (head,body)                 = T.breakOn ":" (T.drop 1 str)
-        content                     = T.drop 1 body
-        (nick:_:user:host:_:chan:_) = T.split delims head
-        delims c                    = case c of
-                                        ' ' -> True
-                                        '!' -> True
-                                        '~' -> True
-                                        '@' -> True
-                                        _   -> False
+  where
+    (head,body)                 = T.breakOn ":" (T.drop 1 str)
+    content                     = T.drop 1 body
+    (nick:_:user:host:_:chan:_) = T.split delims head
+    delims c                    = case c of
+                                    ' ' -> True
+                                    '!' -> True
+                                    '~' -> True
+                                    '@' -> True
+                                    _   -> False

@@ -50,13 +50,13 @@ instance JSON.ToJSON IRCNetwork
 -- read IRC networks from file
 readNetworks :: FilePath -> IO (Maybe [IRCNetwork])
 readNetworks file = do
-    jsonData <- (JSON.eitherDecode <$> B.readFile file) :: IO (Either String [IRCNetwork])
+  jsonData <- (JSON.eitherDecode <$> B.readFile file) :: IO (Either String [IRCNetwork])
 
-    case jsonData of
-         Left err -> do
-             putStrLn err
-             return Nothing
-         Right nets -> return $ Just nets
+  case jsonData of
+    Left err -> do
+      putStrLn err
+      return Nothing
+    Right nets -> return $ Just nets
 
 
 -- save IRC networks to file
@@ -78,17 +78,14 @@ joinNetwork net = do
   return h
 
   where
-    waitForAuth h = do
-      line <- T.hGetLine h
-      T.putStrLn line
-      unless (":You are now identified" `T.isInfixOf` line) (waitForAuth h)
-
+    waitForAuth h = T.hGetLine h >>= \line -> T.putStrLn line >>
+                                              unless (":You are now identified" `T.isInfixOf` line) (waitForAuth h)
 
 --- HELPER FUNCTIONS / UNUSED ---
 
 -- finds a network by name and maybe returns it
 findNetwork :: [IRCNetwork] -> Server -> Maybe IRCNetwork
 findNetwork (nt:nts) sv
-    | netServer nt == sv = Just nt
-    | null nts           = Nothing
-    | otherwise          = findNetwork nts sv
+  | netServer nt == sv = Just nt
+  | null nts           = Nothing
+  | otherwise          = findNetwork nts sv

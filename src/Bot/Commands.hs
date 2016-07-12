@@ -29,13 +29,23 @@ admins :: [T.Text]
 admins = ["MrDetonia", "loli"]
 
 -- list of prefixes and corresponding command functions
-cmdList :: [(T.Text, CmdFunc)]
-cmdList = [ (".bots", cmdBots)
-          , (".quit", cmdQuit)
-          ]
+-- TODO: if the cmdList has over 50~ commands, put it into a hash table instead 
+cmdList :: [ (T.Text, CmdFunc)]
+cmdList =  [ (".bots", cmdBots)
+           , (".quit", cmdQuit)]
 
 
---- FUNCTIONS ---
+-- FUNCTIONS ---
+
+-- returns a corresponding command function from a message
+getCmd :: Message -> Maybe CmdFunc
+getCmd msg = foldr testFunc Nothing cmdList
+  where
+    testFunc (p, cmd) func
+      | p `T.isPrefixOf` msgContent msg = Just cmd
+      | otherwise                       = func
+
+--- COMMAND FUNCTIONS ---
 
 -- print bot info
 cmdBots :: CmdFunc
@@ -44,17 +54,8 @@ cmdBots msg = Just ("PRIVMSG", msgDest msg `T.append` " :I am a queasy bot writt
 -- quit
 cmdQuit :: CmdFunc
 cmdQuit msg
-    | msgUser msg `elem` admins = Just ("QUIT", ":Exiting")
-    | otherwise                 = Nothing
-
--- returns a corresponding command function from a message
-getCmd :: Message -> Maybe CmdFunc
-getCmd msg = foldr testFunc Nothing cmdList
-
-    where
-        testFunc (p, cmd) func
-            | p `T.isPrefixOf` msgContent msg = Just cmd
-            | otherwise                       = func
+  | msgUser msg `elem` admins = Just ("QUIT", ":Exiting")
+  | otherwise              = Nothing
 
 
 --- HELPER FUNCTIONS ---
@@ -62,5 +63,5 @@ getCmd msg = foldr testFunc Nothing cmdList
 -- figures out where to send a response to
 msgDest :: Message -> T.Text
 msgDest msg
-    | "#" `T.isPrefixOf` msgChan msg = msgChan msg
-    | otherwise                      = msgNick msg
+  | "#" `T.isPrefixOf` msgChan msg = msgChan msg
+  | otherwise                      = msgNick msg

@@ -27,6 +27,6 @@ handlePM msg = getCmd msg >>= \cmd -> cmd msg
 -- takes an IRC message and generates the correct response
 respond :: T.Text -> Maybe (T.Text, T.Text)
 respond msg
-    | "PING" `T.isPrefixOf` msg   = Just ("PONG", T.drop 5 msg)
-    | "PRIVMSG" `T.isInfixOf` msg = handlePM $ toMessage msg
-    | otherwise                   = Nothing
+  | "PING"   `T.isPrefixOf` msg = Just ("PONG", T.drop 5 msg)
+  | "PRIVMSG" `T.isInfixOf` msg = handlePM $ toMessage msg
+  | otherwise                   = Nothing
