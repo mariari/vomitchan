@@ -32,7 +32,8 @@ admins = ["MrDetonia", "loli"]
 -- TODO: if the cmdList has over 50~ commands, put it into a hash table instead
 cmdList :: [ (T.Text, CmdFunc)]
 cmdList =  [ (".bots", cmdBots)
-           , (".quit", cmdQuit)]
+           , (".quit", cmdQuit)
+           , (".lewd ", cmdLewd)]
 
 
 -- FUNCTIONS ---
@@ -56,6 +57,10 @@ cmdQuit :: CmdFunc
 cmdQuit msg
   | msgUser msg `elem` admins = return $ Just ("QUIT", ":Exiting")
   | otherwise                 = return Nothing
+
+-- lewd someone (rip halpybot)
+cmdLewd :: CmdFunc
+cmdLewd msg = composeMsg (" :\01ACTION lewds " `T.append` T.drop 6 (msgContent msg) `T.append` "\01") msg
 
 -- TODO: add a *vomits* function that grabs random images/links from the channel that it's from and produces rainbow text before and after
 

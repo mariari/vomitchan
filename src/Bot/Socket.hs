@@ -10,7 +10,6 @@ module Bot.Socket (
 
 
 --- IMPORTS ---
-import qualified Control.Concurrent as C
 import           Control.Monad
 import           Control.Monad.Loops
 import qualified Data.Text          as T
