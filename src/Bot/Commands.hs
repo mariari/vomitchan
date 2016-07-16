@@ -60,7 +60,8 @@ cmdQuit msg
 
 -- lewd someone (rip halpybot)
 cmdLewd :: CmdFunc
-cmdLewd msg = composeMsg (" :\01ACTION lewds " `T.append` T.drop 6 (msgContent msg) `T.append` "\01") msg
+cmdLewd msg = composeMsg (" :\0001ACTION lewds " `T.append`  target `T.append` "\0001") msg
+  where target = T.drop 6 (msgContent msg)
 
 -- TODO: add a *vomits* function that grabs random images/links from the channel that it's from and produces rainbow text before and after
 

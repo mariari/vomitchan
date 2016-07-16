@@ -54,7 +54,7 @@ toMessage :: T.Text -> Message
 toMessage str = Message nick user host chan content
   where
     (head,body)               = T.breakOn ":" (T.drop 1 str)
-    content                   = T.drop 1 body
+    content                   = T.strip $ T.drop 1 body
     (nick:user:host:_:chan:_) = [x | x <- T.split delims head, not $ T.null x]
     delims c                  = case c of
                                     ' ' -> True
