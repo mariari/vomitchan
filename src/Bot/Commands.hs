@@ -60,7 +60,7 @@ cmdQuit msg
 
 -- lewd someone (rip halpybot)
 cmdLewd :: CmdFunc
-cmdLewd msg = composeMsg (" :\0001ACTION lewds " `T.append`  target `T.append` "\0001") msg
+cmdLewd msg = composeMsg (actionMe (T.append "lewds " target)) msg
   where target = drpMsg msg " "
 
 -- TODO: add a *vomits* function that grabs random images/links from the channel that it's from and produces rainbow text before and after
@@ -70,7 +70,7 @@ cmdLewd msg = composeMsg (" :\0001ACTION lewds " `T.append`  target `T.append` "
 -- TODO: make reality mode make vomitchan only speak in nods
 
 -- TODO: Reality/*dame* that posts quotes of not moving on and staying locked up
--- TODO: Slumber/*dame* that posts quotes of escapeism
+-- TODO: Slumber/*dame* that posts quotes of escapism
 
 -- TODO: add a *zzz* function that causes the bot go into slumber mode
 
@@ -89,3 +89,7 @@ composeMsg str msg = return $ Just ("PRIVMSG", msgDest msg `T.append` str)
 -- Drops the command message [.lewd *vomits*] sent to vomitchan... the extra (T.drop 1) is there for * * commands
 drpMsg :: Message -> T.Text -> T.Text
 drpMsg msg break = (T.drop 1 . snd . T.breakOn break . T.drop 1 . msgContent) msg
+
+-- Used for /me commands 
+actionMe :: T.Text -> T.Text
+actionMe txt = " :\0001ACTION " `T.append` txt `T.append` "\0001"
