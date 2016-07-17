@@ -48,3 +48,6 @@ The bot can be started within ghci by running `stack ghci` in the project direct
 - Versioning
 - Support for the 'major' IRC networks (Freenode, Rizon, IRCNet, QuakeNet, Etc.)
 - Per-channel rate limiting, to prevent spam
+- Link scraping and archiving
+- distributed data storage
+- add 'modes'
