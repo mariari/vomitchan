@@ -9,8 +9,8 @@ module Bot.Commands (
 
 --- IMPORTS ---
 import qualified Data.Text        as T
-import qualified Data.Text.Format as T
-import qualified Data.Text.IO     as T
+--import qualified Data.Text.Format as T
+--import qualified Data.Text.IO     as T
 import           Data.Monoid
 import           Bot.MessageType
 
@@ -60,7 +60,7 @@ cmdQuit msg
 
 -- lewd someone (rip halpybot)
 cmdLewd :: CmdFunc
-cmdLewd msg = composeMsg (actionMe "lewds " <> target) msg
+cmdLewd msg = (composeMsg . actionMe) ("lewds " <> target) msg
   where target = drpMsg msg " "
 
 -- TODO: add a *vomits* function that grabs random images/links from the channel that it's from and produces rainbow text before and after
