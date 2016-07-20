@@ -9,8 +9,6 @@ module Bot.Commands (
 
 --- IMPORTS ---
 import qualified Data.Text        as T
---import qualified Data.Text.Format as T
---import qualified Data.Text.IO     as T
 import           Data.Monoid
 import           Bot.MessageType
 
@@ -61,7 +59,7 @@ cmdQuit msg
 -- lewd someone (rip halpybot)
 cmdLewd :: CmdFunc
 cmdLewd msg = (composeMsg . actionMe) ("lewds " <> target) msg
-  where target = drpMsg msg " "
+  where target = drpMsg " " msg
 
 -- TODO: add a *vomits* function that grabs random images/links from the channel that it's from and produces rainbow text before and after
 
@@ -87,8 +85,8 @@ composeMsg :: T.Text -> CmdFunc
 composeMsg str msg = return $ Just ("PRIVMSG", msgDest msg <> str)
 
 -- Drops the command message [.lewd *vomits*] sent to vomitchan... the extra (T.drop 1) is there for * * commands
-drpMsg :: Message -> T.Text -> T.Text
-drpMsg msg break = (T.drop 1 . snd . T.breakOn break . T.drop 1 . msgContent) msg
+drpMsg :: T.Text -> Message -> T.Text
+drpMsg bk = T.drop 1 . snd . T.breakOn bk . T.drop 1 . msgContent
 
 -- Used for /me commands 
 actionMe :: T.Text -> T.Text

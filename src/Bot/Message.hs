@@ -10,8 +10,6 @@ module Bot.Message (
 
 --- IMPORTS ---
 import qualified Data.Text        as T
-import qualified Data.Text.Format as T
-import qualified Data.Text.IO     as T
 
 import           Bot.Commands
 import           Bot.MessageType

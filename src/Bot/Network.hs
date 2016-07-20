@@ -18,11 +18,11 @@ import           Control.Monad
 import qualified Data.Aeson           as JSON
 import qualified Data.ByteString.Lazy as B
 import qualified Data.Text            as T
-import qualified Data.Text.Format     as T
 import qualified Data.Text.IO         as T
 import           GHC.Generics
 import           Network
 import           System.IO
+import           Data.Monoid
 
 import           Bot.MessageType
 import           Bot.Socket
@@ -51,7 +51,6 @@ instance JSON.ToJSON IRCNetwork
 readNetworks :: FilePath -> IO (Maybe [IRCNetwork])
 readNetworks file = do
   jsonData <- (JSON.eitherDecode <$> B.readFile file) :: IO (Either String [IRCNetwork])
-
   case jsonData of
     Left err   -> putStrLn err >> return Nothing
     Right nets -> return $ Just nets
@@ -65,16 +64,15 @@ saveNetworks file nets = B.writeFile file (JSON.encode nets)
 -- joins a network and returns a handle
 joinNetwork :: IRCNetwork -> IO Handle
 joinNetwork net = do
-  h <- connectTo (T.unpack $ netServer net) (PortNumber (fromIntegral (netPort net)))
+  h <- (connectTo . T.unpack . netServer) net (PortNumber ((fromIntegral . netPort) net))
   hSetBuffering h NoBuffering
 
   write h ("NICK", netNick net)
-  write h ("USER", netNick net `T.append` " 0 * :connected")
+  write h ("USER", netNick net <> " 0 * :connected")
   unless (netPass net == "") (write h ("NICKSERV :IDENTIFY", netPass net) >> waitForAuth h)
   mapM_ (write h) (zip (repeat "JOIN") (netChans net))
 
   return h
-
   where
     waitForAuth h = T.hGetLine h >>= \line -> T.putStrLn line
                                            >> unless (":You are now identified" `T.isInfixOf` line) (waitForAuth h)

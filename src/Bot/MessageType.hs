@@ -62,3 +62,4 @@ toMessage str = Message nick user host chan content
                                     '~' -> True
                                     '@' -> True
                                     _   -> False
+
