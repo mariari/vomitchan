@@ -3,7 +3,14 @@ An IRC bot written in Haskell.  *cheek pinch*
 
 ---
 
-![vomitchan running in IRC](https://u.pomf.is/fkwwgf.png)
+![vomitchan running in IRC](https://u.pomf.is/nuuyqt.png)
+
+## Commands
+- `.bots` - prints bot info
+- `.lewd <someone>` - lewds someone
+
+### Admin Only
+- `.quit` - kill vomitchan ;-;
 
 ## Building
 ### Requirements
@@ -29,10 +36,10 @@ This file should look like the following:
 ```json
 [
   { "netServer" : "irc.freenode.net"
-  , "netPort" : 6667
-  , "netNick" : "vomitchan"
-  , "netPass" : "password"
-  , "netChans" : [ "#lainchan", "#extra-chan"]
+  , "netPort"   : 6667
+  , "netNick"   : "vomitchan"
+  , "netPass"   : "password"
+  , "netChans"  : [ "#lainchan", "#extra-chan"]
   }
 ]
 ```
