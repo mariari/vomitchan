@@ -71,8 +71,8 @@ cmdLewd msg = (composeMsg . actionMe) ("lewds " <> target) msg
 cmdLog :: CmdFunc
 cmdLog msg = createUsrFldr msg >> appLogs >> return Nothing
   where allLinks = [xs | xs <- flip (drpMsgRec msg) " " <$> cmdWbPg, not $ T.null (head xs)]
-        newLinks = map (\links -> (<>) <$> links <*> ["\n"]) allLinks
-        appLogs  = (mapM_ . mapM_) (appendLog msg) newLinks
+        linksLn  = map (\links -> (<>) <$> links <*> ["\n"]) allLinks
+        appLogs  = (mapM_ . mapM_) (appendLog msg) linksLn
 
 
 -- TODO: add a *vomits* function that grabs random images/links from the channel that it's from and produces rainbow text before and after
