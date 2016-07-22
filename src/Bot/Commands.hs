@@ -66,7 +66,7 @@ runInf msg = foldr testFunc (return Nothing) cmdInfList
 
 -- print bot info
 cmdBots :: CmdFunc
-cmdBots = composeMsg " :I am a queasy bot written in Haskell | https://gitla.in/MrDetonia/vomitchan"
+cmdBots = composeMsg "NOTICE" " :I am a queasy bot written in Haskell | https://gitla.in/MrDetonia/vomitchan"
 
 -- quit
 cmdQuit :: CmdFunc
@@ -76,7 +76,7 @@ cmdQuit msg
 
 -- lewd someone (rip halpybot)
 cmdLewd :: CmdFunc
-cmdLewd msg = (composeMsg . actionMe) ("lewds " <> target) msg
+cmdLewd msg = (composeMsg "PRIVMSG" . actionMe) ("lewds " <> target) msg
   where target = T.tail $ drpMsg msg " "
 
 -- Logs any links posted and appends them to the users .log file
@@ -108,8 +108,8 @@ msgDest msg
   | otherwise                      = msgNick msg
 
 -- composes the format that the final send message will be
-composeMsg :: T.Text -> CmdFunc
-composeMsg str msg = return $ Just ("PRIVMSG", msgDest msg <> str)
+composeMsg :: T.Text -> T.Text -> CmdFunc
+composeMsg method str msg = return $ Just (method, msgDest msg <> str)
 
 -- Drops the command message [.lewd *vomits*] sent to vomitchan... T.drop 1 is removed... send it via T.tail msg
 drpMsg :: Message -> T.Text -> T.Text
