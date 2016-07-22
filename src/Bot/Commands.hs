@@ -32,6 +32,7 @@ admins = ["MrDetonia", "loli"]
 -- TODO: if the cmdList has over 50~ commands, put it into a hash table instead
 cmdList :: [ (CmdFunc, [T.Text])]
 cmdList =  [ (cmdBots, [".bots"])
+           , (cmdSrc,  [".source vomitchan"])
            , (cmdQuit, [".quit"])
            , (cmdLewd, [".lewd "])]
 
@@ -67,6 +68,10 @@ runInf msg = foldr testFunc (return Nothing) cmdInfList
 -- print bot info
 cmdBots :: CmdFunc
 cmdBots = composeMsg "NOTICE" " :I am a queasy bot written in Haskell | https://gitla.in/MrDetonia/vomitchan"
+
+-- print source link
+cmdSrc :: CmdFunc
+cmdSrc = composeMsg "NOTICE" " :[Haskell] https://gitla.in/MrDetonia/vomitchan"
 
 -- quit
 cmdQuit :: CmdFunc
