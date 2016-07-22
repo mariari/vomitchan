@@ -9,10 +9,10 @@ module Bot.Commands (
 
 
 --- IMPORTS ---
-import qualified Data.Text        as T
-import           Data.Monoid
-import           Bot.MessageType
 import           Bot.FileOps
+import           Bot.MessageType
+import           Data.Monoid
+import qualified Data.Text       as T
 
 
 --- TYPES ---
@@ -31,8 +31,9 @@ admins = ["MrDetonia", "loli"]
 -- list of prefixes and corresponding command functions
 -- TODO: if the cmdList has over 50~ commands, put it into a hash table instead
 cmdList :: [ (CmdFunc, [T.Text])]
-cmdList =  [ (cmdBots, [".bots"])
+cmdList =  [ (cmdBots, [".bots", ".bot vomitchan"])
            , (cmdSrc,  [".source vomitchan"])
+           , (cmdHelp, [".help vomitchan"])
            , (cmdQuit, [".quit"])
            , (cmdLewd, [".lewd "])]
 
@@ -58,7 +59,7 @@ runInf :: CmdFunc
 runInf msg = foldr testFunc (return Nothing) cmdInfList
   where
     testFunc (cmd, p) k
-      | or (flip T.isPrefixOf (msgContent msg) <$> p) 
+      | or (flip T.isPrefixOf (msgContent msg) <$> p)
       || or (flip T.isInfixOf (msgContent msg) <$> p) = cmd msg
       | otherwise                                     = k
 
@@ -67,11 +68,16 @@ runInf msg = foldr testFunc (return Nothing) cmdInfList
 
 -- print bot info
 cmdBots :: CmdFunc
-cmdBots = composeMsg "NOTICE" " :I am a queasy bot written in Haskell | https://gitla.in/MrDetonia/vomitchan"
+cmdBots = composeMsg "NOTICE" " :I am a queasy bot written in Haskell by MrDetonia and loli"
 
 -- print source link
 cmdSrc :: CmdFunc
 cmdSrc = composeMsg "NOTICE" " :[Haskell] https://gitla.in/MrDetonia/vomitchan"
+
+-- prints help information
+-- TODO: Store command info in cmdList and generate this text on the fly
+cmdHelp :: CmdFunc
+cmdHelp = composeMsg "NOTICE" " :Commands: .lewd <someone>, (more to come...)"
 
 -- quit
 cmdQuit :: CmdFunc
@@ -120,16 +126,16 @@ composeMsg method str msg = return $ Just (method, msgDest msg <> str)
 drpMsg :: Message -> T.Text -> T.Text
 drpMsg msg bk = (snd . T.breakOn bk . msgContent) msg
 
--- Like drpMsg but does it recursively until the break can't be found anymore 
+-- Like drpMsg but does it recursively until the break can't be found anymore
 drpMsgRec :: Message -> T.Text -> T.Text ->  [T.Text]
 drpMsgRec msg bkL bkR = recurse [] drpMess
   where recurse acc (x,"") = x:acc
         recurse acc (x,xs) = recurse (x:acc) $ (drpRight . snd . drpLeft) xs
         drpMess            = T.breakOn bkR (drpMsg msg bkL)
-        drpLeft            = T.breakOn bkL 
-        drpRight           = T.breakOn bkR 
+        drpLeft            = T.breakOn bkL
+        drpRight           = T.breakOn bkR
 
 
--- Used for /me commands 
+-- Used for /me commands
 actionMe :: T.Text -> T.Text
 actionMe txt = " :\0001ACTION " <> txt <> "\0001"
