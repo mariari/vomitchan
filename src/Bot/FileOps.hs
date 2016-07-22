@@ -33,4 +33,4 @@ appendLog msg = T.appendFile (getUsrFldr msg <> "Links.log")
 -- HELPER FUNCTIONS ---
 -- Gets folder path based on Message (Chan <> Nick)
 getUsrFldr :: Message -> FilePath
-getUsrFldr msg = (fromString . T.unpack) ("./logs/" <> msgChan msg <> "/" <> msgNick msg <> "/")
+getUsrFldr msg = (fromString . T.unpack) ("./data/logs/" <> msgChan msg <> "/" <> msgNick msg <> "/")
