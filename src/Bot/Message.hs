@@ -22,4 +22,5 @@ respond :: T.Text -> IO (Maybe (T.Text, T.Text))
 respond msg
   | "PING"   `T.isPrefixOf` msg = return $ Just ("PONG", T.drop 5 msg)
   | "PRIVMSG" `T.isInfixOf` msg = runCmd $ toMessage msg
+  | "PRIVMSG" `T.isInfixOf` msg = runInf $ toMessage msg
   | otherwise                   = return Nothing

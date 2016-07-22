@@ -4,6 +4,7 @@
 --- MODULE DEFINITION ---
 module Bot.Commands (
   runCmd,
+  runInf,
 ) where
 
 
@@ -32,8 +33,11 @@ admins = ["MrDetonia", "loli"]
 cmdList :: [ (CmdFunc, [T.Text])]
 cmdList =  [ (cmdBots, [".bots"])
            , (cmdQuit, [".quit"])
-           , (cmdLewd, [".lewd "])
-           , (cmdLog,  ["http","ftp"])]
+           , (cmdLewd, [".lewd "])]
+
+-- Creates a list of infix functions
+cmdInfList :: [ (CmdFunc, [T.Text])]
+cmdInfList = [(cmdLog,  ["http","ftp"])]
 
 -- Lists the type of webpages that are logged
 cmdWbPg :: [T.Text]
@@ -46,9 +50,17 @@ runCmd :: CmdFunc
 runCmd msg = foldr testFunc (return Nothing) cmdList
   where
     testFunc (cmd, p) k
+      | or (flip T.isPrefixOf (msgContent msg) <$> p) = cmd msg
+      | otherwise                                     = k
+
+runInf :: CmdFunc
+runInf msg = foldr testFunc (return Nothing) cmdInfList
+  where
+    testFunc (cmd, p) k
       | or (flip T.isPrefixOf (msgContent msg) <$> p) 
       || or (flip T.isInfixOf (msgContent msg) <$> p) = cmd msg
       | otherwise                                     = k
+
 
 --- COMMAND FUNCTIONS ---
 
