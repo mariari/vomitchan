@@ -35,6 +35,9 @@ cmdList =  [ (cmdBots, [".bots"])
            , (cmdLewd, [".lewd "])
            , (cmdLog,  ["http","ftp"])]
 
+-- Lists the type of webpages that are logged
+cmdWbPg :: [T.Text]
+cmdWbPg = ["http", "ftp"]
 
 -- FUNCTIONS ---
 
@@ -64,14 +67,13 @@ cmdLewd :: CmdFunc
 cmdLewd msg = (composeMsg . actionMe) ("lewds " <> target) msg
   where target = T.tail $ drpMsg msg " "
 
+-- Logs any links posted and appends them to the users .log file
 cmdLog :: CmdFunc
-cmdLog msg =  createUsrFldr msg >> mapM_ (appendLog msg) newLinks >> return Nothing
-  where links = (fst . T.breakOn " " . drpMsg msg) <$> ["http", "ftp"]
-        newLinks = (<>) <$> links <*> ["\n"]
-        
+cmdLog msg = createUsrFldr msg >> appLogs >> return Nothing
+  where allLinks = [xs | xs <- flip (drpMsgRec msg) " " <$> cmdWbPg, not $ T.null (head xs)]
+        newLinks = map (\links -> (<>) <$> links <*> ["\n"]) allLinks
+        appLogs  = (mapM_ . mapM_) (appendLog msg) newLinks
 
-
--- >> (createUsrFldr msg) 
 
 -- TODO: add a *vomits* function that grabs random images/links from the channel that it's from and produces rainbow text before and after
 
@@ -99,6 +101,16 @@ composeMsg str msg = return $ Just ("PRIVMSG", msgDest msg <> str)
 -- Drops the command message [.lewd *vomits*] sent to vomitchan... T.drop 1 is removed... send it via T.tail msg
 drpMsg :: Message -> T.Text -> T.Text
 drpMsg msg bk = (snd . T.breakOn bk . msgContent) msg
+
+-- Like drpMsg but does it recursively until the break can't be found anymore 
+drpMsgRec :: Message -> T.Text -> T.Text ->  [T.Text]
+drpMsgRec msg bkL bkR = recurse [] drpMess
+  where recurse acc (x,"") = x:acc
+        recurse acc (x,xs) = recurse (x:acc) $ (drpRight . snd . drpLeft) xs
+        drpMess            = T.breakOn bkR (drpMsg msg bkL)
+        drpLeft            = T.breakOn bkL 
+        drpRight           = T.breakOn bkR 
+
 
 -- Used for /me commands 
 actionMe :: T.Text -> T.Text
