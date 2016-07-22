@@ -70,8 +70,8 @@ cmdLewd msg = (composeMsg . actionMe) ("lewds " <> target) msg
 -- Logs any links posted and appends them to the users .log file
 cmdLog :: CmdFunc
 cmdLog msg = createUsrFldr msg >> appLogs >> return Nothing
-  where allLinks = [xs | xs <- flip (drpMsgRec msg) " " <$> cmdWbPg, not $ T.null (head xs)]
-        linksLn  = map (\links -> (<>) <$> links <*> ["\n"]) allLinks
+  where allLinks = [xs | xs <- flip (drpMsgRec msg) " " <$> cmdWbPg, not $ T.null (head xs)] -- creates a [[T.Text]]
+        linksLn  = map (\links -> (<>) <$> links <*> ["\n"]) allLinks                        -- adds a newline char after every link in the [[T.Text]]
         appLogs  = (mapM_ . mapM_) (appendLog msg) linksLn
 
 
