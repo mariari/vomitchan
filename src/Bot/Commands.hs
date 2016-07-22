@@ -11,6 +11,7 @@ module Bot.Commands (
 import qualified Data.Text        as T
 import           Data.Monoid
 import           Bot.MessageType
+import           Bot.FileOps
 
 
 --- TYPES ---
@@ -28,10 +29,11 @@ admins = ["MrDetonia", "loli"]
 
 -- list of prefixes and corresponding command functions
 -- TODO: if the cmdList has over 50~ commands, put it into a hash table instead
-cmdList :: [ (T.Text, CmdFunc)]
-cmdList =  [ (".bots", cmdBots)
-           , (".quit", cmdQuit)
-           , (".lewd ", cmdLewd)]
+cmdList :: [ (CmdFunc, [T.Text])]
+cmdList =  [ (cmdBots, [".bots"])
+           , (cmdQuit, [".quit"])
+           , (cmdLewd, [".lewd "])
+           , (cmdLog,  ["http","ftp"])]
 
 
 -- FUNCTIONS ---
@@ -40,9 +42,10 @@ cmdList =  [ (".bots", cmdBots)
 runCmd :: CmdFunc
 runCmd msg = foldr testFunc (return Nothing) cmdList
   where
-    testFunc (p, cmd) k
-      | p `T.isPrefixOf` msgContent msg = cmd msg
-      | otherwise                       = k
+    testFunc (cmd, p) k
+      | or (flip T.isPrefixOf (msgContent msg) <$> p) 
+      || or (flip T.isInfixOf (msgContent msg) <$> p) = cmd msg
+      | otherwise                                     = k
 
 --- COMMAND FUNCTIONS ---
 
@@ -59,7 +62,16 @@ cmdQuit msg
 -- lewd someone (rip halpybot)
 cmdLewd :: CmdFunc
 cmdLewd msg = (composeMsg . actionMe) ("lewds " <> target) msg
-  where target = drpMsg " " msg
+  where target = T.tail $ drpMsg msg " "
+
+cmdLog :: CmdFunc
+cmdLog msg =  createUsrFldr msg >> mapM_ (appendLog msg) newLinks >> return Nothing
+  where links = (fst . T.breakOn " " . drpMsg msg) <$> ["http", "ftp"]
+        newLinks = (<>) <$> links <*> ["\n"]
+        
+
+
+-- >> (createUsrFldr msg) 
 
 -- TODO: add a *vomits* function that grabs random images/links from the channel that it's from and produces rainbow text before and after
 
@@ -84,9 +96,9 @@ msgDest msg
 composeMsg :: T.Text -> CmdFunc
 composeMsg str msg = return $ Just ("PRIVMSG", msgDest msg <> str)
 
--- Drops the command message [.lewd *vomits*] sent to vomitchan... the extra (T.drop 1) is there for * * commands
-drpMsg :: T.Text -> Message -> T.Text
-drpMsg bk = T.drop 1 . snd . T.breakOn bk . T.drop 1 . msgContent
+-- Drops the command message [.lewd *vomits*] sent to vomitchan... T.drop 1 is removed... send it via T.tail msg
+drpMsg :: Message -> T.Text -> T.Text
+drpMsg msg bk = (snd . T.breakOn bk . msgContent) msg
 
 -- Used for /me commands 
 actionMe :: T.Text -> T.Text
