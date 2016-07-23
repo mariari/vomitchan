@@ -4,7 +4,6 @@
 --- MODULE DEFINITION ---
 module Bot.Commands (
   runCmd,
-  runInf,
 ) where
 
 
@@ -20,7 +19,10 @@ import qualified Data.Text       as T
 -- type of all command functions
 type CmdFunc = Message -> IO (Maybe (T.Text, T.Text))
 
+-- Used for telling if the command is infix or not
+type Infix = Bool
 
+type CmdAlias = [T.Text]
 --- DATA ---
 
 -- list of admins allowed to use certain commands
@@ -30,16 +32,13 @@ admins = ["MrDetonia", "loli"]
 
 -- list of prefixes and corresponding command functions
 -- TODO: if the cmdList has over 50~ commands, put it into a hash table instead
-cmdList :: [ (CmdFunc, [T.Text])]
-cmdList =  [ (cmdBots, [".bots", ".bot vomitchan"])
-           , (cmdSrc,  [".source vomitchan"])
-           , (cmdHelp, [".help vomitchan"])
-           , (cmdQuit, [".quit"])
-           , (cmdLewd, [".lewd "])]
-
--- Creates a list of infix functions
-cmdInfList :: [ (CmdFunc, [T.Text])]
-cmdInfList = [(cmdLog,  ["http","ftp"])]
+cmdList :: [ (CmdFunc, Infix,  CmdAlias)]
+cmdList =  [ (cmdBots, False, [".bots", ".bot vomitchan"])
+           , (cmdSrc,  False, [".source vomitchan"])
+           , (cmdHelp, False, [".help vomitchan"])
+           , (cmdQuit, False, [".quit"])
+           , (cmdLewd, False, [".lewd "])
+           , (cmdLog,  True, ["http","ftp"])]
 
 -- Lists the type of webpages that are logged
 cmdWbPg :: [T.Text]
@@ -48,20 +47,14 @@ cmdWbPg = ["http", "ftp"]
 -- FUNCTIONS ---
 
 -- returns a corresponding command function from a message
+
 runCmd :: CmdFunc
 runCmd msg = foldr testFunc (return Nothing) cmdList
   where
-    testFunc (cmd, p) k
-      | or (flip T.isPrefixOf (msgContent msg) <$> p) = cmd msg
-      | otherwise                                     = k
-
-runInf :: CmdFunc
-runInf msg = foldr testFunc (return Nothing) cmdInfList
-  where
-    testFunc (cmd, p) k
-      | or (flip T.isPrefixOf (msgContent msg) <$> p)
-      || or (flip T.isInfixOf (msgContent msg) <$> p) = cmd msg
-      | otherwise                                     = k
+    testFunc (cmd, inf, p) k
+      | or (flip T.isPrefixOf (msgContent msg) <$> p) ||
+       (inf && or (flip T.isInfixOf (msgContent msg) <$> p)) = cmd msg
+      | otherwise                                            = k
 
 
 --- COMMAND FUNCTIONS ---
