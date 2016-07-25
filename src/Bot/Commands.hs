@@ -86,10 +86,9 @@ cmdLewd msg = (composeMsg "PRIVMSG" . actionMe) ("lewds " <> target) msg
 -- Logs any links posted and appends them to the users .log file
 cmdLog :: CmdFunc
 cmdLog msg = createUsrFldr msg >> appLogs >> return Nothing
-  where allLinks = [xs | xs <- flip (drpMsgRec msg) " " <$> cmdWbPg, not $ T.null (head xs)] -- creates a [[T.Text]]
-        linksLn = (map . map) (<> "\n") allLinks
-        appLogs  = (mapM_ . mapM_) (appendLog msg) linksLn
-
+  where allLinks = concat [xs | xs <- flip (drpMsgRec msg) " " <$> cmdWbPg, not $ T.null (head xs)] -- creates a [T.Text]
+        linksLn = (<> "\n") <$> allLinks
+        appLogs  = mapM_ (appendLog msg) linksLn
 
 
 -- TODO: add a *vomits* function that grabs random images/links from the channel that it's from and produces rainbow text before and after
