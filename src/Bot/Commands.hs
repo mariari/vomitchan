@@ -4,20 +4,22 @@
 --- MODULE DEFINITION ---
 module Bot.Commands (
   runCmd,
+  createUsrFldr,
+  drpMsgRec,
 ) where
 
 
 --- IMPORTS ---
-import           Bot.FileOps
-import           Bot.MessageType
-import           Data.Monoid
 import qualified Data.Text       as T
+import           Data.Monoid
 
+import           Bot.MessageType
+import           Bot.FileOps
 
 --- TYPES ---
 
 -- type of all command functions
-type CmdFunc = Message -> IO (Maybe (T.Text, T.Text))
+type CmdFunc = Message -> Maybe (T.Text, T.Text)
 
 -- Used for telling if the command is infix or not
 type Infix = Bool
@@ -37,19 +39,14 @@ cmdList =  [ (cmdBots, False, [".bots", ".bot vomitchan"])
            , (cmdSrc,  False, [".source vomitchan"])
            , (cmdHelp, False, [".help vomitchan"])
            , (cmdQuit, False, [".quit"])
-           , (cmdLewd, False, [".lewd "])
-           , (cmdLog,  True, ["http","ftp"])]
-
--- Lists the type of webpages that are logged
-cmdWbPg :: [T.Text]
-cmdWbPg = ["http", "ftp"]
+           , (cmdLewd, False, [".lewd "])]
 
 -- FUNCTIONS ---
 
 -- returns a corresponding command function from a message
 
 runCmd :: CmdFunc
-runCmd msg = foldr testFunc (return Nothing) cmdList
+runCmd msg = foldr testFunc (Nothing) cmdList
   where
     testFunc (cmd, inf, p) k
       | or (flip T.isPrefixOf (msgContent msg) <$> p) ||
@@ -75,20 +72,13 @@ cmdHelp = composeMsg "NOTICE" " :Commands: .lewd <someone>, (more to come...)"
 -- quit
 cmdQuit :: CmdFunc
 cmdQuit msg
-  | msgUser msg `elem` admins = return $ Just ("QUIT", ":Exiting")
-  | otherwise                 = return Nothing
+  | msgUser msg `elem` admins = Just ("QUIT", ":Exiting")
+  | otherwise                 = Nothing
 
 -- lewd someone (rip halpybot)
 cmdLewd :: CmdFunc
 cmdLewd msg = (composeMsg "PRIVMSG" . actionMe) ("lewds " <> target) msg
   where target = T.tail $ drpMsg msg " "
-
--- Logs any links posted and appends them to the users .log file
-cmdLog :: CmdFunc
-cmdLog msg = createUsrFldr msg >> appLogs >> return Nothing
-  where allLinks = concat [xs | xs <- flip (drpMsgRec msg) " " <$> cmdWbPg, not $ T.null (head xs)] -- creates a [T.Text]
-        linksLn = (<> "\n") <$> allLinks
-        appLogs  = mapM_ (appendLog msg) linksLn
 
 
 -- TODO: add a *vomits* function that grabs random images/links from the channel that it's from and produces rainbow text before and after
@@ -112,7 +102,7 @@ msgDest msg
 
 -- composes the format that the final send message will be
 composeMsg :: T.Text -> T.Text -> CmdFunc
-composeMsg method str msg = return $ Just (method, msgDest msg <> str)
+composeMsg method str msg = Just (method, msgDest msg <> str)
 
 -- Drops the command message [.lewd *vomits*] sent to vomitchan... T.drop 1 is removed... send it via T.tail msg
 drpMsg :: Message -> T.Text -> T.Text
