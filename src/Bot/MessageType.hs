@@ -20,7 +20,8 @@ module Bot.MessageType (
   toMessage
 ) where
 --- IMPORTS -----------------------------------------------------------------------------------
-import qualified Data.Text as T
+import qualified Data.Text       as T
+import           Text.Regex.TDFA
 --- TYPES -------------------------------------------------------------------------------------
 
 -- types for IRC data
@@ -50,12 +51,14 @@ data Message = Message
 toMessage :: T.Text -> Message
 toMessage str = Message nick user host chan content
   where
-    (head,body)               = T.breakOn ":" (T.tail str)
-    content                   = T.strip $ T.drop 1 body
-    (nick:user:host:_:chan:_) = [x | x <- T.split delims head, not $ T.null x]
-    delims c                  = case c of
-                                    ' ' -> True
-                                    '!' -> True
-                                    '~' -> True
-                                    '@' -> True
-                                    _   -> False
+    nick      = T.drop 1 $ regex str ":[^!]*"
+    user      = rdrop 1 $ regex str "[a-zA-Z0-9]*@"
+    host      = T.drop 1 $ regex str "@[^ ]*"
+    chan      = T.drop 1 $ regex str "#[^ ]*"
+    content   = T.drop 2 $ regex str " :.*"
+
+    rdrop n   = T.reverse . T.drop n . T.reverse
+
+-- performs a regex on a T.Text
+regex :: T.Text -> String -> T.Text
+regex str pat = T.pack (T.unpack str =~ pat :: String)
