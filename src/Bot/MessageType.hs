@@ -2,7 +2,7 @@
 {-# LANGUAGE OverloadedStrings #-}
 
 
---- MODULE DEFINITION ---
+--- MODULE DEFINITION -------------------------------------------------------------------------
 module Bot.MessageType (
   Server,
   Port,
@@ -19,12 +19,9 @@ module Bot.MessageType (
   msgContent,
   toMessage
 ) where
-
-
---- IMPORTS ---
+--- IMPORTS -----------------------------------------------------------------------------------
 import qualified Data.Text as T
-
---- TYPES ---
+--- TYPES -------------------------------------------------------------------------------------
 
 -- types for IRC data
 type Server = T.Text
@@ -36,7 +33,7 @@ type Pass   = T.Text
 type Chan   = T.Text
 
 
---- DATA STRUCTURES ---
+--- DATA STRUCTURES ---------------------------------------------------------------------------
 
 -- IRC message structure
 data Message = Message
@@ -48,7 +45,7 @@ data Message = Message
              } deriving (Show)
 
 
---- FUNCTIONS ---
+--- FUNCTIONS ---------------------------------------------------------------------------------
 -- converts a string to a Message
 toMessage :: T.Text -> Message
 toMessage str = Message nick user host chan content

@@ -3,7 +3,7 @@
 {-# LANGUAGE OverloadedStrings #-}
 
 
---- MODULE DEFINITION ---
+--- MODULE DEFINITION -------------------------------------------------------------------------
 module Bot.Network (
   IRCNetwork,
   readNetworks,
@@ -11,9 +11,7 @@ module Bot.Network (
   joinNetwork,
   findNetwork
 ) where
-
-
---- IMPORTS ---
+--- IMPORTS -----------------------------------------------------------------------------------
 import           Control.Monad
 import qualified Data.Aeson           as JSON
 import qualified Data.ByteString.Lazy as B
@@ -26,9 +24,7 @@ import           Data.Monoid
 
 import           Bot.MessageType
 import           Bot.Socket
-
-
---- DATA STRUCTURES ---
+--- DATA STRUCTURES --------------------------------------------------------------------------- 
 
 -- IRC network table
 data IRCNetwork = IRCNetwork
@@ -45,7 +41,7 @@ instance JSON.FromJSON IRCNetwork
 instance JSON.ToJSON IRCNetwork
 
 
---- FUNCTIONS ---
+--- FUNCTIONS ---------------------------------------------------------------------------------
 
 -- read IRC networks from file
 readNetworks :: FilePath -> IO (Maybe [IRCNetwork])
@@ -77,7 +73,7 @@ joinNetwork net = do
     waitForAuth h = T.hGetLine h >>= \line -> T.putStrLn line
                                            >> unless (":You are now identified" `T.isInfixOf` line) (waitForAuth h)
 
---- HELPER FUNCTIONS / UNUSED ---
+--- HELPER FUNCTIONS / UNUSED -----------------------------------------------------------------
 
 -- finds a network by name and maybe returns it
 findNetwork :: [IRCNetwork] -> Server -> Maybe IRCNetwork

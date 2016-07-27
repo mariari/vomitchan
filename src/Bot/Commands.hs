@@ -1,38 +1,37 @@
 {-# LANGUAGE Haskell2010       #-}
 {-# LANGUAGE OverloadedStrings #-}
 
---- MODULE DEFINITION ---
+--- MODULE DEFINITION -------------------------------------------------------------------------
 module Bot.Commands (
   runCmd,
   createUsrFldr,
   drpMsgRec,
 ) where
-
-
---- IMPORTS ---
+--- IMPORTS -----------------------------------------------------------------------------------
 import qualified Data.Text       as T
 import           Data.Monoid
 
 import           Bot.MessageType
 import           Bot.FileOps
-
---- TYPES ---
+--- TYPES -------------------------------------------------------------------------------------
 
 -- type of all command functions
-type CmdFunc = Message -> Maybe (T.Text, T.Text)
+type CmdFunc    = Message -> Maybe (T.Text, T.Text)
+type CmdFuncImp = Message -> IO (Maybe (T.Text, T.Text))
 
 -- Used for telling if the command is infix or not
 type Infix = Bool
 
 type CmdAlias = [T.Text]
---- DATA ---
+
+--- DATA --------------------------------------------------------------------------------------
 
 -- list of admins allowed to use certain commands
 -- TODO: Load this from config file
 admins :: [T.Text]
 admins = ["MrDetonia", "loli"]
 
--- list of prefixes and corresponding command functions
+-- list of all Pure functions
 -- TODO: if the cmdList has over 50~ commands, put it into a hash table instead
 cmdList :: [ (CmdFunc, Infix,  CmdAlias)]
 cmdList =  [ (cmdBots, False, [".bots", ".bot vomitchan"])
@@ -41,20 +40,28 @@ cmdList =  [ (cmdBots, False, [".bots", ".bot vomitchan"])
            , (cmdQuit, False, [".quit"])
            , (cmdLewd, False, [".lewd "])]
 
--- FUNCTIONS ---
+-- List of all Impure functions 
+cmdListImp :: [ (CmdFuncImp, Infix,  CmdAlias)]
+cmdListImp = []
+
+-- The List of all functions pure <> impure
+cmdTotList :: [(CmdFuncImp, Infix,  CmdAlias)]
+cmdTotList = cmdList2 <> cmdListImp
+  where cmdList2 = map (\x -> (return . f3 x, s3 x, t3 x)) cmdList
+  
+-- FUNCTIONS ----------------------------------------------------------------------------------
 
 -- returns a corresponding command function from a message
 
-runCmd :: CmdFunc
-runCmd msg = foldr testFunc (Nothing) cmdList
+runCmd :: CmdFuncImp
+runCmd msg = foldr testFunc (return Nothing) cmdTotList
   where
     testFunc (cmd, inf, p) k
       | or (flip T.isPrefixOf (msgContent msg) <$> p) ||
        (inf && or (flip T.isInfixOf (msgContent msg) <$> p)) = cmd msg
       | otherwise                                            = k
 
-
---- COMMAND FUNCTIONS ---
+--- COMMAND FUNCTIONS -------------------------------------------------------------------------
 
 -- print bot info
 cmdBots :: CmdFunc
@@ -80,19 +87,22 @@ cmdLewd :: CmdFunc
 cmdLewd msg = (composeMsg "PRIVMSG" . actionMe) ("lewds " <> target) msg
   where target = T.tail $ drpMsg msg " "
 
-
--- TODO: add a *vomits* function that grabs random images/links from the channel that it's from and produces rainbow text before and after
-
+-- TODO's -------------------------------------------------------------------------------------
+--
+-- TODO: add a *vomits* function that
+--       grabs random images/links from the channel that it's from
+--       and produces rainbow text before and after
+--
 -- TODO: add a *cheek pinch* function that puts the bot into reality mode
-
+--
 -- TODO: make reality mode make vomitchan only speak in nods
-
+--
 -- TODO: Reality/*dame* that posts quotes of not moving on and staying locked up
 -- TODO: Slumber/*dame* that posts quotes of escapism
-
+--
 -- TODO: add a *zzz* function that causes the bot go into slumber mode
-
---- HELPER FUNCTIONS ---
+--
+--- HELPER FUNCTIONS --------------------------------------------------------------------------
 
 -- figures out where to send a response to
 msgDest :: Message -> T.Text
@@ -104,7 +114,7 @@ msgDest msg
 composeMsg :: T.Text -> T.Text -> CmdFunc
 composeMsg method str msg = Just (method, msgDest msg <> str)
 
--- Drops the command message [.lewd *vomits*] sent to vomitchan... T.drop 1 is removed... send it via T.tail msg
+-- Drops the command message [.lewd *vomits*]... send *command* messages via T.tail msg
 drpMsg :: Message -> T.Text -> T.Text
 drpMsg msg bk = (snd . T.breakOn bk . msgContent) msg
 
@@ -121,3 +131,13 @@ drpMsgRec msg bkL bkR = recurse [] drpMess
 -- Used for /me commands
 actionMe :: T.Text -> T.Text
 actionMe txt = " :\0001ACTION " <> txt <> "\0001"
+
+-- Used for  grabbing elements out of a 3 element tuple 
+f3 :: (a,b,c) -> a
+f3 (a,b,c) = a
+
+s3 :: (a,b,c) -> b
+s3 (a,b,c) = b
+
+t3 :: (a,b,c) -> c
+t3 (a,b,c) = c

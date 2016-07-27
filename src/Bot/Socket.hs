@@ -2,14 +2,12 @@
 {-# LANGUAGE OverloadedStrings #-}
 
 
---- MODULE DEFINITION ---
+--- MODULE DEFINITION -------------------------------------------------------------------------
 module Bot.Socket (
   write,
   listen
 ) where
-
-
---- IMPORTS ---
+--- IMPORTS ------------------------------------------------------------------------------ ----
 import           Control.Monad
 import           Control.Monad.Loops
 import qualified Data.Text          as T
@@ -19,9 +17,7 @@ import           Network
 import           System.IO
 
 import           Bot.Message
-
-
---- FUNCTIONS ---
+--- FUNCTIONS ------------------------------------------------------------------------------ --
 
 -- takes a Handle and an (Action, Args) tuple and sends to socket
 write :: Handle -> (T.Text, T.Text) -> IO ()

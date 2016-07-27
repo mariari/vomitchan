@@ -2,19 +2,17 @@
 {-# LANGUAGE OverloadedStrings #-}
 
 
---- MODULE DEFINITION ---
+--- MODULE DEFINITION -------------------------------------------------------------------------
 module Main where
-
-
---- IMPORTS ---
+--- IMPORTS -----------------------------------------------------------------------------------
 import qualified Control.Concurrent as C
-import           Control.Monad
+
 
 import           Bot.Network
 import           Bot.Socket
 
 
---- FUNCTIONS ---
+--- FUNCTIONS ---------------------------------------------------------------------------------
 -- creates a thread and adds its thread ID to an MVar list, kills all
 -- listed threads when finished  DICKS
 forkWithKill :: C.MVar[C.ThreadId] -> IO () -> IO (C.MVar())
@@ -34,8 +32,7 @@ forkWithKill tids act = do
       mytid <- C.myThreadId
       mapM_ C.killThread [t | t <- threads, t /= mytid ]
 
-
- --- ENTRY POINT ---
+ --- ENTRY POINT -------------------------------------------------------------------------------x
 main :: IO ()
 main = do
   nets <- readNetworks "data/networks.json"
