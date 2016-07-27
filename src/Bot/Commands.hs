@@ -8,11 +8,11 @@ module Bot.Commands (
   drpMsgRec,
 ) where
 --- IMPORTS -----------------------------------------------------------------------------------
-import qualified Data.Text       as T
 import           Data.Monoid
+import qualified Data.Text       as T
 
-import           Bot.MessageType
 import           Bot.FileOps
+import           Bot.MessageType
 --- TYPES -------------------------------------------------------------------------------------
 
 -- type of all command functions
@@ -40,7 +40,7 @@ cmdList =  [ (cmdBots, False, [".bots", ".bot vomitchan"])
            , (cmdQuit, False, [".quit"])
            , (cmdLewd, False, [".lewd "])]
 
--- List of all Impure functions 
+-- List of all Impure functions
 cmdListImp :: [ (CmdFuncImp, Infix,  CmdAlias)]
 cmdListImp = []
 
@@ -48,7 +48,7 @@ cmdListImp = []
 cmdTotList :: [(CmdFuncImp, Infix,  CmdAlias)]
 cmdTotList = cmdList2 <> cmdListImp
   where cmdList2 = map (\x -> (return . f3 x, s3 x, t3 x)) cmdList
-  
+
 -- FUNCTIONS ----------------------------------------------------------------------------------
 
 -- returns a corresponding command function from a message
@@ -132,12 +132,12 @@ drpMsgRec msg bkL bkR = recurse [] drpMess
 actionMe :: T.Text -> T.Text
 actionMe txt = " :\0001ACTION " <> txt <> "\0001"
 
--- Used for  grabbing elements out of a 3 element tuple 
+-- Used for  grabbing elements out of a 3 element tuple
 f3 :: (a,b,c) -> a
-f3 (a,b,c) = a
+f3 (a,_,_) = a
 
 s3 :: (a,b,c) -> b
-s3 (a,b,c) = b
+s3 (_,b,_) = b
 
 t3 :: (a,b,c) -> c
-t3 (a,b,c) = c
+t3 (_,_,c) = c
