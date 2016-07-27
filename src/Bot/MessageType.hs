@@ -52,7 +52,7 @@ toMessage :: T.Text -> Message
 toMessage str = Message nick user host chan content
   where
     nick      = T.drop 1 $ regex str ":[^!]*"
-    user      = rdrop 1 $ regex str "[a-zA-Z0-9]*@"
+    user      = rdrop 1 $ regex str "[^!~]*@"
     host      = T.drop 1 $ regex str "@[^ ]*"
     chan      = T.drop 1 $ regex str "#[^ ]*"
     content   = T.drop 2 $ regex str " :.*"
