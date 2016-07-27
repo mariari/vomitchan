@@ -19,7 +19,7 @@ import           Bot.FileOps
 cmdWbPg :: [T.Text]
 cmdWbPg = ["http", "ftp"]
 
---- FUNCTIONS ---
+--- FUNCTIONS ---------------------------------------------------------------------------------
 
 
 -- takes an IRC message and generates the correct response
@@ -30,9 +30,7 @@ respond msg
   | otherwise                   = return Nothing
   where con = toMessage msg
 
-
-
---- LOGGING ---
+--- LOGGING -----------------------------------------------------------------------------------
 
 -- Logs any links posted and appends them to the users .log file
 cmdLog :: Message -> IO ()
