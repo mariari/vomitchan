@@ -19,6 +19,7 @@ An IRC bot written in Haskell.  *cheek pinch*
   - network
   - text
   - text-format
+  - regex-tdfa
   - bytestring
   - aeson
   - monad-loops
@@ -58,3 +59,4 @@ The bot can be started within ghci by running `stack ghci` in the project direct
 - Link scraping and archiving
 - distributed data storage
 - add 'modes'
+- use parser combinators for handling messages
