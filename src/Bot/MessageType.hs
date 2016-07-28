@@ -55,7 +55,7 @@ toMessage str = Message nick user host chan content
     user    = rdrop  $ regex str "[^!~]*@"
     host    = T.tail $ regex str "@[^ ]*"
     chan    = regex str "#[^ ]*"
-    content = (T.strip . T.tail) $ regex str " :.*$"
+    content = (T.tail . T.strip) $ regex str " :.*$"
 
     rdrop   = T.reverse . T.tail . T.reverse
 
