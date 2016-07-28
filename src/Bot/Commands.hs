@@ -5,7 +5,7 @@
 module Bot.Commands (
   runCmd,
   createUsrFldr,
-  drpMsgRec,
+  specWord,
 ) where
 --- IMPORTS -----------------------------------------------------------------------------------
 import           Data.Monoid
@@ -111,23 +111,18 @@ msgDest msg
   | "#" `T.isPrefixOf` msgChan msg = msgChan msg
   | otherwise                      = msgNick msg
 
--- composes the format that the final send message will be
-composeMsg :: T.Text -> T.Text -> CmdFunc
-composeMsg method str msg = Just (method, msgDest msg <> str)
+-- Generates a list of words that specify the search constraint
+specWord :: Message -> T.Text -> [T.Text]
+specWord msg search = (isElemList. T.words . msgContent) msg
+  where isElemList = filter (search `T.isPrefixOf`)
 
 -- Drops the command message [.lewd *vomits*]... send *command* messages via T.tail msg
 drpMsg :: Message -> T.Text -> T.Text
 drpMsg msg bk = (snd . T.breakOn bk . msgContent) msg
 
--- Like drpMsg but does it recursively until the break can't be found anymore
-drpMsgRec :: Message -> T.Text -> T.Text ->  [T.Text]
-drpMsgRec msg bkL bkR = recurse [] drpMess
-  where recurse acc (x,"") = x:acc
-        recurse acc (x,xs) = recurse (x:acc) $ (drpRight . snd . drpLeft) xs
-        drpMess            = T.breakOn bkR (drpMsg msg bkL)
-        drpLeft            = T.breakOn bkL
-        drpRight           = T.breakOn bkR
-
+-- composes the format that the final send message will be
+composeMsg :: T.Text -> T.Text -> CmdFunc
+composeMsg method str msg = Just (method, msgDest msg <> str)
 
 -- Used for /me commands
 actionMe :: T.Text -> T.Text
@@ -142,3 +137,13 @@ s3 (_,b,_) = b
 
 t3 :: (a,b,c) -> c
 t3 (_,_,c) = c
+
+-- UNUSED HELPER FUNCTIONS --------------------------------------------------------------------
+-- Like drpMsg but does it recursively until the break can't be found anymore
+drpMsgRec :: Message -> T.Text -> T.Text ->  [T.Text]
+drpMsgRec msg bkL bkR = recurse [] drpMess
+  where recurse acc (x,"") = x:acc
+        recurse acc (x,xs) = recurse (x:acc) $ (drpRight . snd . drpLeft) xs
+        drpMess            = T.breakOn bkR (drpMsg msg bkL)
+        drpLeft            = T.breakOn bkL
+        drpRight           = T.breakOn bkR

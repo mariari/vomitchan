@@ -35,6 +35,6 @@ respond msg
 -- Logs any links posted and appends them to the users .log file
 cmdLog :: Message -> IO ()
 cmdLog msg = createUsrFldr msg >> appLogs >> return ()
-  where allLinks = concat [xs | xs <- flip (drpMsgRec msg) " " <$> cmdWbPg, not $ T.null (head xs)] -- creates a [T.Text]
-        linksLn = (<> "\n") <$> allLinks
+  where allLinks = cmdWbPg >>= specWord msg           -- creates a [T.Text] list with all links
+        linksLn = (<> "\n") <$> allLinks              -- Appends a \n to links
         appLogs  = mapM_ (appendLog msg) linksLn
