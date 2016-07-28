@@ -13,6 +13,7 @@ import qualified Data.Text       as T
 
 import           Bot.FileOps
 import           Bot.MessageType
+import qualified System.Random  as SR 
 --- TYPES -------------------------------------------------------------------------------------
 
 -- type of all command functions
