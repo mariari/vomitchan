@@ -51,13 +51,13 @@ data Message = Message
 toMessage :: T.Text -> Message
 toMessage str = Message nick user host chan content
   where
-    nick      = T.tail   $ regex str ":[^!]*"
-    user      = rdrop 1  $ regex str "[^!~]*@"
-    host      = T.tail   $ regex str "@[^ ]*"
-    chan      =            regex str "#[^ ]*"
-    content   = T.drop 2 $ regex str " :.*"
+    nick    = T.tail $ regex str ":[^!]*"
+    user    = rdrop  $ regex str "[^!~]*@"
+    host    = T.tail $ regex str "@[^ ]*"
+    chan    = regex str "#[^ ]*"
+    content = T.strip . T.tail . regex str " :.*$"
 
-    rdrop n   = T.reverse . T.drop n . T.reverse
+    rdrop   = T.reverse . T.tail . T.reverse
 
 -- performs a regex on a T.Text
 regex :: T.Text -> String -> T.Text
