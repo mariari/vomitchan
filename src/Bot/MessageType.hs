@@ -52,13 +52,11 @@ toMessage :: T.Text -> Message
 toMessage str = Message nick user host chan content
   where
     nick    = T.tail             $ regex str ":[^!]*"
-    user    = rdrop              $ regex str "[^!~]*@"
+    user    = T.init             $ regex str "[^!~]*@"
     host    = T.tail             $ regex str "@[^ ]*"
-    chan    = T.strip . rdrop    $ regex str "[^ ]* :"
-    content = T.tail . T.strip   $ regex str " :.*$"
-
-    rdrop   = T.reverse . T.tail . T.reverse
+    chan    = T.strip . T.init   $ regex str "[^ ]* :"
+    content = T.tail  . T.strip  $ regex str " :.*$"
 
 -- performs a regex on a T.Text
 regex :: T.Text -> String -> T.Text
-regex str pat = T.pack (T.unpack str =~ pat :: String)
+regex str pat = T.pack (T.unpack str =~ pat)

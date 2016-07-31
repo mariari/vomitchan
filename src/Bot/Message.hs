@@ -13,11 +13,16 @@ import           Data.Monoid
 import           Bot.Commands
 import           Bot.MessageType
 import           Bot.FileOps
+import           Data.Foldable
+import qualified Turtle          as Tl
 --- DATA --------------------------------------------------------------------------------------
 
 -- Lists the type of webpages that are logged
 cmdWbPg :: [T.Text]
 cmdWbPg = ["http", "ftp"]
+
+cmdPic :: [T.Text]
+cmdPic = ["jpg", "png", "jpeg"]
 
 --- FUNCTIONS ---------------------------------------------------------------------------------
 
@@ -35,6 +40,13 @@ respond msg
 -- Logs any links posted and appends them to the users .log file
 cmdLog :: Message -> IO ()
 cmdLog msg = createUsrFldr msg >> appLogs >> return ()
-  where allLinks = cmdWbPg >>= specWord msg           -- creates a [T.Text] list with all links
-        linksLn = (<> "\n") <$> allLinks              -- Appends a \n to links
-        appLogs  = mapM_ (appendLog msg) linksLn
+  where allLinks =  cmdWbPg >>= specWord msg           -- creates a [T.Text] list with all links
+        linksLn  = (<> "\n") <$> allLinks             -- Appends a \n to links
+        appLogs  = traverse_ (appendLog msg) linksLn
+
+
+cmdLogPic :: Tl.MonadIO io => Message -> [io Tl.ExitCode]
+cmdLogPic msg = dwnUsrFile msg <$> allImg
+  where allLinks = cmdWbPg >>= specWord msg
+        myF  x y = filter (y `T.isSuffixOf`) x
+        allImg   = cmdPic >>= myF allLinks
