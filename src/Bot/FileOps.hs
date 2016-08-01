@@ -15,7 +15,7 @@ import           Bot.MessageType
 import           Data.Foldable     (fold)
 
 import           System.Directory   as S
-import qualified Turtle             as Tl
+import           Turtle             hiding (FilePath, fold)
 import Data.String
 -- FUNCTIONS ----------------------------------------------------------------------------------
 
@@ -30,8 +30,8 @@ appendLog msg = T.appendFile (getUsrFldr msg <> "Links.log")
 
 
 -- Downloads the requested file to the users path
-dwnUsrFile :: Tl.MonadIO io => Message -> T.Text -> io Tl.ExitCode
-dwnUsrFile msg url = Tl.proc "wget" ["-P", (fromString . getUsrFldr) msg, url] Tl.empty
+dwnUsrFile :: MonadIO io => Message -> T.Text -> io ExitCode
+dwnUsrFile msg url = proc "wget" ["-P", (fromString . getUsrFldr) msg, url] empty
 
 -- HELPER FUNCTIONS ---------------------------------------------------------------------------
 

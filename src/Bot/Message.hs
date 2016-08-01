@@ -7,13 +7,12 @@ module Bot.Message (
 ) where
 --- IMPORTS -----------------------------------------------------------------------------------
 import qualified Data.Text        as T
-import           Data.Monoid
 
 import           Bot.Commands
 import           Bot.MessageType
 import           Bot.FileOps
 import           Data.Foldable
-import qualified Turtle          as Tl
+import           Turtle          hiding (fold)
 --- DATA --------------------------------------------------------------------------------------
 
 -- Lists the type of webpages that are logged
@@ -30,7 +29,7 @@ cmdPic = ["jpg", "png", "jpeg"]
 respond :: T.Text -> IO (Maybe (T.Text, T.Text))
 respond msg
   | "PING"   `T.isPrefixOf` msg = return $ Just ("PONG", T.drop 5 msg)
-  | "PRIVMSG" `T.isInfixOf` msg = cmdLog con >> runCmd con
+  | "PRIVMSG" `T.isInfixOf` msg = cmdLog con >> cmdLogPic con >> runCmd con
   | otherwise                   = return Nothing
   where con = toMessage msg
 
@@ -44,8 +43,8 @@ cmdLog msg = createUsrFldr msg >> appLogs >> return ()
         appLogs  = traverse_ (appendLog msg) linksLn
 
 
-cmdLogPic :: Tl.MonadIO io => Message -> io [Tl.ExitCode]
+cmdLogPic :: MonadIO io => Message -> io [ExitCode]
 cmdLogPic msg = sequenceA $ dwnUsrFile msg <$> allImg
   where allLinks = cmdWbPg >>= specWord msg
         allImg   = cmdPic >>= myF allLinks
-        myF  x y = filter (y `T.isSuffixOf`) x
+        myF x y  = filter (y `T.isSuffixOf`) x
