@@ -1,7 +1,6 @@
 {-# LANGUAGE Haskell2010       #-}
 {-# LANGUAGE OverloadedStrings #-}
 
-
 --- MODULE DEFINITION -------------------------------------------------------------------------
 module Bot.Message (
   respond
@@ -41,12 +40,12 @@ respond msg
 cmdLog :: Message -> IO ()
 cmdLog msg = createUsrFldr msg >> appLogs >> return ()
   where allLinks =  cmdWbPg >>= specWord msg           -- creates a [T.Text] list with all links
-        linksLn  = (<> "\n") <$> allLinks             -- Appends a \n to links
+        linksLn  = (<> "\n") <$> allLinks              -- Appends a \n to links
         appLogs  = traverse_ (appendLog msg) linksLn
 
 
-cmdLogPic :: Tl.MonadIO io => Message -> [io Tl.ExitCode]
-cmdLogPic msg = dwnUsrFile msg <$> allImg
+cmdLogPic :: Tl.MonadIO io => Message -> io [Tl.ExitCode]
+cmdLogPic msg = sequenceA $ dwnUsrFile msg <$> allImg
   where allLinks = cmdWbPg >>= specWord msg
-        myF  x y = filter (y `T.isSuffixOf`) x
         allImg   = cmdPic >>= myF allLinks
+        myF  x y = filter (y `T.isSuffixOf`) x
