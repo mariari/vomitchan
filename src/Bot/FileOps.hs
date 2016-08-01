@@ -31,7 +31,11 @@ appendLog msg = T.appendFile (getUsrFldr msg <> "Links.log")
 
 -- Downloads the requested file to the users path
 dwnUsrFile :: MonadIO io => Message -> T.Text -> io ExitCode
-dwnUsrFile msg url = proc "wget" ["-P", (fromString . getUsrFldr) msg, url] empty
+dwnUsrFile msg url = do
+  _ <- cd ((fromString . getUsrFldr) msg)
+  procs <- proc "curl" ["--max-filesize", "104857600", "-O", url] empty
+  _ <- cd "../../../../"
+  return procs
 
 -- HELPER FUNCTIONS ---------------------------------------------------------------------------
 
