@@ -20,7 +20,7 @@ cmdWbPg :: [T.Text]
 cmdWbPg = ["http", "ftp"]
 
 cmdPic :: [T.Text]
-cmdPic = ["jpg", "png", "jpeg"]
+cmdPic = ["jpg", "png", "jpeg", "webm", "gif", "mp4", "flv", "ogv", "wmv", "gifv"]
 
 --- FUNCTIONS ---------------------------------------------------------------------------------
 
@@ -38,13 +38,18 @@ respond msg
 -- Logs any links posted and appends them to the users .log file
 cmdLog :: Message -> IO ()
 cmdLog msg = createUsrFldr msg >> appLogs >> return ()
-  where allLinks =  cmdWbPg >>= specWord msg           -- creates a [T.Text] list with all links
-        linksLn  = (<> "\n") <$> allLinks              -- Appends a \n to links
+  where linksLn  = (<> "\n") <$> allLinks msg
         appLogs  = traverse_ (appendLog msg) linksLn
 
 
 cmdLogPic :: MonadIO io => Message -> io [ExitCode]
 cmdLogPic msg = sequenceA $ dwnUsrFile msg <$> allImg
-  where allLinks = cmdWbPg >>= specWord msg
-        allImg   = cmdPic >>= myF allLinks
-        myF x y  = filter (y `T.isSuffixOf`) x
+  where allImg  = cmdPic >>= myF (allLinks msg)
+        myF x y = filter (y `T.isSuffixOf`) x
+
+
+--- HELPER ------------------------------------------------------------------------------------
+
+-- creates a list of all links
+allLinks :: Message -> [T.Text]
+allLinks msg = cmdWbPg >>= specWord msg
