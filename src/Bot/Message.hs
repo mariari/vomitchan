@@ -20,7 +20,18 @@ cmdWbPg :: [T.Text]
 cmdWbPg = ["http", "ftp"]
 
 cmdPic :: [T.Text]
-cmdPic = ["jpg", "png", "jpeg", "webm", "gif", "mp4", "flv", "ogv", "wmv", "gifv"]
+cmdPic = ["jpg", "png", "jpeg", "gif"]
+
+cmdVid :: [T.Text]
+cmdVid = ["webm", "mp4", "flv", "ogv", "wmv", "gifv"]
+
+cmdMus :: [T.Text]
+cmdMus = ["flac", "mp3", "tta", "ogg"]
+
+cmdMisc = ["pdf"]
+
+cmdAll :: [T.Text]
+cmdAll = cmdPic <> cmdVid <> cmdMus <> cmdMisc
 
 --- FUNCTIONS ---------------------------------------------------------------------------------
 
@@ -29,7 +40,7 @@ cmdPic = ["jpg", "png", "jpeg", "webm", "gif", "mp4", "flv", "ogv", "wmv", "gifv
 respond :: T.Text -> IO (Maybe (T.Text, T.Text))
 respond msg
   | "PING"   `T.isPrefixOf` msg = return $ Just ("PONG", T.drop 5 msg)
-  | "PRIVMSG" `T.isInfixOf` msg = cmdLog con >> cmdLogPic con >> runCmd con
+  | "PRIVMSG" `T.isInfixOf` msg = cmdLog con >> cmdLogFile con >> runCmd con
   | otherwise                   = return Nothing
   where con = toMessage msg
 
@@ -42,9 +53,9 @@ cmdLog msg = createUsrFldr msg >> appLogs >> return ()
         appLogs  = traverse_ (appendLog msg) linksLn
 
 
-cmdLogPic :: MonadIO io => Message -> io [ExitCode]
-cmdLogPic msg = sequenceA $ dwnUsrFile msg <$> allImg
-  where allImg  = cmdPic >>= myF (allLinks msg)
+cmdLogFile :: MonadIO io => Message -> io [ExitCode]
+cmdLogFile msg = traverse (dwnUsrFile msg) allImg
+  where allImg  = cmdAll >>= myF (allLinks msg)
         myF x y = filter (y `T.isSuffixOf`) x
 
 

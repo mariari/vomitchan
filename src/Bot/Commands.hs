@@ -48,7 +48,7 @@ cmdListImp = []
 -- The List of all functions pure <> impure
 cmdTotList :: [(CmdFuncImp, Infix,  CmdAlias)]
 cmdTotList = cmdList2 <> cmdListImp
-  where cmdList2 = map (\x -> (return . f3 x, s3 x, t3 x)) cmdList
+  where cmdList2 = fmap (\x -> (return . f3 x, s3 x, t3 x)) cmdList
 
 -- FUNCTIONS ----------------------------------------------------------------------------------
 
@@ -58,9 +58,9 @@ runCmd :: CmdFuncImp
 runCmd msg = foldr testFunc (return Nothing) cmdTotList
   where
     testFunc (cmd, inf, p) k
-      | or (flip T.isPrefixOf (msgContent msg) <$> p) ||
-       (inf && or (flip T.isInfixOf (msgContent msg) <$> p)) = cmd msg
-      | otherwise                                            = k
+      | or (fmap (`T.isPrefixOf` msgContent msg) p) ||
+       (inf && or (fmap (`T.isInfixOf` msgContent msg) p)) = cmd msg
+      | otherwise                                          = k
 
 --- COMMAND FUNCTIONS -------------------------------------------------------------------------
 

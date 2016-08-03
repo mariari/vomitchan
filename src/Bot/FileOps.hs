@@ -16,7 +16,6 @@ import           Data.Foldable     (fold)
 
 import           System.Directory   as S
 import           Turtle             hiding (FilePath, fold)
-import Data.String
 -- FUNCTIONS ----------------------------------------------------------------------------------
 
 -- Creates a folder of the irc channel and a user inside of it
@@ -32,9 +31,10 @@ appendLog msg = T.appendFile (getUsrFldr msg <> "Links.log")
 -- Downloads the requested file to the users path
 dwnUsrFile :: MonadIO io => Message -> T.Text -> io ExitCode
 dwnUsrFile msg url = do
+  base <- pwd
   _ <- cd ((fromString . getUsrFldr) msg)
   procs <- proc "curl" ["--max-filesize", "104857600", "-O", url] empty
-  _ <- cd "../../../../"
+  _ <- cd base
   return procs
 
 -- HELPER FUNCTIONS ---------------------------------------------------------------------------
