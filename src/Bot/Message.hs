@@ -26,8 +26,9 @@ cmdVid :: [T.Text]
 cmdVid = ["webm", "mp4", "flv", "ogv", "wmv", "gifv"]
 
 cmdMus :: [T.Text]
-cmdMus = ["flac", "mp3", "tta", "ogg"]
+cmdMus = ["flac", "mp3", "tta", "ogg", "wmv"]
 
+cmdMisc :: [T.Text]
 cmdMisc = ["pdf"]
 
 cmdAll :: [T.Text]
@@ -35,29 +36,30 @@ cmdAll = cmdPic <> cmdVid <> cmdMus <> cmdMisc
 
 --- FUNCTIONS ---------------------------------------------------------------------------------
 
-
 -- takes an IRC message and generates the correct response
 respond :: T.Text -> IO (Maybe (T.Text, T.Text))
 respond msg
   | "PING"   `T.isPrefixOf` msg = return $ Just ("PONG", T.drop 5 msg)
-  | "PRIVMSG" `T.isInfixOf` msg = cmdLog con >> cmdLogFile con >> runCmd con
+  | "PRIVMSG" `T.isInfixOf` msg = foldr (\c -> ((>>) . c <*>))
+                                        runCmd [cmdFldr, cmdLog, cmdLogFile] $ toMessage msg
   | otherwise                   = return Nothing
-  where con = toMessage msg
 
 --- LOGGING -----------------------------------------------------------------------------------
 
 -- Logs any links posted and appends them to the users .log file
 cmdLog :: Message -> IO ()
-cmdLog msg = createUsrFldr msg >> appLogs >> return ()
-  where linksLn  = (<> "\n") <$> allLinks msg
-        appLogs  = traverse_ (appendLog msg) linksLn
+cmdLog = traverse_ . appendLog <*> linLn 
+  where linLn m = (<> "\n") <$> allLinks m
 
 
-cmdLogFile :: MonadIO io => Message -> io [ExitCode]
-cmdLogFile msg = traverse (dwnUsrFile msg) allImg
-  where allImg  = cmdAll >>= myF (allLinks msg)
-        myF x y = filter (y `T.isSuffixOf`) x
+-- Downloads any file and saves it to the user folder
+cmdLogFile :: Message -> IO ()
+cmdLogFile = traverse_ . dwnUsrFile <*> allImg
+  where allImg m = cmdAll >>= myF (allLinks m)
+        myF x y  = filter (y `T.isSuffixOf`) x
 
+cmdFldr :: Message -> IO ()
+cmdFldr = createUsrFldr
 
 --- HELPER ------------------------------------------------------------------------------------
 

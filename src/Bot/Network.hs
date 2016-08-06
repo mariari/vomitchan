@@ -59,8 +59,8 @@ saveNetworks file nets = B.writeFile file (JSON.encode nets)
 
 -- joins a network and returns a handle
 joinNetwork :: IRCNetwork -> IO Handle
-joinNetwork net = do
-  h <- (connectTo . T.unpack . netServer) net (PortNumber ((fromIntegral . netPort) net))
+joinNetwork net = do                                    -- connectTo is partially applied
+  h <- (connectTo . T.unpack . netServer) <*> (PortNumber . fromIntegral . netPort) $ net
   hSetBuffering h NoBuffering
 
   write h ("NICK", netNick net)

@@ -53,14 +53,14 @@ cmdTotList = cmdList2 <> cmdListImp
 -- FUNCTIONS ----------------------------------------------------------------------------------
 
 -- returns a corresponding command function from a message
-
 runCmd :: CmdFuncImp
 runCmd msg = foldr testFunc (return Nothing) cmdTotList
   where
     testFunc (cmd, inf, p) k
-      | or (fmap (`T.isPrefixOf` msgContent msg) p) ||
-       (inf && or (fmap (`T.isInfixOf` msgContent msg) p)) = cmd msg
-      | otherwise                                          = k
+      | check T.isPrefixOf || (inf && check T.isInfixOf) = cmd msg
+      | otherwise                                        = k
+      where
+        check f = or (fmap (`f` msgContent msg) p)
 
 --- COMMAND FUNCTIONS -------------------------------------------------------------------------
 
