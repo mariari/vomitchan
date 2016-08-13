@@ -92,17 +92,17 @@ cmdLewd msg = (composeMsg "PRIVMSG" . actionMe) ("lewds " <> target) msg
 
 cmdVomit :: CmdFuncImp
 cmdVomit msg = (\y -> (composeMsg "PRIVMSG" . actionMe . T.pack) y msg) <$> randMessage
-  where randVom numT numR   = chr <$> (take numT . randomRs (75, 49) . mkStdGen) numR 
+  where randVom numT numR   = chr <$> (take numT . randomRs (75, 41) . mkStdGen) numR 
         newUsr = changeNickFstArg msg
         randRang x y        = fst . randomR (x,y) . mkStdGen
         randLin msg         = listUsrFldrNoLog newUsr >>= \y -> fmap (y !!) (randomRIO (0, length y -1))
-                                                                      >>= \z -> T.unpack <$> (upUsrFile . T.pack) (getUsrFldr newUsr <> z)
+                                                      >>= \z -> T.unpack <$> (upUsrFile . T.pack) (getUsrFldr newUsr <> z)
         randEff txt num     = action (["\x2","\x1D","\x1F","\x16", "", " "] !! randRang 0 5 num) txt
         randCol num txt     = actionCol txt ([0..15] !! randRang 0 15 num)
         randColEff txt      = randCol <*> (randEff . T.pack) [txt]
         randApply numT numR = foldrM (\chr str -> ((\num -> (T.unpack $ randColEff chr num) <> str) <$> randomIO)) "" (randVom numT numR)
-        randMessage         = randomRIO (4,23) >>= \x -> randomIO
-                                               >>= \y -> randApply x y <> return " " <> randLin msg <> return " "  <> randApply x y
+        randMessage         = randomRIO (8,23) >>= \x -> randomIO >>= \z -> randomIO
+                                               >>= \y -> randApply x z <> return " " <> randLin msg <> return " "  <> randApply x y
 
 
 -- TODO's -------------------------------------------------------------------------------------
