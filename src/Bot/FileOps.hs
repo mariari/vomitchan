@@ -52,7 +52,7 @@ getUsrFldr msg = (fromString . T.unpack . fold) ["./data/logs/", msgChan msg, "/
 listUsrFldr :: Message -> IO [FilePath]
 listUsrFldr msg = doesDirectoryExist usrfldr >>= lsFldr
   where lsFldr dirp
-          | dirp      = listDirectory usrfldr
+          | dirp      = getDirectoryContents usrfldr
           | otherwise = return [""]
         usrfldr = getUsrFldr msg
 
