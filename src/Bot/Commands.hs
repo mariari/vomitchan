@@ -13,7 +13,9 @@ import qualified Data.Text       as T
 
 import           Bot.FileOps
 import           Bot.MessageType
-import qualified System.Random  as SR 
+import           System.Random
+import           Data.Char
+import           Data.Foldable
 --- TYPES -------------------------------------------------------------------------------------
 
 -- type of all command functions
@@ -43,7 +45,7 @@ cmdList =  [ (cmdBots, False, [".bots", ".bot vomitchan"])
 
 -- List of all Impure functions
 cmdListImp :: [ (CmdFuncImp, Infix,  CmdAlias)]
-cmdListImp = []
+cmdListImp = [ (cmdVomit,    False, ["*vomits*"])]
 
 -- The List of all functions pure <> impure
 cmdTotList :: [(CmdFuncImp, Infix,  CmdAlias)]
@@ -88,6 +90,19 @@ cmdLewd :: CmdFunc
 cmdLewd msg = (composeMsg "PRIVMSG" . actionMe) ("lewds " <> target) msg
   where target = T.tail $ drpMsg msg " "
 
+cmdVomit :: CmdFuncImp
+cmdVomit msg = (\y -> (composeMsg "PRIVMSG" . actionMe . T.pack) y msg) <$> randMessage
+  where randVom numT numR   = chr <$> (take numT . randomRs (75, 49) . mkStdGen) numR 
+        randRang x y        = fst . randomR (x,y) . mkStdGen
+        randLin msg         = listUsrFldrNoLog (changeNickFstArg msg) >>= \y -> fmap (y !!) (randomRIO (0, length y -1))
+                                                                      >>= \z -> T.unpack <$> (upUsrFile . T.pack) (getUsrFldr msg <> z)
+        randEff txt num     = action (["\x2","\x1D","\x1F","\x16", "", " "] !! randRang 0 5 num) txt
+        randCol num txt     = actionCol txt ([0..15] !! randRang 0 15 num)
+        randColEff txt      = randCol <*> (randEff . T.pack) [txt]
+        randApply numT numR = foldrM (\chr str -> ((\num -> (T.unpack $ randColEff chr num) <> str) <$> randomIO)) "" (randVom numT numR)
+        randMessage         = randomRIO (4,23) >>= \x -> randomIO
+                                               >>= \y -> randApply x y <> return " " <> randLin msg <> return " "  <> randApply x y
+
 -- TODO's -------------------------------------------------------------------------------------
 --
 -- TODO: add a *vomits* function that
@@ -128,6 +143,14 @@ composeMsg method str msg = Just (method, msgDest msg <> str)
 actionMe :: T.Text -> T.Text
 actionMe txt = " :\0001ACTION " <> txt <> "\0001"
 
+-- Used for color commnad... color can go all the way up to 15
+actionCol :: (Num a, Show a) => T.Text -> a -> T.Text
+actionCol txt num = "\0003" <> T.pack (show num) <> txt <> "\0003"
+
+-- Used as a generic version for making bold, italic, underlined, and swap
+action :: T.Text -> T.Text -> T.Text
+action cmd txt = cmd <> txt <> cmd
+
 -- Used for  grabbing elements out of a 3 element tuple
 f3 :: (a,b,c) -> a
 f3 (a,_,_) = a
@@ -138,12 +161,23 @@ s3 (_,b,_) = b
 t3 :: (a,b,c) -> c
 t3 (_,_,c) = c
 
+-- Changes the nick of the msg
+changeNick :: T.Text -> Message -> Message
+changeNick nick msg = msg {msgNick = nick}
+
+-- Changes the nick of the msg if the first argument specifies it
+changeNickFstArg :: Message -> Message
+changeNickFstArg msg
+  | length wordMsg > 1 = changeNick (wordMsg !! 1) msg
+  | otherwise           = msg
+  where wordMsg = (T.words . msgContent) msg
+
 -- UNUSED HELPER FUNCTIONS --------------------------------------------------------------------
 -- Like drpMsg but does it recursively until the break can't be found anymore
 drpMsgRec :: Message -> T.Text -> T.Text ->  [T.Text]
 drpMsgRec msg bkL bkR = recurse [] drpMess
   where recurse acc (x,"") = x:acc
-        recurse acc (x,xs) = recurse (x:acc) $ (drpRight . snd . drpLeft) xs
+        recurse acc (x,xs) = (recurse (x:acc) . drpRight . snd . drpLeft) xs
         drpMess            = T.breakOn bkR (drpMsg msg bkL)
         drpLeft            = T.breakOn bkL
         drpRight           = T.breakOn bkR
