@@ -6,8 +6,10 @@ An IRC bot written in Haskell.  *cheek pinch*
 ![vomitchan running in IRC](https://u.pomf.is/nuuyqt.png)
 
 ## Commands
-- `.bots` - prints bot info
+- `.bots [vomitchan]` - prints bot info
+- `.source vomitchan` - prints a link to bot source
 - `.lewd <someone>` - lewds someone
+- `*vomits* [<someone>] - 'vomits' a link posted by you, or optionally someone else
 
 ### Admin Only
 - `.quit` - kill vomitchan ;-;
@@ -23,6 +25,7 @@ An IRC bot written in Haskell.  *cheek pinch*
   - bytestring
   - aeson
   - monad-loops
+  - turtle
 
 Note: you can build and run this without Stack of course, figure it out for yourself.
 
@@ -56,7 +59,5 @@ The bot can be started within ghci by running `stack ghci` in the project direct
 - Versioning
 - Support for the 'major' IRC networks (Freenode, Rizon, IRCNet, QuakeNet, Etc.)
 - Per-channel rate limiting, to prevent spam
-- Link scraping and archiving
-- distributed data storage
 - add 'modes'
 - use parser combinators for handling messages
