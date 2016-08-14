@@ -58,4 +58,4 @@ listUsrFldr msg = doesDirectoryExist usrfldr >>= lsFldr
 
 -- Lists all the files except the .log files
 listUsrFldrNoLog :: Message -> IO [FilePath]
-listUsrFldrNoLog msg = filter (not . isSuffixOf ".log") <$> listUsrFldr msg
+listUsrFldrNoLog msg = filter ((&&) . not . isSuffixOf ".log" <*> (`notElem` [".",".."])) <$> listUsrFldr msg
