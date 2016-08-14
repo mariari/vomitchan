@@ -9,7 +9,7 @@ An IRC bot written in Haskell.  *cheek pinch*
 - `.bots [vomitchan]` - prints bot info
 - `.source vomitchan` - prints a link to bot source
 - `.lewd <someone>` - lewds someone
-- `*vomits* [<someone>] - 'vomits' a link posted by you, or optionally someone else
+- `*vomits* [<someone>]` - 'vomits' a link posted by you, or optionally someone else
 
 ### Admin Only
 - `.quit` - kill vomitchan ;-;
