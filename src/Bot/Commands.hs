@@ -77,7 +77,7 @@ cmdSrc = composeMsg "NOTICE" " :[Haskell] https://gitla.in/MrDetonia/vomitchan"
 -- prints help information
 -- TODO: Store command info in cmdList and generate this text on the fly
 cmdHelp :: CmdFunc
-cmdHelp = composeMsg "NOTICE" " :Commands: .lewd <someone>, (more to come...)"
+cmdHelp = composeMsg "NOTICE" " :Commands: .lewd <someone>, *vomits* [nick]"
 
 -- quit
 cmdQuit :: CmdFunc
