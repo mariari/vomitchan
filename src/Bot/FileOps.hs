@@ -52,10 +52,10 @@ getUsrFldr msg = (fromString . T.unpack . fold) ["./data/logs/", msgChan msg, "/
 listUsrFldr :: Message -> IO [FilePath]
 listUsrFldr msg = doesDirectoryExist usrfldr >>= lsFldr
   where lsFldr dirp
-          | dirp      = getDirectoryContents usrfldr
+          | dirp      = listDirectory usrfldr
           | otherwise = return [""]
         usrfldr = getUsrFldr msg
 
 -- Lists all the files except the .log files
 listUsrFldrNoLog :: Message -> IO [FilePath]
-listUsrFldrNoLog msg = filter ((&&) . not . isSuffixOf ".log" <*> (`notElem` [".",".."])) <$> listUsrFldr msg
+listUsrFldrNoLog msg = filter (not . isSuffixOf ".log") <$> listUsrFldr msg
