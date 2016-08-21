@@ -32,7 +32,7 @@ cmdMisc :: [T.Text]
 cmdMisc = ["pdf"]
 
 cmdAll :: [T.Text]
-cmdAll = cmdPic <> cmdVid <> cmdMus <> cmdMisc
+cmdAll = fold [cmdPic, cmdVid, cmdMus, cmdMisc]
 
 --- FUNCTIONS ---------------------------------------------------------------------------------
 

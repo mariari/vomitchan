@@ -6,7 +6,7 @@ module Bot.FileOps (
   createUsrFldr,
   appendLog,
   dwnUsrFile,
-  listUsrFldrNoLog,
+  usrFldrNoLog,
   upUsrFile,
   getUsrFldr
 ) where
@@ -57,5 +57,5 @@ listUsrFldr msg = doesDirectoryExist usrfldr >>= lsFldr
         usrfldr = getUsrFldr msg
 
 -- Lists all the files except the .log files
-listUsrFldrNoLog :: Message -> IO [FilePath]
-listUsrFldrNoLog msg = filter (not . isSuffixOf ".log") <$> listUsrFldr msg
+usrFldrNoLog :: Message -> IO [FilePath]
+usrFldrNoLog msg = filter (not . isSuffixOf ".log") <$> listUsrFldr msg
