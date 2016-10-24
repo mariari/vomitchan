@@ -36,12 +36,12 @@ listen h = iterateUntil (== Just ()) resLoop >> hClose h
 
       quit <- C.newEmptyMVar
 
-      forkIO(inout s quit)
+      _ <- forkIO(inout s quit)
 
-      C.tryTakeMVar quit >>= return
+      C.tryTakeMVar quit
 
     inout s quit = do
       res <- respond s
       case res of
-        Just x -> write h x >> if fst x == T.pack "QUIT" then C.putMVar quit () else return ()
+        Just x -> write h x >> when (fst x == T.pack "QUIT") (C.putMVar quit ())
         Nothing -> return ()
