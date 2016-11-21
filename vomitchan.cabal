@@ -18,6 +18,7 @@ library
   exposed-modules:     Bot.Network
                      , Bot.MessageType
                      , Bot.Message
+                     , Bot.State
                      , Bot.Socket
                      , Bot.Commands
                      , Bot.FileOps

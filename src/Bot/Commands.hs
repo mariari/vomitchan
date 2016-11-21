@@ -13,6 +13,7 @@ import qualified Data.Text       as T
 
 import           Bot.FileOps
 import           Bot.MessageType
+import           Bot.State
 import           System.Random
 import           Data.Char
 import           Data.Foldable
@@ -36,16 +37,16 @@ admins = ["MrDetonia", "loli"]
 
 -- list of all Pure functions
 -- TODO: if the cmdList has over 50~ commands, put it into a hash table instead
-cmdList :: [ (CmdFunc, Infix,  CmdAlias)]
-cmdList =  [ (cmdBots, False, [".bots", ".bot vomitchan"])
-           , (cmdSrc,  False, [".source vomitchan"])
-           , (cmdHelp, False, [".help vomitchan"])
-           , (cmdQuit, False, [".quit"])
-           , (cmdLewd, False, [".lewd "])]
+cmdList :: [(CmdFunc, Infix,  CmdAlias)]
+cmdList =  [(cmdBots, False,  [".bots", ".bot vomitchan"])
+           ,(cmdSrc,  False,  [".source vomitchan"])
+           ,(cmdHelp, False,  [".help vomitchan"])
+           ,(cmdQuit, False,  [".quit"])
+           ,(cmdLewd, False,  [".lewd "])]
 
 -- List of all Impure functions
-cmdListImp :: [ (CmdFuncImp, Infix,  CmdAlias)]
-cmdListImp = [ (cmdVomit,    False, ["*vomits*"])]
+cmdListImp :: [(CmdFuncImp, Infix,  CmdAlias)]
+cmdListImp =  [(cmdVomit,   True,   ["*vomits*"])]
 
 -- The List of all functions pure <> impure
 cmdTotList :: [(CmdFuncImp, Infix,  CmdAlias)]
@@ -93,7 +94,7 @@ cmdLewd msg = (composeMsg "PRIVMSG" . actionMe) ("lewds " <> target) msg
 cmdVomit :: CmdFuncImp
 cmdVomit msg = (\y -> (composeMsg "PRIVMSG" . (<>) " :" . T.pack) y msg) <$> randMessage
   where
-    randVom numT numR   = chr <$> (take numT . randomRs (75, 41) . mkStdGen) numR
+    randVom numT numR   = chr <$> (take numT . randomRs (32, 75) . mkStdGen) numR
     newUsr              = changeNickFstArg msg
 
     randRang x y        = fst . randomR (x,y) . mkStdGen
@@ -136,7 +137,7 @@ msgDest msg
 
 -- Generates a list of words that specify the search constraint
 specWord :: Message -> T.Text -> [T.Text]
-specWord msg search = (isElemList. T.words . msgContent) msg
+specWord msg search = (isElemList . T.words . msgContent) msg
   where isElemList = filter (search `T.isPrefixOf`)
 
 -- Drops the command message [.lewd *vomits*]... send *command* messages via T.tail msg

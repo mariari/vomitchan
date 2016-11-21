@@ -32,7 +32,10 @@ listen h = iterateUntil (== Just ()) resLoop >> hClose h
   where
     resLoop = do
       s   <- T.hGetLine h
+      l   <- hShow h
+      let x = T.pack l
       T.putStrLn s
+      print x
 
       quit <- C.newEmptyMVar
 

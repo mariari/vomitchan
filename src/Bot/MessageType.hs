@@ -33,7 +33,6 @@ type Host   = T.Text
 type Pass   = T.Text
 type Chan   = T.Text
 
-
 --- DATA STRUCTURES ---------------------------------------------------------------------------
 
 -- IRC message structure
