@@ -41,4 +41,4 @@ main = do
          handles <- mapM (forkWithKill tids . connect) networks
          mapM_ C.takeMVar handles
 
-  where connect n = joinNetwork n >>= listen
+  where connect n = joinNetwork n >>= \x -> (listen x (netServer n))

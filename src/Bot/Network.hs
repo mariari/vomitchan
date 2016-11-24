@@ -9,7 +9,8 @@ module Bot.Network (
   readNetworks,
   saveNetworks,
   joinNetwork,
-  findNetwork
+  findNetwork,
+  netServer
 ) where
 --- IMPORTS -----------------------------------------------------------------------------------
 import           Control.Monad

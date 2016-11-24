@@ -27,24 +27,22 @@ write h (act,args) = T.hprint h "{} {}\r\n" [act, args]
 
 
 -- simply listens to a socket forever
-listen :: Handle -> IO ()
-listen h = iterateUntil (== Just ()) resLoop >> hClose h
+listen :: Handle -> T.Text -> IO ()
+listen h  net = iterateUntil (== Just ()) resLoop >> hClose h
   where
     resLoop = do
       s   <- T.hGetLine h
-      l   <- hShow h
-      let x = T.pack l
       T.putStrLn s
-      print x
+      print net
 
       quit <- C.newEmptyMVar
 
-      _ <- forkIO(inout s x quit)
+      _ <- forkIO(inout s net quit)
 
       C.tryTakeMVar quit
 
-    inout s x quit = do
-      res <- respond s x
+    inout s net quit = do
+      res <- respond s net
       case res of
         Just x -> write h x >> when (fst x == T.pack "QUIT") (C.putMVar quit ())
         Nothing -> return ()
