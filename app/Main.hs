@@ -9,6 +9,7 @@ import qualified Control.Concurrent as C
 
 import           Bot.Network
 import           Bot.Socket
+import           Bot.State
 --- FUNCTIONS ---------------------------------------------------------------------------------
 
 -- creates a thread and adds its thread ID to an MVar list, kills all

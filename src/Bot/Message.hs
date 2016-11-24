@@ -37,11 +37,11 @@ cmdAll = fold [cmdPic, cmdVid, cmdMus, cmdMisc]
 --- FUNCTIONS ---------------------------------------------------------------------------------
 
 -- takes an IRC message and generates the correct response
-respond :: T.Text -> IO (Maybe (T.Text, T.Text))
-respond msg
+respond :: T.Text -> T.Text -> IO (Maybe (T.Text, T.Text))
+respond msg info
   | "PING"   `T.isPrefixOf` msg = return $ Just ("PONG", T.drop 5 msg)
   | "PRIVMSG" `T.isInfixOf` msg = foldr (\c -> ((>>) . c <*>))
-                                        runCmd [cmdFldr, cmdLog, cmdLogFile] $ toMessage msg
+                                        runCmd [cmdFldr, cmdLog, cmdLogFile] $ toMessage msg info
   | otherwise                   = return Nothing
 
 --- LOGGING -----------------------------------------------------------------------------------

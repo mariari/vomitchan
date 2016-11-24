@@ -15,6 +15,6 @@ import           Text.Regex.TDFA
 
 -- IRC State information
 data GlobalState = GlobalState
-                 { dreamMode       :: Bool
-
+                 { dreamMode   :: Bool
+                 , muteMode    :: Bool
                  }

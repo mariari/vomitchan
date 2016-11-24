@@ -42,19 +42,21 @@ data Message = Message
              , msgHost    :: Host
              , msgChan    :: Chan
              , msgContent :: T.Text
+             , msgPort    :: Port
              } deriving (Show)
 
 
 --- FUNCTIONS ---------------------------------------------------------------------------------
 -- converts a string to a Message
-toMessage :: T.Text -> Message
-toMessage str = Message nick user host chan content
+toMessage :: T.Text -> T.Text -> Message
+toMessage str info = Message nick user host chan content port
   where
-    nick    = T.tail             $ regex str ":[^!]*"
-    user    = T.init             $ regex str "[^!~]*@"
-    host    = T.tail             $ regex str "@[^ ]*"
-    chan    = T.strip . T.init   $ regex str "[^ ]* :"
-    content = T.tail  . T.strip  $ regex str " :.*$"
+    nick    = T.tail                     $ regex str  ":[^!]*"
+    user    = T.init                     $ regex str  "[^!~]*@"
+    host    = T.tail                     $ regex str  "@[^ ]*"
+    chan    = T.strip . T.init           $ regex str  "[^ ]* :"
+    content = T.tail  . T.strip          $ regex str  " :.*$"
+    port    = read . T.unpack . T.drop 2 $ regex info ":[^>]*"
 
 -- performs a regex on a T.Text
 regex :: T.Text -> String -> T.Text
