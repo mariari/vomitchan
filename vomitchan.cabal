@@ -2,11 +2,11 @@ name:                vomitchan
 version:             0.0.1.0
 synopsis:            IRC bot written in Haskell
 description:         Please see README.md
-homepage:            https://gitla.in/MrDetonia/vomitchan
+homepage:            https://gitla.in/nymphet/vomitchan
 license:             BSD3
 license-file:        LICENSE
 author:              MrDetonia & nymphet
-maintainer:          mrdetonia@27b-a.xyz, nymphet@protonmail.com
+maintainer:          nymphet@protonmail.com
 copyright:           2016 MrDetonia & nymphet
 category:            Web
 build-type:          Simple
