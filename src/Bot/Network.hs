@@ -25,6 +25,7 @@ import           Data.Monoid
 
 import           Bot.MessageType
 import           Bot.Socket
+import           Bot.State
 --- DATA STRUCTURES --------------------------------------------------------------------------- 
 
 -- IRC network table
@@ -34,8 +35,8 @@ data IRCNetwork = IRCNetwork
              , netNick   :: Nick
              , netPass   :: Pass
              , netChans  :: [Chan]
+             , netState  :: GlobalState
              } deriving (Show,Generic)
-
 
 -- allow encoding to/from JSON
 instance JSON.FromJSON IRCNetwork
