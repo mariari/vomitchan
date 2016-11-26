@@ -18,8 +18,8 @@ import           GHC.Generics
 
 -- IRC State information
 data GlobalState = GlobalState
-                 { dreamMode   :: Bool
-                 , muteMode    :: Bool
+                 { dreamMode   :: [(String, Bool)]
+                 , muteMode    :: [(String, Bool)]
                  } deriving (Show, Generic)
 
 

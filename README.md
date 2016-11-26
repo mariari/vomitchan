@@ -44,8 +44,8 @@ This file should look like the following:
   , "netNick"   : "vomitchan"
   , "netPass"   : "password"
   , "netChans"  : [ "#lainchan", "#extra-chan"]
-  , "netState"  : {"dreamMode" : false
-                  , "muteMode" : false
+  , "netState"  : {"dreamMode" : [["#lainchan", false], ["#extra-chan", false]]
+                  , "muteMode" : [["#lainchan", false], ["#extra-chan", false]]
                   }
   }
 ]

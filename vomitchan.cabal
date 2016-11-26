@@ -45,4 +45,4 @@ executable vomitchan-exe
 
 source-repository head
   type:     git
-  location: git@gitla.in:MrDetonia/vomitchan.git
+  location: git@gitla.in:nymphet/vomitchan.git
