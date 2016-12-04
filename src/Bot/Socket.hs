@@ -28,7 +28,7 @@ write h (act,args) = T.hprint h "{} {}\r\n" [act, args]
 
 -- simply listens to a socket forever
 listen :: Handle -> T.Text -> IO ()
-listen h  net = iterateUntil (== Just ()) resLoop >> hClose h
+listen h net = iterateUntil (== Just ()) resLoop >> hClose h
   where
     resLoop = do
       s   <- T.hGetLine h

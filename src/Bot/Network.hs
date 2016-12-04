@@ -10,7 +10,8 @@ module Bot.Network (
   saveNetworks,
   joinNetwork,
   findNetwork,
-  netServer
+  netServer,
+  netState
 ) where
 --- IMPORTS -----------------------------------------------------------------------------------
 import           Control.Monad
@@ -35,7 +36,7 @@ data IRCNetwork = IRCNetwork
              , netNick   :: Nick
              , netPass   :: Pass
              , netChans  :: [Chan]
-             , netState  :: GlobalState
+             , netState  :: StateConfig
              } deriving (Show,Generic)
 
 -- allow encoding to/from JSON
