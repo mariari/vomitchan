@@ -19,6 +19,7 @@ library
                      , Bot.MessageType
                      , Bot.Message
                      , Bot.State
+                     , Bot.StateType
                      , Bot.Socket
                      , Bot.Commands
                      , Bot.FileOps
@@ -26,14 +27,14 @@ library
                      , base >= 4.7 && < 5
                      , bytestring
                      , directory >= 1.2.5 && < 2
-                     , hashtables >= 1.2.1.0
+                     , hashtables
                      , monad-loops
                      , network
                      , random
                      , regex-tdfa
+                     , stm
                      , text
                      , text-format
-                     , transformers
                      , turtle
   default-language:    Haskell2010
 
@@ -43,9 +44,9 @@ executable vomitchan-exe
   ghc-options:         -threaded -rtsopts -with-rtsopts=-N
   build-depends:       base
                      , hashtables
-                     , transformers
-                     , vomitchan
+                     , stm
                      , text
+                     , vomitchan
   default-language:    Haskell2010
 
 source-repository head

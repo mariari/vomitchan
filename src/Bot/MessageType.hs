@@ -17,11 +17,15 @@ module Bot.MessageType (
   msgHost,
   msgChan,
   msgContent,
+  msgServer,
+  msgState,
   toMessage
 ) where
 --- IMPORTS -----------------------------------------------------------------------------------
 import qualified Data.Text       as T
 import           Text.Regex.TDFA
+import           Bot.StateType
+import           Data.Foldable
 --- TYPES -------------------------------------------------------------------------------------
 
 -- types for IRC data
@@ -43,13 +47,21 @@ data Message = Message
              , msgChan    :: Chan
              , msgContent :: T.Text
              , msgServer  :: T.Text
-             } deriving (Show)
+             , msgState   :: VomState
+             }
 
+instance Show Message where
+  show a = fold ["Message {msgNick = ", show (msgNick a),
+                 ", msgUsr = ", show (msgUser a),
+                 ", msgChan = ", show (msgChan a),
+                 ", msgContent = ", show (msgContent a),
+                 ", msgServer = ", show (msgServer a),
+                 ", MsgState = VomState }"]
 
 --- FUNCTIONS ---------------------------------------------------------------------------------
 -- converts a string to a Message
-toMessage :: T.Text -> T.Text -> Message
-toMessage str serv = Message nick user host chan content serv
+toMessage :: T.Text -> T.Text -> VomState -> Message
+toMessage str = Message nick user host chan content
   where
     nick    = T.tail            $ regex str  ":[^!]*"
     user    = T.init            $ regex str  "[^!~]*@"

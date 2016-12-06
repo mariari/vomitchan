@@ -26,7 +26,7 @@ import           Data.Monoid
 
 import           Bot.MessageType
 import           Bot.Socket
-import           Bot.State
+import           Bot.StateType
 --- DATA STRUCTURES --------------------------------------------------------------------------- 
 
 -- IRC network table

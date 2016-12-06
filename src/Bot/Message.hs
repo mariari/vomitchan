@@ -7,10 +7,11 @@ module Bot.Message (
 ) where
 --- IMPORTS -----------------------------------------------------------------------------------
 import qualified Data.Text        as T
-
+import           Control.Concurrent.STM
 import           Bot.Commands
 import           Bot.MessageType
 import           Bot.FileOps
+import           Bot.StateType
 import           Data.Foldable
 import           Turtle          hiding (fold)
 --- DATA --------------------------------------------------------------------------------------
@@ -37,11 +38,11 @@ cmdAll = fold [cmdPic, cmdVid, cmdMus, cmdMisc]
 --- FUNCTIONS ---------------------------------------------------------------------------------
 
 -- takes an IRC message and generates the correct response
-respond :: T.Text -> T.Text -> IO (Maybe (T.Text, T.Text))
-respond msg info
+respond :: T.Text -> T.Text -> VomState -> IO (Maybe (T.Text, T.Text))
+respond msg info state
   | "PING"   `T.isPrefixOf` msg = return $ Just ("PONG", T.drop 5 msg)
   | "PRIVMSG" `T.isInfixOf` msg = foldr (\c -> ((>>) . c <*>))
-                                        runCmd [cmdFldr, cmdLog, cmdLogFile] $ toMessage msg info
+                                        runCmd [cmdFldr, cmdLog, cmdLogFile] $ toMessage msg info state
   | otherwise                   = return Nothing
 
 --- LOGGING -----------------------------------------------------------------------------------
