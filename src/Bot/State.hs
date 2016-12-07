@@ -19,5 +19,5 @@ getChanState msg = do
   ht    <- hash <$> (readTVarIO . msgState) msg
   maybs <- H.lookup ht (msgServer msg <> msgChan msg)
   case maybs of
-    Nothing -> return $ toHashStorage False False
+    Nothing -> return $ toHashStorage True False
     Just x -> return x

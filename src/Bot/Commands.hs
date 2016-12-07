@@ -11,12 +11,15 @@ module Bot.Commands (
 import           Data.Monoid
 import qualified Data.Text       as T
 
+import qualified Data.HashTable.IO as H
 import           Bot.FileOps
 import           Bot.MessageType
 import           Bot.State
+import           Bot.StateType
 import           System.Random
 import           Data.Char
 import           Data.Foldable
+import           Control.Concurrent.STM
 --- TYPES -------------------------------------------------------------------------------------
 
 -- type of all command functions
@@ -46,7 +49,8 @@ cmdList =  [(cmdBots, False,  [".bots", ".bot vomitchan"])
 
 -- List of all Impure functions
 cmdListImp :: [(CmdFuncImp, Infix,  CmdAlias)]
-cmdListImp =  [(cmdVomit,   True,   ["*vomits*"])]
+cmdListImp =  [(cmdVomit,   True,   ["*vomits*"])
+              ,(cmdDream,  False,   ["*cheek pinch*"])]
 
 -- The List of all functions pure <> impure
 cmdTotList :: [(CmdFuncImp, Infix,  CmdAlias)]
@@ -91,30 +95,50 @@ cmdLewd :: CmdFunc
 cmdLewd msg = (composeMsg "PRIVMSG" . actionMe) ("lewds " <> target) msg
   where target = T.tail $ drpMsg msg " "
 
+cmdDream :: CmdFuncImp
+cmdDream msg = do
+  ht    <- hash <$> (readTVarIO . msgState) msg
+  state <- getChanState msg
+  H.insert ht (msgServer msg <> msgChan msg) (toHashStorage (not . dream $ state) (mute state))
+  return $ composeMsg "PRIVMSG" " :dame" msg
+
 cmdVomit :: CmdFuncImp
-cmdVomit msg = (\y -> (composeMsg "PRIVMSG" . (<>) " :" . T.pack) y msg) <$> randMessage
-  where
+cmdVomit msg = do
+  state <- getChanState msg
+  let
     randVom numT numR   = chr <$> (take numT . randomRs (32, 75) . mkStdGen) numR
     newUsr              = changeNickFstArg msg
 
     randRang x y        = fst . randomR (x,y) . mkStdGen
-    randLink            = usrFldrNoLog newUsr >>= \y -> linCheck y <$> randomRIO (0, length y -1)
+
+    randLink :: IO String
+    randLink
+      | dream state     = usrFldrNoLog newUsr >>= \y -> linCheck y <$> randomRIO (0, length y -1)
                                               >>= \z -> T.unpack   <$> (upUsrFile . T.pack) (getUsrFldr newUsr <> z)
+      | otherwise       = return ""
     linCheck xs y
       | null xs   = ""
       | otherwise = xs !! y
 
-    randEff txt num     = action (["\x2","\x1D","\x1F","\x16", "", " "] !! randRang 0 5 num) txt
-    randCol num txt     = actionCol txt ([0..15] !! randRang 0 15 num)
+    randEff txt num
+      | dream state     = action (["\x2","\x1D","\x1F","\x16", "", " "] !! randRang 0 5 num) txt
+      | otherwise       = action (["\x2","\x1D","\x1F","\x16", "", " "] !! randRang 0 5 num) (action "\x16" txt)
+
+    randCol num txt
+      | dream state     = actionCol txt ([0..15] !! randRang 0 15 num)
+      | otherwise       = actionCol txt 6
+
     randColEff txt      = randCol <*> (randEff . T.pack) [txt]
 
+    randApply :: Int -> Int -> IO String
     randApply numT numR = foldrM (\chr str -> fmap (\num -> T.unpack (randColEff chr num) <> str)
-                                                   randomIO)
-                                 "" (randVom numT numR)
+                                                randomIO)
+                            "" (randVom numT numR)
 
+    randMessage :: IO String
     randMessage         = randomRIO (8,23) >>= \x -> randomIO >>= \z -> randomIO
-                                           >>= \y -> fold [randApply x z, return " ", randLink, return " ", randApply x y]
-
+                                             >>= \y -> fold [randApply x z, return " ", randLink, return " ", randApply x y]
+  (\y -> (composeMsg "PRIVMSG" . (<>) " :" . T.pack) y msg) <$> randMessage
 
 -- TODO's -------------------------------------------------------------------------------------
 --
@@ -153,7 +177,7 @@ actionMe :: T.Text -> T.Text
 actionMe txt = " :\0001ACTION " <> txt <> "\0001"
 
 -- Used for color commnad... color can go all the way up to 15
-actionCol :: (Num a, Show a) => T.Text -> a -> T.Text
+actionCol :: (Show a) => T.Text -> a -> T.Text
 actionCol txt num = "\0003" <> T.pack (show num) <> txt <> "\0003"
 
 -- Used as a generic version for making bold, italic, underlined, and swap

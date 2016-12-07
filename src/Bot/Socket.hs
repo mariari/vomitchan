@@ -14,7 +14,6 @@ import           Control.Concurrent as C
 import qualified Data.Text          as T
 import qualified Data.Text.Format   as T
 import qualified Data.Text.IO       as T
-import           Network
 import           System.IO
 import           Control.Monad.IO.Class
 import           Control.Concurrent.STM

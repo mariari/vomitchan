@@ -22,7 +22,7 @@ import           Bot.StateType
 forkWithKill :: C.MVar[C.ThreadId] -> IO () -> IO (C.MVar())
 forkWithKill tids act = do
   handle <- C.newEmptyMVar
-  C.forkFinally spawn (\_ -> kill >> C.putMVar handle ())
+  _ <- C.forkFinally spawn (\_ -> kill >> C.putMVar handle ())
   return handle
 
   where
