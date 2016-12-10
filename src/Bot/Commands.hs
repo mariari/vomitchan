@@ -44,13 +44,13 @@ cmdList :: [(CmdFunc, Infix,  CmdAlias)]
 cmdList =  [(cmdBots, False,  [".bots", ".bot vomitchan"])
            ,(cmdSrc,  False,  [".source vomitchan"])
            ,(cmdHelp, False,  [".help vomitchan"])
-           ,(cmdQuit, False,  [".quit"])
-           ,(cmdLewd, False,  [".lewd "])]
+           ,(cmdQuit, False,  [".quit"])]
 
 -- List of all Impure functions
 cmdListImp :: [(CmdFuncImp, Infix,  CmdAlias)]
 cmdListImp =  [(cmdVomit,   True,   ["*vomits*"])
-              ,(cmdDream,  False,   ["*cheek pinch*"])]
+              ,(cmdDream,  False,   ["*cheek pinch*"])
+              ,(cmdLewds,  False,   [".lewd "])]
 
 -- The List of all functions pure <> impure
 cmdTotList :: [(CmdFuncImp, Infix,  CmdAlias)]
@@ -90,16 +90,23 @@ cmdQuit msg
   | msgUser msg `elem` admins = Just ("QUIT", ":Exiting")
   | otherwise                 = Nothing
 
+cmdLewds :: CmdFuncImp
+cmdLewds msg = getChanState msg >>= f
+  where f state
+          | dream state = return . cmdLewd $ msg
+          | otherwise   = cmdVomit msg
+
 -- lewd someone (rip halpybot)
 cmdLewd :: CmdFunc
 cmdLewd msg = (composeMsg "PRIVMSG" . actionMe) ("lewds " <> target) msg
   where target = T.tail $ drpMsg msg " "
 
+-- Causes Vomitchan to sleep ∨ awaken
 cmdDream :: CmdFuncImp
 cmdDream msg = do
   ht    <- hash <$> (readTVarIO . msgState) msg
   state <- getChanState msg
-  H.insert ht (msgServer msg <> msgChan msg) (toHashStorage (not . dream $ state) (mute state))
+  modifyChanState msg (toHashStorage . not . dream <*> mute $ state)
   return $ composeMsg "PRIVMSG" " :dame" msg
 
 cmdVomit :: CmdFuncImp
@@ -126,7 +133,7 @@ cmdVomit msg = do
 
     randCol num txt
       | dream state     = actionCol txt ([0..15] !! randRang 0 15 num)
-      | otherwise       = actionCol txt 6
+      | otherwise       = actionCol txt 4
 
     randColEff txt      = randCol <*> (randEff . T.pack) [txt]
 

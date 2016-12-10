@@ -28,6 +28,7 @@ library
                      , bytestring
                      , directory >= 1.2.5 && < 2
                      , hashtables
+                     , lens
                      , monad-loops
                      , network
                      , random
@@ -44,6 +45,7 @@ executable vomitchan-exe
   ghc-options:         -threaded -rtsopts -with-rtsopts=-N
   build-depends:       base
                      , hashtables
+                     , lens
                      , stm
                      , text
                      , vomitchan

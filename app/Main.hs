@@ -11,6 +11,7 @@ import           Data.Monoid
 import qualified Data.Text                      as T
 import           Control.Monad.IO.Class
 import           Control.Concurrent.STM
+import           Control.Lens
 
 import           Bot.Network
 import           Bot.Socket
