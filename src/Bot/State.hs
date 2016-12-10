@@ -27,14 +27,14 @@ getChanState msg = do
 -- modifies the hash-table state for a message
 modifyChanState :: Message -> HashStorage -> IO ()
 modifyChanState msg hStore = do
-  ht    <- hash <$> (readTVarIO . msgState) msg
+  ht <- hash <$> (readTVarIO . msgState) msg
   H.insert ht (getHashText msg) hStore
 
-
+-- Checks if the message is a pm
 isPM :: Message -> Bool
-isPM msg = msgChan msg == "vomitchan"
+isPM msg = not( "#" `T.isPrefixOf` msgChan msg)
 
-
+-- gives back the hashname for the message
 getHashText :: Message -> T.Text
 getHashText msg
   | isPM msg  = createText msgNick

@@ -104,7 +104,6 @@ cmdLewd msg = (composeMsg "PRIVMSG" . actionMe) ("lewds " <> target) msg
 -- Causes Vomitchan to sleep ∨ awaken
 cmdDream :: CmdFuncImp
 cmdDream msg = do
-  ht    <- hash <$> (readTVarIO . msgState) msg
   state <- getChanState msg
   modifyChanState msg (toHashStorage . not . dream <*> mute $ state)
   return $ composeMsg "PRIVMSG" " :dame" msg
