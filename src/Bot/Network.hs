@@ -51,7 +51,7 @@ readNetworks :: FilePath -> IO (Maybe [IRCNetwork])
 readNetworks file = do
   jsonData <- (JSON.eitherDecode <$> B.readFile file) :: IO (Either String [IRCNetwork])
   case jsonData of
-    Left err   -> putStrLn err >> return Nothing
+    Left  err  -> putStrLn err >> return Nothing
     Right nets -> return $ Just nets
 
 
@@ -74,7 +74,7 @@ joinNetwork net = do                                    -- connectTo is partiall
   return h
   where
     waitForAuth h = T.hGetLine h >>= \line -> T.putStrLn line
-                                           >> unless (":You are now identified" `T.isInfixOf` line) (waitForAuth h)
+                                  >> unless (":You are now identified" `T.isInfixOf` line) (waitForAuth h)
 
 --- HELPER FUNCTIONS / UNUSED -----------------------------------------------------------------
 

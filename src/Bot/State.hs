@@ -32,7 +32,7 @@ modifyChanState msg hStore = do
 
 -- Checks if the message is a pm
 isPM :: Message -> Bool
-isPM msg = not( "#" `T.isPrefixOf` msgChan msg)
+isPM = not . ("#" `T.isPrefixOf`) . msgChan
 
 -- gives back the hashname for the message
 getHashText :: Message -> T.Text

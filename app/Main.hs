@@ -20,7 +20,7 @@ import           Bot.StateType
 
 -- creates a thread and adds its thread ID to an MVar list, kills all
 -- listed threads when finished
-forkWithKill :: C.MVar[C.ThreadId] -> IO () -> IO (C.MVar())
+forkWithKill :: C.MVar[C.ThreadId] -> IO () -> IO (C.MVar ())
 forkWithKill tids act = do
   handle <- C.newEmptyMVar
   _ <- C.forkFinally spawn (\_ -> kill >> C.putMVar handle ())

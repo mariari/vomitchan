@@ -19,6 +19,7 @@ import           Bot.StateType
 import           System.Random
 import           Data.Char
 import           Data.Foldable
+import           Control.Monad
 import           Control.Concurrent.STM
 --- TYPES -------------------------------------------------------------------------------------
 
@@ -36,7 +37,7 @@ type CmdAlias = [T.Text]
 -- list of admins allowed to use certain commands
 -- TODO: Load this from config file
 admins :: [T.Text]
-admins = ["MrDetonia", "loli"]
+admins = ["loli"]
 
 -- list of all Pure functions
 -- TODO: if the cmdList has over 50~ commands, put it into a hash table instead
@@ -112,38 +113,39 @@ cmdVomit :: CmdFuncImp
 cmdVomit msg = do
   state <- getChanState msg
   let
-    randVom numT numR   = chr <$> (take numT . randomRs (32, 75) . mkStdGen) numR
-    newUsr              = changeNickFstArg msg
+      randVom numT        = (chr <$>) . take numT . randomRs (32, 75) . mkStdGen
+      newUsr              = changeNickFstArg msg
+      randRang x y        = fst . randomR (x,y) . mkStdGen
 
-    randRang x y        = fst . randomR (x,y) . mkStdGen
+      randLink :: IO String
+      randLink
+          | dream state   = usrFldrNoLog >=> (\y -> linCheck y <$> randomRIO (0, length y -1))
+                                         >=> (T.unpack <$>) . upUsrFile . T.pack . (getUsrFldr newUsr <>) $ newUsr
+          | otherwise     = return ""
 
-    randLink :: IO String
-    randLink
-      | dream state     = usrFldrNoLog newUsr >>= \y -> linCheck y <$> randomRIO (0, length y -1)
-                                              >>= \z -> T.unpack   <$> (upUsrFile . T.pack) (getUsrFldr newUsr <> z)
-      | otherwise       = return ""
-    linCheck xs y
-      | null xs   = ""
-      | otherwise = xs !! y
+      linCheck xs y
+          | null xs   = ""
+          | otherwise = xs !! y
 
-    randEff txt num
-      | dream state     = action (["\x2","\x1D","\x1F","\x16", "", " "] !! randRang 0 5 num) txt
-      | otherwise       = action (["\x2","\x1D","\x1F","\x16", "", " "] !! randRang 0 5 num) (action "\x16" txt)
+      randEff txt num
+          | dream state   = f txt
+          | otherwise     = f (action "\x16" txt)
+          where f = action (["\x2","\x1D","\x1F","\x16", "", " "] !! randRang 0 5 num)
 
-    randCol num txt
-      | dream state     = actionCol txt ([0..15] !! randRang 0 15 num)
-      | otherwise       = actionCol txt 4
+      randCol num txt
+          | dream state   = actionCol txt ([0..15] !! randRang 0 15 num)
+          | otherwise     = actionCol txt 4
 
-    randColEff txt      = randCol <*> (randEff . T.pack) [txt]
+      randColEff txt      = randCol <*> (randEff . T.pack) [txt]
 
-    randApply :: Int -> Int -> IO String
-    randApply numT numR = foldrM (\chr str -> fmap (\num -> T.unpack (randColEff chr num) <> str)
-                                                randomIO)
+      randApply :: Int -> Int -> IO String
+      randApply numT numR = foldrM (\chr str -> fmap ((<> str) . T.unpack . randColEff chr) randomIO)
                             "" (randVom numT numR)
 
-    randMessage :: IO String
-    randMessage         = randomRIO (8,23) >>= \x -> randomIO >>= \z -> randomIO
-                                             >>= \y -> fold [randApply x z, return " ", randLink, return " ", randApply x y]
+      randMessage :: IO String
+      randMessage         = randomRIO (8,23) >>= \x ->
+                            randomIO         >>= \z ->
+                            randomIO         >>= \y -> fold [randApply x z, return " ", randLink, return " ", randApply x y]
   (\y -> (composeMsg "PRIVMSG" . (<>) " :" . T.pack) y msg) <$> randMessage
 
 -- TODO's -------------------------------------------------------------------------------------
@@ -159,7 +161,7 @@ cmdVomit msg = do
 --
 --- HELPER FUNCTIONS --------------------------------------------------------------------------
 
--- figures out where to send a response to
+-- Figures out where to send a response to
 msgDest :: Message -> T.Text
 msgDest msg
   | "#" `T.isPrefixOf` msgChan msg = msgChan msg
@@ -183,7 +185,7 @@ actionMe :: T.Text -> T.Text
 actionMe txt = " :\0001ACTION " <> txt <> "\0001"
 
 -- Used for color commnad... color can go all the way up to 15
-actionCol :: (Show a) => T.Text -> a -> T.Text
+actionCol :: T.Text -> Int -> T.Text
 actionCol txt num = "\0003" <> T.pack (show num) <> txt <> "\0003"
 
 -- Used as a generic version for making bold, italic, underlined, and swap
@@ -208,7 +210,7 @@ changeNick nick msg = msg {msgNick = nick}
 changeNickFstArg :: Message -> Message
 changeNickFstArg msg
   | length wordMsg > 1 = changeNick (wordMsg !! 1) msg
-  | otherwise           = msg
+  | otherwise          = msg
   where wordMsg = (T.words . msgContent) msg
 
 -- UNUSED HELPER FUNCTIONS --------------------------------------------------------------------
