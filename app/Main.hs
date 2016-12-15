@@ -1,3 +1,4 @@
+{-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE Haskell2010       #-}
 {-# LANGUAGE OverloadedStrings #-}
 
@@ -51,10 +52,10 @@ main = do
 
   where connect s n = joinNetwork n >>= \x -> listen x (netServer n) s
         -- poorly composed :( Maybe use lenses to fix eventually
-        initHash net ht = mapM_ (\x -> mapM_ (\y -> mapM_ (\z -> hashadd (netServer x) y z ht)
-                                                    (muteMode . netState $ x))
-                                       (dreamMode . netState $ x))
-                          net
-        hashadd serv (ch1, b1) (ch2, b2) ht
-          | ch1 == ch2 = H.insert ht (serv <> ch1) (toHashStorage b1 b2)
-          | otherwise = return()
+        initHash net ht = sequence_ $ do
+          x  <- net
+          y  <- dreamMode . netState $ x
+          z  <- muteMode .  netState $ x
+          eq <- [(fst y, (snd y, snd z)) | fst y == fst z] -- check if the y and z are talking
+          return $ hashadd (netServer x) eq ht           -- about the same channel
+        hashadd serv (ch, x) ht = H.insert ht (serv <> ch) $ uncurry toHashStorage x
