@@ -24,12 +24,12 @@ import           Data.List
 
 -- Creates a folder of the irc channel and a user inside of it
 createUsrFldr :: Message -> IO ()
-createUsrFldr msg = createDirectoryIfMissing True $ getUsrFldr msg
+createUsrFldr = createDirectoryIfMissing True . getUsrFldr
 
 
 --appends the log file for posted links for the user
 appendLog :: Message -> Text -> IO ()
-appendLog msg = T.appendFile (getUsrFldr msg <> "Links.log") 
+appendLog msg = T.appendFile (getUsrFldr msg <> "Links.log")
 
 
 -- Downloads the requested file to the users path

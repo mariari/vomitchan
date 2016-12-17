@@ -146,7 +146,7 @@ cmdVomit msg = do
       randMessage         = randomRIO (8,23) >>= \x ->
                             randomIO         >>= \z ->
                             randomIO         >>= \y -> fold [randApply x z, return " ", randLink, return " ", randApply x y]
-  (\y -> (composeMsg "PRIVMSG" . (<>) " :" . T.pack) y msg) <$> randMessage
+  flip (composeMsg "PRIVMSG" . (" :" <>) . T.pack) msg <$> randMessage
 
 -- TODO's -------------------------------------------------------------------------------------
 --

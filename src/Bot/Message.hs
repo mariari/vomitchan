@@ -41,7 +41,7 @@ cmdAll = fold [cmdPic, cmdVid, cmdMus, cmdMisc]
 respond :: T.Text -> T.Text -> VomState -> IO (Maybe (T.Text, T.Text))
 respond msg info state
   | "PING"   `T.isPrefixOf` msg = return $ Just ("PONG", T.drop 5 msg)
-  | "PRIVMSG" `T.isInfixOf` msg = foldr (\c -> ((>>) . c <*>))
+  | "PRIVMSG" `T.isInfixOf` msg = foldr (\c -> (((>>) . c) <*>))
                                         runCmd [cmdFldr, cmdLog, cmdLogFile] $ toMessage msg info state
   | otherwise                   = return Nothing
 
@@ -50,7 +50,7 @@ respond msg info state
 -- Logs any links posted and appends them to the users .log file
 cmdLog :: Message -> IO ()
 cmdLog = traverse_ . appendLog <*> linLn 
-  where linLn m = (<> "\n") <$> allLinks m
+  where linLn = fmap (<> "\n") . allLinks
 
 
 -- Downloads any file and saves it to the user folder
@@ -66,4 +66,4 @@ cmdFldr = createUsrFldr
 
 -- creates a list of all links
 allLinks :: Message -> [T.Text]
-allLinks msg = cmdWbPg >>= specWord msg
+allLinks = (cmdWbPg >>=) . specWord
