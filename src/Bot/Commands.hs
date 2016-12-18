@@ -45,13 +45,15 @@ cmdList :: [(CmdFunc, Infix,  CmdAlias)]
 cmdList =  [(cmdBots, False,  [".bots", ".bot vomitchan"])
            ,(cmdSrc,  False,  [".source vomitchan"])
            ,(cmdHelp, False,  [".help vomitchan"])
-           ,(cmdQuit, False,  [".quit"])]
+           ,(cmdQuit, False,  [".quit"])
+           ,(cmdJoin, False,  [".join"])
+           ,(cmdPart, False,  [".leave", ".part"])]
 
 -- List of all Impure functions
 cmdListImp :: [(CmdFuncImp, Infix,  CmdAlias)]
 cmdListImp =  [(cmdVomit,   True,   ["*vomits*"])
-              ,(cmdDream,  False,   ["*cheek pinch*"])
-              ,(cmdLewds,  False,   [".lewd "])]
+              ,(cmdDream,   False,  ["*cheek pinch*"])
+              ,(cmdLewds,   False,  [".lewd "])]
 
 -- The List of all functions pure <> impure
 cmdTotList :: [(CmdFuncImp, Infix,  CmdAlias)]
@@ -148,6 +150,19 @@ cmdVomit msg = do
                             randomIO         >>= \y -> fold [randApply x z, return " ", randLink, return " ", randApply x y]
   flip (composeMsg "PRIVMSG" . (" :" <>) . T.pack) msg <$> randMessage
 
+-- Joins the first channel in the message if the user is an admin else do nothing
+cmdJoin :: CmdFunc
+cmdJoin msg
+  | msgUser msg `elem` admins && length (wordMsg msg) > 1 = Just ("JOIN", wordMsg msg !! 1)
+  | otherwise = Nothing
+
+-- Leaves the first channel in the message if the user is an admin else do nothing
+cmdPart :: CmdFunc
+cmdPart msg
+  | isAdmin && length (wordMsg msg) > 1       = Just ("PART", wordMsg msg !! 1)
+  | isAdmin && "#" `T.isPrefixOf` msgChan msg = Just ("PART", msgChan msg)
+  | otherwise = Nothing
+  where isAdmin = msgUser msg `elem` admins
 -- TODO's -------------------------------------------------------------------------------------
 --
 -- TODO: add a *cheek pinch* function that puts the bot into reality mode
@@ -209,9 +224,12 @@ changeNick nick msg = msg {msgNick = nick}
 -- Changes the nick of the msg if the first argument specifies it
 changeNickFstArg :: Message -> Message
 changeNickFstArg msg
-  | length wordMsg > 1 = changeNick (wordMsg !! 1) msg
-  | otherwise          = msg
-  where wordMsg = (T.words . msgContent) msg
+  | length (wordMsg msg) > 1 = changeNick (wordMsg msg !! 1) msg
+  | otherwise                = msg
+
+-- converts a message into a list containing a list of the contents based on words
+wordMsg :: Message -> [T.Text]
+wordMsg = T.words . msgContent
 
 -- UNUSED HELPER FUNCTIONS --------------------------------------------------------------------
 -- Like drpMsg but does it recursively until the break can't be found anymore

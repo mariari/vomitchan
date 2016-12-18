@@ -26,7 +26,7 @@ library
   build-depends:       aeson
                      , base >= 4.7 && < 5
                      , bytestring
-                     , directory >= 1.2.5 && < 2
+                     , directory >= 1.2.5
                      , hashtables
                      , lens
                      , monad-loops
