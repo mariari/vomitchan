@@ -15,12 +15,15 @@ module Bot.Network (
 ) where
 --- IMPORTS -----------------------------------------------------------------------------------
 import           Control.Monad
-import qualified Data.Aeson           as JSON
-import qualified Data.ByteString.Lazy as B
-import qualified Data.Text            as T
-import qualified Data.Text.IO         as T
+import qualified Data.Aeson            as JSON
+import qualified Data.ByteString.Lazy  as B
+import qualified Data.ByteString       as BS
+import qualified Data.ByteString.Char8 as BC (putStrLn)
+import qualified Data.Text             as T
+import qualified Data.Text.IO          as T
 import           GHC.Generics
 import           Network
+import qualified Network.Connection    as C
 import           System.IO
 import           Data.Monoid
 
@@ -59,22 +62,25 @@ readNetworks file = do
 saveNetworks :: FilePath -> [IRCNetwork] -> IO ()
 saveNetworks file nets = B.writeFile file (JSON.encode nets)
 
-
 -- joins a network and returns a handle
-joinNetwork :: IRCNetwork -> IO Handle
-joinNetwork net = do                                    -- connectTo is partially applied
-  h <- (connectTo . T.unpack . netServer) <*> (PortNumber . fromIntegral . netPort) $ net
-  hSetBuffering h NoBuffering
+joinNetwork :: IRCNetwork -> IO C.Connection
+joinNetwork net = do
+  ctx <- C.initConnectionContext
+  con <- C.connectTo ctx C.ConnectionParams { C.connectionHostname  = T.unpack $ netServer net
+                                           , C.connectionPort      = (fromIntegral . netPort) net
+                                           , C.connectionUseSecure = Just $ C.TLSSettingsSimple False False True
+                                           , C.connectionUseSocks  = Nothing
+                                           }
 
-  write h ("NICK", netNick net)
-  write h ("USER", netNick net <> " 0 * :connected")
-  unless (netPass net == "") (write h ("NICKSERV :IDENTIFY", netPass net) >> waitForAuth h)
-  mapM_ (write h) (zip (repeat "JOIN") (netChans net))
+  write con ("NICK", netNick net)
+  write con ("USER", netNick net <> " 0 * :connected")
+  unless (netPass net == "") (write con ("NICKSERV :IDENTIFY", netPass net) >> waitForAuth con)
+  mapM_ (write con) (zip (repeat "JOIN") (netChans net))
 
-  return h
+  return con
   where
-    waitForAuth h = T.hGetLine h >>= \line -> T.putStrLn line
-                                  >> unless (":You are now identified" `T.isInfixOf` line) (waitForAuth h)
+    waitForAuth h = C.connectionGetLine 10240 h >>= \line -> BC.putStrLn line
+                                  >> unless (":You are now identified" `BS.isInfixOf` line) (waitForAuth h)
 
 --- HELPER FUNCTIONS / UNUSED -----------------------------------------------------------------
 

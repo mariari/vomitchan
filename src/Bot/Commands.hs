@@ -111,6 +111,7 @@ cmdDream msg = do
   modifyChanState msg (toHashStorage . not . dream <*> mute $ state)
   return $ composeMsg "PRIVMSG" " :dame" msg
 
+-- Vomits up a colorful rainbow if vomitchan is asleep else it just vomits up red with no link
 cmdVomit :: CmdFuncImp
 cmdVomit msg = do
   state <- getChanState msg
@@ -163,6 +164,7 @@ cmdPart msg
   | isAdmin && "#" `T.isPrefixOf` msgChan msg = Just ("PART", msgChan msg)
   | otherwise = Nothing
   where isAdmin = msgUser msg `elem` admins
+
 -- TODO's -------------------------------------------------------------------------------------
 --
 -- TODO: add a *cheek pinch* function that puts the bot into reality mode

@@ -26,6 +26,7 @@ library
   build-depends:       aeson
                      , base >= 4.7 && < 5
                      , bytestring
+                     , connection
                      , directory >= 1.2.5
                      , hashtables
                      , lens
@@ -44,6 +45,7 @@ executable vomitchan-exe
   main-is:             Main.hs
   ghc-options:         -threaded -rtsopts -with-rtsopts=-N
   build-depends:       base
+                     , connection
                      , hashtables
                      , lens
                      , stm
