@@ -20,11 +20,8 @@ import qualified Data.ByteString.Lazy  as B
 import qualified Data.ByteString       as BS
 import qualified Data.ByteString.Char8 as BC (putStrLn)
 import qualified Data.Text             as T
-import qualified Data.Text.IO          as T
 import           GHC.Generics
-import           Network
 import qualified Network.Connection    as C
-import           System.IO
 import           Data.Monoid
 
 import           Bot.MessageType
@@ -67,11 +64,10 @@ joinNetwork :: IRCNetwork -> IO C.Connection
 joinNetwork net = do
   ctx <- C.initConnectionContext
   con <- C.connectTo ctx C.ConnectionParams { C.connectionHostname  = T.unpack $ netServer net
-                                           , C.connectionPort      = (fromIntegral . netPort) net
-                                           , C.connectionUseSecure = Just $ C.TLSSettingsSimple False False True
-                                           , C.connectionUseSocks  = Nothing
-                                           }
-
+                                            , C.connectionPort      = (fromIntegral . netPort) net
+                                            , C.connectionUseSecure = Just $ C.TLSSettingsSimple False False True
+                                            , C.connectionUseSocks  = Nothing
+                                            }
   write con ("NICK", netNick net)
   write con ("USER", netNick net <> " 0 * :connected")
   unless (netPass net == "") (write con ("NICKSERV :IDENTIFY", netPass net) >> waitForAuth con)
@@ -80,7 +76,7 @@ joinNetwork net = do
   return con
   where
     waitForAuth h = C.connectionGetLine 10240 h >>= \line -> BC.putStrLn line
-                                  >> unless (":You are now identified" `BS.isInfixOf` line) (waitForAuth h)
+                 >> unless (":You are now identified" `BS.isInfixOf` line) (waitForAuth h)
 
 --- HELPER FUNCTIONS / UNUSED -----------------------------------------------------------------
 

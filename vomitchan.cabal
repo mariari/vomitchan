@@ -29,7 +29,6 @@ library
                      , connection
                      , directory >= 1.2.5
                      , hashtables
-                     , lens
                      , monad-loops
                      , network
                      , random

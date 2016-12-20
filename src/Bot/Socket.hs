@@ -15,11 +15,9 @@ import qualified Data.Text          as T
 import qualified Data.Text.Format   as T
 import qualified Data.Text.IO       as T
 import qualified Network.Connection as C
-import           System.IO
 import           Control.Monad.IO.Class
 import           Control.Concurrent.STM
 import           Data.Foldable
-import           Data.Text.Encoding
 import qualified Data.ByteString.Char8 as BC (pack, unpack)
 
 import           Bot.Message

@@ -10,6 +10,7 @@ An IRC bot written in Haskell.  *cheek pinch*
 - `.source vomitchan` - prints a link to bot source
 - `.lewd <someone>` - lewds someone
 - `*vomits* [<someone>]` - 'vomits' a link posted by you, or optionally someone else
+- `*cheek pinch*` - turns off and on dreammode for a channel
 
 ### Admin Only
 - `.quit` - kill vomitchan ;-;
@@ -26,7 +27,11 @@ An IRC bot written in Haskell.  *cheek pinch*
   - aeson
   - monad-loops
   - turtle
-
+  - connection
+  - bytestring
+  - random
+  - stm
+  - hashtables
 Note: you can build and run this without Stack of course, figure it out for yourself.
 
 ### Building on Linux
@@ -37,6 +42,8 @@ Note: you can build and run this without Stack of course, figure it out for your
 vomitchan requires `data/networks.json` to store information about IRC networks to connect to.
 This file should look like the following:
 
+**NOTE: one can forego writing T F for "dreammode" and "mutemode" because they default to T F
+
 ```json
 [
   { "netServer" : "irc.freenode.net"
@@ -44,7 +51,7 @@ This file should look like the following:
   , "netNick"   : "vomitchan"
   , "netPass"   : "password"
   , "netChans"  : [ "#lainchan", "#extra-chan"]
-  , "netState"  : {"dreamMode" : [["#lainchan", false], ["#extra-chan", false]]
+  , "netState"  : {"dreamMode" : [["#lainchan", True], ["#extra-chan",  True]]
                   , "muteMode" : [["#lainchan", false], ["#extra-chan", false]]
                   }
   }
@@ -52,7 +59,7 @@ This file should look like the following:
 ```
 
 You can add multiple networks if you please.  
-**NOTE: multiple network support is experimental - expect everything to break horribly**
+**NOTE: Some networks may not get the join messages if one does not wait for authentication**
 
 ## Running
 The bot can be started within ghci by running `stack ghci` in the project directory. Once at the prompt, run the `main` function.  
