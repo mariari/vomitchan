@@ -42,7 +42,7 @@ Note: you can build and run this without Stack of course, figure it out for your
 vomitchan requires `data/networks.json` to store information about IRC networks to connect to.
 This file should look like the following:
 
-**NOTE: one can forego writing T F for "dreammode" and "mutemode" because they default to T F
+**NOTE: one can forego writing T F for "dreammode" and "mutemode" because they default to T F**
 
 ```json
 [
