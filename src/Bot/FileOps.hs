@@ -34,14 +34,15 @@ appendLog msg = T.appendFile (getUsrFldr msg <> "Links.log")
 
 -- Downloads the requested file to the users path
 dwnUsrFile :: MonadIO io => Message -> Text -> io ExitCode
-dwnUsrFile msg url = pwd >>= \b -> (cd . fromString . getUsrFldr $ msg)
-                                *> proc "curl" ["--max-filesize", "104857600", "-O", url] empty <* cd b
+dwnUsrFile msg url = shell ("cd " <> (fromString . getUsrFldr $ msg) <>
+                            " && curl --max-filesize 104857600 -O " <> url) empty
 
 upUsrFile :: MonadIO m => T.Text -> m T.Text
 upUsrFile file = check <$> procStrict "curl" ["-F", "upload=@" <> file, "https://w1r3.net"] empty
   where check (_,n)
           | T.isPrefixOf "http" n = T.init n
           | otherwise             = ""
+
 -- HELPER FUNCTIONS ---------------------------------------------------------------------------
 
 -- Gets folder path based on Message (Chan <> Nick)

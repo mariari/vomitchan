@@ -51,7 +51,7 @@ This file should look like the following:
   , "netNick"   : "vomitchan"
   , "netPass"   : "password"
   , "netChans"  : [ "#lainchan", "#extra-chan"]
-  , "netState"  : {"dreamMode" : [["#lainchan", True], ["#extra-chan",  True]]
+  , "netState"  : {"dreamMode" : [["#lainchan", true], ["#extra-chan",  true]]
                   , "muteMode" : [["#lainchan", false], ["#extra-chan", false]]
                   }
   }
