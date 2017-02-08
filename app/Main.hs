@@ -52,10 +52,12 @@ main = do
 
   where connect s n = joinNetwork n >>= \x -> listen x (netServer n) s
         -- poorly composed :( Maybe use lenses to fix eventually
+        initHash :: [IRCNetwork] -> H.BasicHashTable T.Text HashStorage -> IO ()
         initHash net ht = sequence_ $ do
           x  <- net
           y  <- dreamMode . netState $ x
           z  <- muteMode .  netState $ x
           eq <- [(fst y, (snd y, snd z)) | fst y == fst z] -- check if the y and z are talking
           return $ hashadd (netServer x) eq ht           -- about the same channel
-        hashadd serv (ch, x) ht = H.insert ht (serv <> ch) $ uncurry toHashStorage x
+        hashadd :: T.Text -> (T.Text, (Bool, Bool)) -> H.BasicHashTable T.Text HashStorage -> IO ()
+        hashadd serv (chan, x) ht = H.insert ht (serv <> chan) $ uncurry toHashStorage x
