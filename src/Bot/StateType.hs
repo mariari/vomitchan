@@ -38,6 +38,13 @@ data StateConfig = StateConfig
 instance JSON.FromJSON StateConfig
 instance JSON.ToJSON   StateConfig
 
+
+-- set to fix HashSTorage not being a functor issue
+-- data HashStorage a = HashStorage { dream :: a, mute :: a } deriving(Functor)
+--data Pt_ a = Pt { pX :: a, pY :: a } deriving(Functor)
+--type Pt = Pt_ Integer
+
+
 -- Stores the Hash Information per channel
 data HashStorage = HashStorage
                  { dream :: Bool

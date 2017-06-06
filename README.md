@@ -35,7 +35,7 @@ An IRC bot written in Haskell.  *cheek pinch*
 Note: you can build and run this without Stack of course, figure it out for yourself.
 
 ### Building on Linux
-- clone this repo using `git clone https://gitla.in/MrDetonia/vomitchan.git`
+- clone this repo using `git clone https://gitla.in/nymphet/vomitchan.git`
 - run `cd vomitchan && stack setup && stack build` to compile
 
 ## Configuration

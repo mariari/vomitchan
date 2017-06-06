@@ -125,10 +125,9 @@ cmdVomit msg = do
           | dream state   = usrFldrNoLog >=> (\y -> linCheck y <$> randomRIO (0, length y -1))
                                          >=> (T.unpack <$>) . upUsrFile . T.pack . (getUsrFldr newUsr <>) $ newUsr
           | otherwise     = return ""
-
-      linCheck xs y
-          | null xs   = ""
-          | otherwise = xs !! y
+          
+      linCheck [] _ = ""
+      linCheck xs y = xs !! y
 
       randEff txt num
           | dream state   = f txt
@@ -162,7 +161,7 @@ cmdPart :: CmdFunc
 cmdPart msg
   | isAdmin && length (wordMsg msg) > 1       = Just ("PART", wordMsg msg !! 1)
   | isAdmin && "#" `T.isPrefixOf` msgChan msg = Just ("PART", msgChan msg)
-  | otherwise = Nothing
+  | otherwise                                = Nothing
   where isAdmin = msgUser msg `elem` admins
 
 -- TODO's -------------------------------------------------------------------------------------

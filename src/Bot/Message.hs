@@ -21,7 +21,7 @@ cmdWbPg :: [T.Text]
 cmdWbPg = ["http", "ftp"]
 
 cmdPic :: [T.Text]
-cmdPic = ["jpg", "png", "jpeg", "gif"]
+cmdPic = ["jpg", "png", "jpeg", "gif", "jpg:large", "png:large", "jpeg:large"]
 
 cmdVid :: [T.Text]
 cmdVid = ["webm", "mp4", "flv", "ogv", "wmv", "gifv"]
@@ -30,7 +30,7 @@ cmdMus :: [T.Text]
 cmdMus = ["flac", "mp3", "tta", "ogg", "wmv"]
 
 cmdMisc :: [T.Text]
-cmdMisc = ["pdf"]
+cmdMisc = ["pdf", "epub", "djvu", "txt", "hs", ".lisp", ".cpp"]
 
 cmdAll :: [T.Text]
 cmdAll = fold [cmdPic, cmdVid, cmdMus, cmdMisc]
