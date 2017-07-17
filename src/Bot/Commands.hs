@@ -117,8 +117,6 @@ cmdVomit :: CmdFuncImp
 cmdVomit msg = do
   state <- getChanState msg
   let
-      randRange :: V.Vector Char
-      randRange = (chr <$>) . V.fromList $ [8704..8959] <> [32..75]
 
       randVom :: Int -> Int -> String
       randVom numT        = fmap (randRange V.!) . take numT . randomRs (0, length randRange - 1) . mkStdGen
@@ -183,6 +181,14 @@ cmdPart msg
 --
 --- HELPER FUNCTIONS --------------------------------------------------------------------------
 
+-- generates the randomRange for the cmdVomit command
+randRange :: V.Vector Char
+randRange = (chr <$>) . V.fromList $  [8704..8959]   -- Mathematical symbols
+                                   <> [32..75]       -- parts of the normal alphabet and some misc symbols
+                                   <> [10627,10628]  -- obscure braces
+                                   <> [10631, 10632] -- obscure braces
+                                   <> [945..969]     -- greek symbols
+
 -- Figures out where to send a response to
 msgDest :: Message -> T.Text
 msgDest msg
@@ -237,6 +243,7 @@ changeNickFstArg msg
 -- converts a message into a list containing a list of the contents based on words
 wordMsg :: Message -> [T.Text]
 wordMsg = T.words . msgContent
+
 
 -- UNUSED HELPER FUNCTIONS --------------------------------------------------------------------
 -- Like drpMsg but does it recursively until the break can't be found anymore

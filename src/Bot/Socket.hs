@@ -27,7 +27,7 @@ import           Bot.StateType
 
 -- takes a Handle and an (Action, Args) tuple and sends to socket
 write :: C.Connection -> (T.Text, T.Text) -> IO ()
-write h (act,args) = C.connectionPut h ((BU.fromString . T.unpack . fold) [act, " ", args, "\r\n"])
+write h (act,args) = C.connectionPut h (BU.fromString . T.unpack . fold $ [act, " ", args, "\r\n"])
                      >> T.print "{} {}\n" [act,args]
 
 
@@ -47,5 +47,5 @@ listen h net state = iterateUntil (== Just ()) resLoop >> (liftIO . C.connection
     inout s net quit state = do
       res <- respond s net state
       case res of
-        Just x -> write h x >> when (fst x == T.pack "QUIT") (C.putMVar quit ())
+        Just x  -> write h x >> when (fst x == T.pack "QUIT") (C.putMVar quit ())
         Nothing -> return ()
