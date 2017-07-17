@@ -117,9 +117,9 @@ cmdVomit :: CmdFuncImp
 cmdVomit msg = do
   state <- getChanState msg
   let
-
-      randVom :: Int -> Int -> T.Text
-      randVom numT        = T.pack . fmap (randRange V.!) . take numT . randomRs (0, length randRange - 1) . mkStdGen
+     -- has to be string so foldrM doesn't get annoyed in randApply
+      randVom :: Int -> Int -> String
+      randVom numT        = fmap (randRange V.!) . take numT . randomRs (0, length randRange - 1) . mkStdGen
 
       newUsr              = changeNickFstArg msg
       randRang x y        = fst . randomR (x,y) . mkStdGen
@@ -149,7 +149,7 @@ cmdVomit msg = do
 
       randApply :: Int -> Int -> IO T.Text
       randApply numT numR = foldrM (\chr str -> fmap ((<> str) . randColEff chr) randomIO)
-                             "" (T.unpack $ randVom numT numR)
+                             "" (randVom numT numR)
 
       randMessage :: IO T.Text
       randMessage         = randomRIO (8,23) >>= \x ->
