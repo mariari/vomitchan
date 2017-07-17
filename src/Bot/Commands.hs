@@ -11,7 +11,6 @@ module Bot.Commands (
 import           Data.Monoid
 import qualified Data.Text       as T
 
-import qualified Data.HashTable.IO as H
 import           Bot.FileOps
 import           Bot.MessageType
 import           Bot.State
@@ -20,7 +19,8 @@ import           System.Random
 import           Data.Char
 import           Data.Foldable
 import           Control.Monad
-import           Control.Concurrent.STM
+import qualified Data.ByteString as BS
+import qualified Data.Vector as V
 --- TYPES -------------------------------------------------------------------------------------
 
 -- type of all command functions
@@ -111,12 +111,18 @@ cmdDream msg = do
   modifyChanState msg (toHashStorage . not . dream <*> mute $ state)
   return $ composeMsg "PRIVMSG" " :dame" msg
 
+
 -- Vomits up a colorful rainbow if vomitchan is asleep else it just vomits up red with no link
 cmdVomit :: CmdFuncImp
 cmdVomit msg = do
   state <- getChanState msg
   let
-      randVom numT        = (chr <$>) . take numT . randomRs (32, 75) . mkStdGen
+      randRange :: V.Vector Char
+      randRange = (chr <$>) . V.fromList $ [8704..8959] <> [32..75]
+
+      randVom :: Int -> Int -> String
+      randVom numT        = fmap (randRange V.!) . take numT . randomRs (0, length randRange - 1) . mkStdGen
+
       newUsr              = changeNickFstArg msg
       randRang x y        = fst . randomR (x,y) . mkStdGen
 

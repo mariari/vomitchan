@@ -18,7 +18,8 @@ import qualified Network.Connection as C
 import           Control.Monad.IO.Class
 import           Control.Concurrent.STM
 import           Data.Foldable
-import qualified Data.ByteString.Char8 as BC (pack, unpack)
+import qualified Data.ByteString.UTF8 as BU
+
 
 import           Bot.Message
 import           Bot.StateType
@@ -26,7 +27,7 @@ import           Bot.StateType
 
 -- takes a Handle and an (Action, Args) tuple and sends to socket
 write :: C.Connection -> (T.Text, T.Text) -> IO ()
-write h (act,args) = C.connectionPut h ((BC.pack . T.unpack . fold) [act, " ", args, "\r\n"])
+write h (act,args) = C.connectionPut h ((BU.fromString . T.unpack . fold) [act, " ", args, "\r\n"])
                      >> T.print "{} {}\n" [act,args]
 
 
@@ -35,7 +36,7 @@ listen :: C.Connection -> T.Text -> TVar GlobalState -> IO ()
 listen h net state = iterateUntil (== Just ()) resLoop >> (liftIO . C.connectionClose) h
   where
     resLoop = do
-        s    <-  (T.pack . BC.unpack) <$> C.connectionGetLine 10240 h
+        s    <-  (T.pack . BU.toString) <$> C.connectionGetLine 10240 h
         T.putStrLn s
         print net
         quit <- C.newEmptyMVar

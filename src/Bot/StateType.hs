@@ -19,7 +19,6 @@ module Bot.StateType (
 ) where
 --- IMPORTS -----------------------------------------------------------------------------------
 import qualified Data.Text         as T
-import           Text.Regex.TDFA
 import qualified Data.Aeson        as JSON
 import           GHC.Generics
 import qualified Data.HashTable.IO as H
@@ -57,7 +56,7 @@ toHashStorage = HashStorage
 
 --  All the Global Variables that make up State
 newtype GlobalState = GlobalState
-                 {hash  :: H.BasicHashTable T.Text HashStorage}
+                 {hash :: H.BasicHashTable T.Text HashStorage}
 
 -- Generates GlobalState
 toGlobalState :: H.BasicHashTable T.Text HashStorage -> GlobalState
