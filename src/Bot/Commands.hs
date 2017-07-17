@@ -118,41 +118,44 @@ cmdVomit msg = do
   state <- getChanState msg
   let
 
-      randVom :: Int -> Int -> String
-      randVom numT        = fmap (randRange V.!) . take numT . randomRs (0, length randRange - 1) . mkStdGen
+      randVom :: Int -> Int -> T.Text
+      randVom numT        = T.pack . fmap (randRange V.!) . take numT . randomRs (0, length randRange - 1) . mkStdGen
 
       newUsr              = changeNickFstArg msg
       randRang x y        = fst . randomR (x,y) . mkStdGen
 
-      randLink :: IO String
+      randLink :: IO T.Text
       randLink
           | dream state   = usrFldrNoLog >=> (\y -> linCheck y <$> randomRIO (0, length y -1))
-                                         >=> (T.unpack <$>) . upUsrFile . T.pack . (getUsrFldr newUsr <>) $ newUsr
+                                         >=> upUsrFile . T.pack . (getUsrFldr newUsr <>) $ newUsr
           | otherwise     = return ""
-          
+
       linCheck [] _ = ""
       linCheck xs y = xs !! y
 
+      randEff :: T.Text -> Int -> T.Text
       randEff txt num
           | dream state   = f txt
           | otherwise     = f (action "\x16" txt)
           where f = action (["\x2","\x1D","\x1F","\x16", "", " "] !! randRang 0 5 num)
 
+      randCol :: Int -> T.Text -> T.Text
       randCol num txt
           | dream state   = actionCol txt ([0..15] !! randRang 0 15 num)
           | otherwise     = actionCol txt 4
 
-      randColEff txt      = randCol <*> (randEff . T.pack) [txt]
+      randColEff :: Char -> Int -> T.Text
+      randColEff txt      = randCol <*> randEff (T.singleton txt)
 
-      randApply :: Int -> Int -> IO String
-      randApply numT numR = foldrM (\chr str -> fmap ((<> str) . T.unpack . randColEff chr) randomIO)
-                            "" (randVom numT numR)
+      randApply :: Int -> Int -> IO T.Text
+      randApply numT numR = foldrM (\chr str -> fmap ((<> str) . randColEff chr) randomIO)
+                             "" (T.unpack $ randVom numT numR)
 
-      randMessage :: IO String
+      randMessage :: IO T.Text
       randMessage         = randomRIO (8,23) >>= \x ->
                             randomIO         >>= \z ->
                             randomIO         >>= \y -> fold [randApply x z, return " ", randLink, return " ", randApply x y]
-  flip (composeMsg "PRIVMSG" . (" :" <>) . T.pack) msg <$> randMessage
+  flip (composeMsg "PRIVMSG" . (" :" <>)) msg <$> randMessage
 
 -- Joins the first channel in the message if the user is an admin else do nothing
 cmdJoin :: CmdFunc
