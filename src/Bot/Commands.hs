@@ -85,7 +85,7 @@ cmdSrc = composeMsg "NOTICE" " :[Haskell] https://gitla.in/nymphet/vomitchan"
 -- prints help information
 -- TODO: Store command info in cmdList and generate this text on the fly
 cmdHelp :: CmdFunc
-cmdHelp = composeMsg "NOTICE" " :Commands: .lewd <someone>, *vomits* [nick]"
+cmdHelp = composeMsg "NOTICE" " :Commands: (.lewd <someone>), (*vomits* [nick]), (*cheek pinch*)"
 
 -- quit
 cmdQuit :: CmdFunc
@@ -133,23 +133,24 @@ cmdVomit msg = do
       linCheck [] _ = ""
       linCheck xs y = xs !! y
 
-      randEff :: T.Text -> Int -> T.Text
+      randEff :: String -> Int -> String
       randEff txt num
           | dream state   = f txt
-          | otherwise     = f (action "\x16" txt)
-          where f = action (["\x2","\x1D","\x1F","\x16", "", " "] !! randRang 0 5 num)
+          | otherwise     = f (actionS "\x16" txt)
+          where f = actionS (["\x2","\x1D","\x1F","\x16", "", " "] !! randRang 0 5 num)
 
-      randCol :: Int -> T.Text -> T.Text
+      randCol :: Int -> String -> String
       randCol num txt
-          | dream state   = actionCol txt ([0..15] !! randRang 0 15 num)
-          | otherwise     = actionCol txt 4
+          | dream state   = actionColS txt ([0..15] !! randRang 0 15 num)
+          | otherwise     = actionColS txt 4
 
-      randColEff :: Char -> Int -> T.Text
-      randColEff txt      = randCol <*> randEff (T.singleton txt)
+      randColEff :: Char -> Int -> String
+      randColEff txt      = randCol <*> randEff [txt]
 
+      -- consing to text is O(n), thus we deal with strings here
       randApply :: Int -> Int -> IO T.Text
-      randApply numT numR = foldrM (\chr str -> fmap ((<> str) . randColEff chr) randomIO)
-                             "" (randVom numT numR)
+      randApply numT numR = T.pack <$> foldrM (\chr str -> fmap ((<> str) . randColEff chr) randomIO)
+                                      "" (randVom numT numR)
 
       randMessage :: IO T.Text
       randMessage         = randomRIO (8,23) >>= \x ->
@@ -216,12 +217,12 @@ actionMe :: T.Text -> T.Text
 actionMe txt = " :\0001ACTION " <> txt <> "\0001"
 
 -- Used for color commnad... color can go all the way up to 15
-actionCol :: T.Text -> Int -> T.Text
-actionCol txt num = "\0003" <> T.pack (show num) <> txt <> "\0003"
+actionColS :: String -> Int -> String
+actionColS txt num = "\0003" <> (show num) <> txt <> "\0003"
 
--- Used as a generic version for making bold, italic, underlined, and swap
-action :: T.Text -> T.Text -> T.Text
-action cmd txt = cmd <> txt <> cmd
+-- Used as a generic version for making bold, italic, underlined, and swap, for strings
+actionS :: String -> String -> String
+actionS cmd txt = cmd <> txt <> cmd
 
 -- Used for  grabbing elements out of a 3 element tuple
 f3 :: (a,b,c) -> a
@@ -257,3 +258,11 @@ drpMsgRec msg bkL bkR = recurse [] drpMess
         drpMess            = T.breakOn bkR (drpMsg msg bkL)
         drpLeft            = T.breakOn bkL
         drpRight           = T.breakOn bkR
+
+-- Used as a generic version for making bold, italic, underlined, and swap
+action :: T.Text -> T.Text -> T.Text
+action cmd txt = cmd <> txt <> cmd
+
+-- Used for color commnad... color can go all the way up to 15
+actionCol :: T.Text -> Int -> T.Text
+actionCol txt num = "\0003" <> T.pack (show num) <> txt <> "\0003"
