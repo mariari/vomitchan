@@ -19,7 +19,6 @@ import           System.Random
 import           Data.Char
 import           Data.Foldable
 import           Control.Monad
-import qualified Data.ByteString as BS
 import qualified Data.Vector as V
 --- TYPES -------------------------------------------------------------------------------------
 
@@ -53,12 +52,13 @@ cmdList =  [(cmdBots, False,  [".bots", ".bot vomitchan"])
 cmdListImp :: [(CmdFuncImp, Infix,  CmdAlias)]
 cmdListImp =  [(cmdVomit,   True,   ["*vomits*"])
               ,(cmdDream,   False,  ["*cheek pinch*"])
+              ,(cmdFleecy,  False,  ["*step*"])
               ,(cmdLewds,   False,  [".lewd "])]
 
 -- The List of all functions pure <> impure
-cmdTotList :: [(CmdFuncImp, Infix,  CmdAlias)]
+cmdTotList :: [(CmdFuncImp, Infix, CmdAlias)]
 cmdTotList = cmdList2 <> cmdListImp
-  where cmdList2 = fmap (\x -> (return . f3 x, s3 x, t3 x)) cmdList
+  where cmdList2 = (\(f3,s3,t3) -> (return . f3, s3, t3)) <$> cmdList
 
 -- FUNCTIONS ----------------------------------------------------------------------------------
 
@@ -106,10 +106,11 @@ cmdLewd msg = (composeMsg "PRIVMSG" . actionMe) ("lewds " <> target) msg
 
 -- Causes Vomitchan to sleep ∨ awaken
 cmdDream :: CmdFuncImp
-cmdDream msg = do
-  state <- getChanState msg
-  modifyChanState msg (toHashStorage . not . dream <*> mute $ state)
-  return $ composeMsg "PRIVMSG" " :dame" msg
+cmdDream msg = modifyDreamState msg >> return (composeMsg "PRIVMSG" " :dame" msg)
+
+-- Causes vomit to go into fleecy mode (at the moment just prints <3's instead of actual text in cmdVomit)
+cmdFleecy :: CmdFuncImp
+cmdFleecy msg = modifyFleecyState msg >> return (composeMsg "PRIVMSG" " :dame" msg)
 
 
 -- Vomits up a colorful rainbow if vomitchan is asleep else it just vomits up red with no link
@@ -117,9 +118,13 @@ cmdVomit :: CmdFuncImp
 cmdVomit msg = do
   state <- getChanState msg
   let
+      effectList :: [String]
+      effectList = ["\x2","\x1D","\x1F","\x16", "", " "]
      -- has to be string so foldrM doesn't get annoyed in randApply
       randVom :: Int -> Int -> String
-      randVom numT        = fmap (randRange V.!) . take numT . randomRs (0, length randRange - 1) . mkStdGen
+      randVom numT numG
+        | fleecy state = replicate numT '♥'
+        | otherwise    = fmap (randRange V.!) . take numT . randomRs (0, length randRange - 1) . mkStdGen $ numG
 
       newUsr              = changeNickFstArg msg
       randRang x y        = fst . randomR (x,y) . mkStdGen
@@ -133,43 +138,48 @@ cmdVomit msg = do
       linCheck [] _ = ""
       linCheck xs y = xs !! y
 
-      randEff :: String -> Int -> String
-      randEff txt num
+      randEff :: [String] -> String -> Int -> String
+      randEff effectList txt num
           | dream state   = f txt
-          | otherwise     = f (actionS "\x16" txt)
-          where f = actionS (["\x2","\x1D","\x1F","\x16", "", " "] !! randRang 0 5 num)
+          | otherwise     = f (action "\x16" txt)
+          where f = action (effectList !! randRang 0 (length effectList - 1) num)
 
       randCol :: Int -> String -> String
       randCol num txt
           | dream state   = actionColS txt ([0..15] !! randRang 0 15 num)
           | otherwise     = actionColS txt 4
 
-      randColEff :: Char -> Int -> String
-      randColEff txt      = randCol <*> randEff [txt]
+      randColEff :: [String] -> Char -> Int -> String
+      randColEff eff txt  = randCol <*> randEff eff [txt]
 
       -- consing to text is O(n), thus we deal with strings here
+      charApply :: [String] -> Char -> String -> IO String
+      charApply eff chr str = ((<> str) . randColEff eff chr) <$> randomIO
+
       randApply :: Int -> Int -> IO T.Text
-      randApply numT numR = T.pack <$> foldrM (\chr str -> fmap ((<> str) . randColEff chr) randomIO)
-                                      "" (randVom numT numR)
+      randApply numT numR = T.pack <$> foldrM (charApply effectList) "" (randVom numT numR)
+
+      randApp :: String -> IO T.Text
+      randApp str         = T.pack <$> foldrM (charApply . init . init $ effectList) "" str
 
       randMessage :: IO T.Text
       randMessage         = randomRIO (8,23) >>= \x ->
                             randomIO         >>= \z ->
-                            randomIO         >>= \y -> fold [randApply x z, return " ", randLink, return " ", randApply x y]
+                            randomIO         >>= \y -> fold [randApply x z, return " ", randLink >>= randApp . T.unpack, return " ", randApply x y]
   flip (composeMsg "PRIVMSG" . (" :" <>)) msg <$> randMessage
 
 -- Joins the first channel in the message if the user is an admin else do nothing
 cmdJoin :: CmdFunc
 cmdJoin msg
   | msgUser msg `elem` admins && length (wordMsg msg) > 1 = Just ("JOIN", wordMsg msg !! 1)
-  | otherwise = Nothing
+  | otherwise                                             = Nothing
 
 -- Leaves the first channel in the message if the user is an admin else do nothing
 cmdPart :: CmdFunc
 cmdPart msg
   | isAdmin && length (wordMsg msg) > 1       = Just ("PART", wordMsg msg !! 1)
   | isAdmin && "#" `T.isPrefixOf` msgChan msg = Just ("PART", msgChan msg)
-  | otherwise                                = Nothing
+  | otherwise                                 = Nothing
   where isAdmin = msgUser msg `elem` admins
 
 -- TODO's -------------------------------------------------------------------------------------
@@ -216,23 +226,15 @@ composeMsg method str msg = Just (method, msgDest msg <> str)
 actionMe :: T.Text -> T.Text
 actionMe txt = " :\0001ACTION " <> txt <> "\0001"
 
--- Used for color commnad... color can go all the way up to 15
-actionColS :: String -> Int -> String
-actionColS txt num = "\0003" <> (show num) <> txt <> "\0003"
 
 -- Used as a generic version for making bold, italic, underlined, and swap, for strings
-actionS :: String -> String -> String
-actionS cmd txt = cmd <> txt <> cmd
+action :: Monoid m => m -> m -> m
+action cmd txt = cmd <> txt <> cmd
 
--- Used for  grabbing elements out of a 3 element tuple
-f3 :: (a,b,c) -> a
-f3 (a,_,_) = a
+-- Used for color commnad... color can go all the way up to 15
+actionColS :: String -> Int -> String
+actionColS txt num = action "\0003" (show num <> txt)
 
-s3 :: (a,b,c) -> b
-s3 (_,b,_) = b
-
-t3 :: (a,b,c) -> c
-t3 (_,_,c) = c
 
 -- Changes the nick of the msg
 changeNick :: T.Text -> Message -> Message
@@ -258,10 +260,6 @@ drpMsgRec msg bkL bkR = recurse [] drpMess
         drpMess            = T.breakOn bkR (drpMsg msg bkL)
         drpLeft            = T.breakOn bkL
         drpRight           = T.breakOn bkR
-
--- Used as a generic version for making bold, italic, underlined, and swap
-action :: T.Text -> T.Text -> T.Text
-action cmd txt = cmd <> txt <> cmd
 
 -- Used for color commnad... color can go all the way up to 15
 actionCol :: T.Text -> Int -> T.Text

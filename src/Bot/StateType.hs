@@ -13,6 +13,8 @@ module Bot.StateType (
   toGlobalState,
   dreamMode,
   muteMode,
+  fleecyMode,
+  fleecy,
   dream,
   mute,
   hash
@@ -31,6 +33,7 @@ type Chan   = T.Text
 data StateConfig = StateConfig
                  { dreamMode   :: [(Chan, Bool)]
                  , muteMode    :: [(Chan, Bool)]
+                 , fleecyMode  :: [(Chan, Bool)]
                  } deriving (Show, Generic)
 
 
@@ -46,12 +49,13 @@ instance JSON.ToJSON   StateConfig
 
 -- Stores the Hash Information per channel
 data HashStorage = HashStorage
-                 { dream :: Bool
-                 , mute  :: Bool
+                 { dream  :: Bool
+                 , mute   :: Bool
+                 , fleecy :: Bool
                  }
 
 -- Generates HashStorage
-toHashStorage :: Bool -> Bool -> HashStorage
+toHashStorage :: Bool -> Bool -> Bool -> HashStorage
 toHashStorage = HashStorage
 
 --  All the Global Variables that make up State

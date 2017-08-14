@@ -54,9 +54,10 @@ main = do
         initHash :: [IRCNetwork] -> H.BasicHashTable T.Text HashStorage -> IO ()
         initHash net ht = sequence_ $ do
           x  <- net
-          y  <- dreamMode . netState $ x
-          z  <- muteMode  . netState $ x
-          eq <- [(fst y, (snd y, snd z)) | fst y == fst z] -- check if the y and z are talking
+          d  <- dreamMode  . netState $ x
+          m  <- muteMode   . netState $ x
+          f  <- fleecyMode . netState $ x
+          eq <- [(fst d, (snd d, snd m, snd f)) | fst d == fst m && fst m == fst f] -- check if the y and z are talking
           return $ hashadd (netServer x) eq ht           -- about the same channel
-        hashadd :: T.Text -> (T.Text, (Bool, Bool)) -> H.BasicHashTable T.Text HashStorage -> IO ()
-        hashadd serv (chan, x) ht = H.insert ht (serv <> chan) $ uncurry toHashStorage x
+        hashadd :: T.Text -> (T.Text, (Bool, Bool, Bool)) -> H.BasicHashTable T.Text HashStorage -> IO ()
+        hashadd serv (chan, (d, m, f)) ht = H.insert ht (serv <> chan) $ toHashStorage d m f
