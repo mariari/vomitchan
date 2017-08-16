@@ -18,7 +18,7 @@ import           Bot.StateType
 import           System.Random
 import           Data.Char
 import           Data.Foldable
-import           Control.Monad
+import           Control.Lens
 import qualified Data.Vector as V
 --- TYPES -------------------------------------------------------------------------------------
 
@@ -131,12 +131,13 @@ cmdVomit msg = do
 
       randLink :: IO T.Text
       randLink
-          | dream state   = usrFldrNoLog >=> (\y -> linCheck y <$> randomRIO (0, length y -1))
-                                         >=> upUsrFile . T.pack . (getUsrFldr newUsr <>) $ newUsr
+          | dream state   = usrFldrNoLog newUsr >>= \y -> (y ^?) . element <$> randomRIO (0, length y -1) >>= fileCheck
           | otherwise     = return ""
 
-      linCheck [] _ = ""
-      linCheck xs y = xs !! y
+      -- checks if there is a file to upload!
+      fileCheck :: Maybe String -> IO T.Text
+      fileCheck (Just xs) = upUsrFile . T.pack . (getUsrFldr newUsr <>) $ xs
+      fileCheck Nothing   = return ""
 
       randEff :: [String] -> String -> Int -> String
       randEff effectList txt num

@@ -64,7 +64,7 @@ joinNetwork :: IRCNetwork -> IO C.Connection
 joinNetwork net = do
   ctx <- C.initConnectionContext
   con <- C.connectTo ctx C.ConnectionParams { C.connectionHostname  = T.unpack $ netServer net
-                                            , C.connectionPort      = (fromIntegral . netPort) net
+                                            , C.connectionPort      = fromIntegral $ netPort net
                                             , C.connectionUseSecure = Just $ C.TLSSettingsSimple False False True
                                             , C.connectionUseSocks  = Nothing
                                             }

@@ -54,7 +54,7 @@ listUsrFldr :: Message -> IO [FilePath]
 listUsrFldr msg = doesDirectoryExist usrfldr >>= lsFldr
   where lsFldr dirp
           | dirp      = listDirectory usrfldr
-          | otherwise = return [""]
+          | otherwise = return []
         usrfldr = getUsrFldr msg
 
 -- Lists all the files except the .log files

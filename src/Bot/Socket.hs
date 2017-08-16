@@ -28,7 +28,7 @@ import           Bot.StateType
 -- takes a Handle and an (Action, Args) tuple and sends to socket
 write :: C.Connection -> (T.Text, T.Text) -> IO ()
 write h (act,args) = C.connectionPut h (BU.fromString . T.unpack . fold $ [act, " ", args, "\r\n"])
-                     >> T.print "{} {}\n" [act,args]
+                  >> T.print "{} {}\n" [act,args]
 
 
 -- simply listens to a socket forever
