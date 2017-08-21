@@ -46,14 +46,18 @@ cmdList =  [(cmdBots, False,  [".bots", ".bot vomitchan"])
            ,(cmdHelp, False,  [".help vomitchan"])
            ,(cmdQuit, False,  [".quit"])
            ,(cmdJoin, False,  [".join"])
-           ,(cmdPart, False,  [".leave", ".part"])]
+           ,(cmdPart, False,  [".leave", ".part"])
+           ,(cmdLotg, False,  [".lotg"])
+           ,(cmdBane, False,  [".amysbane"])]
 
 -- List of all Impure functions
-cmdListImp :: [(CmdFuncImp, Infix,  CmdAlias)]
-cmdListImp =  [(cmdVomit,   True,   ["*vomits*"])
-              ,(cmdDream,   False,  ["*cheek pinch*"])
-              ,(cmdFleecy,  False,  ["*step*"])
-              ,(cmdLewds,   False,  [".lewd "])]
+cmdListImp :: [(CmdFuncImp,     Infix,  CmdAlias)]
+cmdListImp =  [(cmdVomit,       True,   ["*vomits*"])
+              ,(cmdDream,       False,  ["*cheek pinch*"])
+              ,(cmdFleecy,      False,  ["*step*"])
+              ,(cmdLewds,       False,  [".lewd "])
+              ,(cmdEightBall,   False,  [".8ball"])]
+
 
 -- The List of all functions pure <> impure
 cmdTotList :: [(CmdFuncImp, Infix, CmdAlias)]
@@ -103,6 +107,7 @@ cmdLewds msg = getChanState msg >>= f
 cmdLewd :: CmdFunc
 cmdLewd msg = (composeMsg "PRIVMSG" . actionMe) ("lewds " <> target) msg
   where target = T.tail $ drpMsg msg " "
+
 
 -- Causes Vomitchan to sleep ∨ awaken
 cmdDream :: CmdFuncImp
@@ -183,6 +188,48 @@ cmdPart msg
   | otherwise                                 = Nothing
   where isAdmin = msgUser msg `elem` admins
 
+
+
+
+
+
+
+
+
+-- SLEX COMMANDS--------------------------------------------------------------------------------
+cmdLotg :: CmdFunc
+cmdLotg msg = composeMsg "PRIVMSG" (" :May the Luck of the Grasshopper be with you always, " <> target) msg
+  where target = T.tail $ drpMsg msg " "
+
+
+cmdEightBall :: CmdFuncImp
+cmdEightBall msg = (\x -> composeMsg "PRIVMSG" (" :" <> respones V.! x) msg) <$> answer
+  where respones = V.fromList ["It is certain",
+                               "It is decidedly so",
+                               "Without a doubt",
+                               "Yes definitely",
+                               "You may rely on it",
+                               "As I see it, yes",
+                               "Most likely",
+                               "Outlook good",
+                               "Yes",
+                               "Signs point to yes",
+                               "Reply hazy try again",
+                               "Ask again later",
+                               "Better not tell you now",
+                               "Cannot predict now",
+                               "Concentrate and ask again",
+                               "Don't count on it",
+                               "My reply is no"]
+        answer = randomRIO (0,length respones - 1)
+
+cmdBane :: CmdFunc
+cmdBane msg = composeMsg "PRIVMSG" (" :The elder priest tentacles to tentacle "
+                                     <> target
+                                     <> "! "
+                                     <> target
+                                     <> "'s cloak of magic resistance disintegrates!") msg
+  where target = T.tail $ drpMsg msg " "
 -- TODO's -------------------------------------------------------------------------------------
 --
 -- TODO: add a *cheek pinch* function that puts the bot into reality mode
