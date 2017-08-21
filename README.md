@@ -3,14 +3,17 @@ An IRC bot written in Haskell.  *cheek pinch*
 
 ---
 
-![vomitchan running in IRC](https://u.pomf.is/nuuyqt.png)
+![vomitchan running in IRC](https://puu.sh/xfN35/2f9ee0615a.png)
 
 ## Commands
 - `.bots [vomitchan]` - prints bot info
 - `.source vomitchan` - prints a link to bot source
 - `.lewd <someone>` - lewds someone
-- `*vomits* [<someone>]` - 'vomits' a link posted by you, or optionally someone else
+- `*vomits* <someone>` - 'vomits' a link posted by you, or optionally someone else
 - `*cheek pinch*` - turns off and on dreammode for a channel
+- `*step*` - turns off and on fleecyMode for a channel
+- '.lotg <someone>' - gives the luck of the grasshopper to a user
+- '.8ball <question>' - acts like an eight ball!
 
 ### Admin Only
 - `.quit` - kill vomitchan ;-;
@@ -32,7 +35,6 @@ An IRC bot written in Haskell.  *cheek pinch*
   - random
   - stm
   - hashtables
-Note: you can build and run this without Stack of course, figure it out for yourself.
 
 ### Building on Linux
 - clone this repo using `git clone https://gitla.in/nymphet/vomitchan.git`
@@ -42,7 +44,7 @@ Note: you can build and run this without Stack of course, figure it out for your
 vomitchan requires `data/networks.json` to store information about IRC networks to connect to.
 This file should look like the following:
 
-**NOTE: one can forego writing T F for "dreammode" and "mutemode" because they default to T F**
+**NOTE: one can forego writing T F F for "dreammode", "mutemode", and "fleecyMode" because they default to T F F**
 
 ```json
 [
@@ -51,9 +53,21 @@ This file should look like the following:
   , "netNick"   : "vomitchan"
   , "netPass"   : "password"
   , "netChans"  : [ "#lainchan", "#extra-chan"]
-  , "netState"  : {"dreamMode" : [["#lainchan", true], ["#extra-chan",  true]]
-                  , "muteMode" : [["#lainchan", false], ["#extra-chan", false]]
+  , "netState"  : {"dreamMode"   : [["#lainchan", true], ["#extra-chan",  true]]
+                  , "muteMode"   : [["#lainchan", false], ["#extra-chan", false]]
+                  , "fleecyMode" : [["#lainchan", false], ["##loli", false], ["#em.slashem.me", true]]
                   }
+  },
+
+  { "netServer" : "lainchan.org"
+  , "netPort" : 6697
+  , "netNick" : "vomitchan"
+  , "netPass" : ""
+  , "netChans" : ["#lainchan", "#bots"]
+  , "netState" : {"dreamMode" : []
+                 , "muteMode" : []
+                 , "fleecyMode" : []
+                 }
   }
 ]
 ```
