@@ -24,6 +24,8 @@ import           GHC.Generics
 import qualified Network.Connection    as C
 import           Data.Monoid
 
+
+import           Data.Foldable
 import           Bot.MessageType
 import           Bot.Socket
 import           Bot.StateType
@@ -33,6 +35,7 @@ import           Bot.StateType
 data IRCNetwork = IRCNetwork
              { netServer :: Server
              , netPort   :: Port
+             , netSSL    :: Bool
              , netNick   :: Nick
              , netPass   :: Pass
              , netChans  :: [Chan]
@@ -68,16 +71,25 @@ joinNetwork net = do
                                             , C.connectionUseSecure = Just $ C.TLSSettingsSimple False False True
                                             , C.connectionUseSocks  = Nothing
                                             }
-  write con ("NICK", netNick net)
-  write con ("USER", netNick net <> " 0 * :connected")
+  passConnect con
+  
   unless (netPass net == "") (write con ("NICKSERV :IDENTIFY", netPass net) >> waitForAuth con)
-  mapM_ (write con) (zip (repeat "JOIN") (netChans net))
+  traverse_ (write con) (zip (repeat "JOIN") (netChans net))
 
   return con
   where
-    waitForAuth h = C.connectionGetLine 10240 h >>= \line -> BC.putStrLn line
-                 >> unless (":You are now identified" `BS.isInfixOf` line) (waitForAuth h)
+    waitForX str h = C.connectionGetLine 10240 h >>= \line -> BC.putStrLn line
+                 >> unless (str `BS.isInfixOf` line) (waitForX str h)
+  
+    waitForAuth = waitForX ":You are now identified"
+    waitForSASL = waitForX ":account-notify"
 
+    passConnect con
+      | not (netSSL net) = write con ("NICK", netNick net) >> write con ("USER", netNick net <> " 0 * :connected")
+      | otherwise        = do
+          waitForSASL con
+          write con ("CAP", "LS 302")
+          write con ("AUTHENTICATE", "PLAIN")
 --- HELPER FUNCTIONS / UNUSED -----------------------------------------------------------------
 
 -- finds a network by name and maybe returns it

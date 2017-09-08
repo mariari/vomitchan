@@ -27,10 +27,10 @@ cmdVid :: [T.Text]
 cmdVid = ["webm", "mp4", "flv", "ogv", "wmv", "gifv"]
 
 cmdMus :: [T.Text]
-cmdMus = ["flac", "mp3", "tta", "ogg", "wmv"]
+cmdMus = ["flac", "mp3", "tta", "ogg", "wma"]
 
 cmdMisc :: [T.Text]
-cmdMisc = ["pdf", "epub", "djvu", "txt", "hs", ".lisp", ".cpp"]
+cmdMisc = ["pdf", "epub", "djvu", "txt", "hs", "lisp", "cpp", "c", "java"]
 
 cmdAll :: [T.Text]
 cmdAll = fold [cmdPic, cmdVid, cmdMus, cmdMisc]

@@ -50,6 +50,7 @@ This file should look like the following:
 [
   { "netServer" : "irc.freenode.net"
   , "netPort"   : 6667
+  , "netSSL"    : false  
   , "netNick"   : "vomitchan"
   , "netPass"   : "password"
   , "netChans"  : [ "#lainchan", "#extra-chan"]
@@ -61,6 +62,7 @@ This file should look like the following:
 
   { "netServer" : "lainchan.org"
   , "netPort" : 6697
+  , "netSSL"  : false
   , "netNick" : "vomitchan"
   , "netPass" : ""
   , "netChans" : ["#lainchan", "#bots"]

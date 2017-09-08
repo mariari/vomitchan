@@ -27,7 +27,7 @@ forkWithKill tids act = do
   return handle
 
   where
-    spawn = C.myThreadId >>= (\tid -> C.modifyMVar_ tids (return . (tid:))) >> act
+    spawn = C.myThreadId >>= (\tid -> C.modifyMVar_ tids (return . (tid :))) >> act
 
     kill = do
       threads <- C.readMVar tids

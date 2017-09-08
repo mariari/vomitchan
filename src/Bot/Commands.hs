@@ -189,13 +189,6 @@ cmdPart msg
   where isAdmin = msgUser msg `elem` admins
 
 
-
-
-
-
-
-
-
 -- SLEX COMMANDS--------------------------------------------------------------------------------
 cmdLotg :: CmdFunc
 cmdLotg msg = composeMsg "PRIVMSG" (" :May the Luck of the Grasshopper be with you always, " <> target) msg
