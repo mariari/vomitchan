@@ -73,7 +73,6 @@ joinNetwork net = do
                                             }
   passConnect con
   
-  unless (netPass net == "") (write con ("NICKSERV :IDENTIFY", netPass net) >> waitForAuth con)
   traverse_ (write con) (zip (repeat "JOIN") (netChans net))
 
   return con
@@ -83,13 +82,25 @@ joinNetwork net = do
   
     waitForAuth = waitForX ":You are now identified"
     waitForSASL = waitForX ":account-notify"
+    waitForPlus = waitForX "AUTHENTICATE +"
+    waitForJoin = waitForX "you have registered"
+    waitForHost = waitForX ":*** Looking up your hostname..."
 
     passConnect con
       | not (netSSL net) = write con ("NICK", netNick net) >> write con ("USER", netNick net <> " 0 * :connected")
+                      >> unless (netPass net == "")
+                                (write con ("NICKSERV :IDENTIFY", netPass net) >> waitForAuth con)
       | otherwise        = do
-          waitForSASL con
           write con ("CAP", "LS 302")
+          write con ("CAP REQ", "sasl")
+          write con ("NICK", netNick net)
+          write con ("USER", netNick net <> " 0 * :connected")
+          waitForSASL con
           write con ("AUTHENTICATE", "PLAIN")
+          waitForPlus con
+          write con ("AUTHENTICATE", netPass net)
+          waitForJoin con
+          write con ("CAP", "END")
 --- HELPER FUNCTIONS / UNUSED -----------------------------------------------------------------
 
 -- finds a network by name and maybe returns it

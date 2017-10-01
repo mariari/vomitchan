@@ -58,6 +58,6 @@ main = do
           m  <- muteMode   . netState $ x
           f  <- fleecyMode . netState $ x
           eq <- [(fst d, (snd d, snd m, snd f)) | fst d == fst m && fst m == fst f] -- check if the y and z are talking
-          return $ hashadd (netServer x) eq ht           -- about the same channel
+          return $ hashadd (netServer x) eq ht                                      -- about the same channel
         hashadd :: T.Text -> (T.Text, (Bool, Bool, Bool)) -> H.BasicHashTable T.Text HashStorage -> IO ()
         hashadd serv (chan, (d, m, f)) ht = H.insert ht (serv <> chan) $ toHashStorage d m f

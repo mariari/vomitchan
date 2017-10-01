@@ -34,19 +34,19 @@ modifyChanState msg hStore = do
   H.insert ht (getHashText msg) hStore
 
 -- applys not or identity to all the different states to modify state
-flipChanState :: Message -> (Bool -> Bool) -> (Bool -> Bool) -> (Bool -> Bool) -> IO ()
-flipChanState msg d m f = do
+flipChanState :: (Bool -> Bool) -> (Bool -> Bool) -> (Bool -> Bool) -> Message -> IO ()
+flipChanState d m f msg = do
   state <- getChanState msg
   modifyChanState msg (toHashStorage . d . dream <*> m . mute <*> f . fleecy $ state)
 
 modifyDreamState :: Message -> IO ()
-modifyDreamState msg = flipChanState msg not id id
+modifyDreamState = flipChanState not id id
 
 modifyMuteState :: Message -> IO ()
-modifyMuteState msg = flipChanState msg id not id
+modifyMuteState = flipChanState id not id
 
 modifyFleecyState :: Message -> IO ()
-modifyFleecyState msg = flipChanState msg id id not
+modifyFleecyState = flipChanState id id not
 
 
 -- Checks if the message is a pm
