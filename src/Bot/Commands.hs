@@ -84,7 +84,7 @@ cmdBots = composeMsg "NOTICE" " :I am a queasy bot written in Haskell by MrDeton
 
 -- print source link
 cmdSrc :: CmdFunc
-cmdSrc = composeMsg "NOTICE" " :[Haskell] https://gitla.in/nymphet/vomitchan"
+cmdSrc = composeMsg "NOTICE" " :[Haskell] https://github.com/mariari/vomitchan"
 
 -- prints help information
 -- TODO: Store command info in cmdList and generate this text on the fly
