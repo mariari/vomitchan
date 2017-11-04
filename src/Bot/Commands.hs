@@ -31,6 +31,10 @@ type Infix = Bool
 
 type CmdAlias = [T.Text]
 
+data Color = White | Black | Blue  | Green | Red  | Brown | Purple | Orange | Yellow | LGreen
+           | Teal  | LCyan | LBlue | Pink  | Grey | LGrey
+           deriving (Enum, Show)
+
 --- DATA --------------------------------------------------------------------------------------
 
 -- list of admins allowed to use certain commands
@@ -151,9 +155,9 @@ cmdVomit msg = do
           where f = action (effectList !! randRang 0 (length effectList - 1) num)
 
       randCol :: Int -> String -> String
-      randCol num txt
-          | dream state   = actionColS txt ([0..15] !! randRang 0 15 num)
-          | otherwise     = actionColS txt 4
+      randCol num txt       -- 15 is the last element LGrey
+          | dream state   = actionCol txt ([White .. LGrey] !! randRang 0 15 num)
+          | otherwise     = actionCol txt Red
 
       randColEff :: [String] -> Char -> Int -> String
       randColEff eff txt  = randCol <*> randEff eff [txt]
@@ -168,10 +172,18 @@ cmdVomit msg = do
       randApp :: String -> IO T.Text
       randApp str         = T.pack <$> foldrM (charApply . init . init $ effectList) "" str
 
+      -- checks if the URL has been marked as nsfw, and if so make a string nsfw in light blue
+      nsfwStr txt
+        | "nsfw" `T.isSuffixOf` txt = T.pack $ action "\x16" (actionCol (action "\x2" "nsfw") LBlue)
+        | otherwise                 = ""
+
       randMessage :: IO T.Text
       randMessage         = randomRIO (8,23) >>= \x ->
                             randomIO         >>= \z ->
-                            randomIO         >>= \y -> fold [randApply x z, return " ", randLink >>= randApp . T.unpack, return " ", randApply x y]
+                            randomIO         >>= \y -> fold [nsfwStr <$> randLink, return " "
+                                                            ,randApply x z, return " "
+                                                            ,randLink >>= randApp . T.unpack, return " "
+                                                            ,randApply x y]
   flip (composeMsg "PRIVMSG" . (" :" <>)) msg <$> randMessage
 
 -- Joins the first channel in the message if the user is an admin else do nothing
@@ -273,9 +285,8 @@ action :: Monoid m => m -> m -> m
 action cmd txt = cmd <> txt <> cmd
 
 -- Used for color commnad... color can go all the way up to 15
-actionColS :: String -> Int -> String
-actionColS txt num = action "\0003" (show num <> txt)
-
+actionCol :: String -> Color -> String
+actionCol txt num = action "\0003" (show (fromEnum num) <> txt)
 
 -- Changes the nick of the msg
 changeNick :: T.Text -> Message -> Message
@@ -303,5 +314,5 @@ drpMsgRec msg bkL bkR = recurse [] drpMess
         drpRight           = T.breakOn bkR
 
 -- Used for color commnad... color can go all the way up to 15
-actionCol :: T.Text -> Int -> T.Text
-actionCol txt num = "\0003" <> T.pack (show num) <> txt <> "\0003"
+actionColT :: T.Text -> Int -> T.Text
+actionColT txt num = "\0003" <> T.pack (show num) <> txt <> "\0003"
