@@ -174,16 +174,17 @@ cmdVomit msg = do
 
       -- checks if the URL has been marked as nsfw, and if so make a string nsfw in light blue
       nsfwStr txt
-        | "nsfw" `T.isSuffixOf` txt = T.pack $ action "\x16" (actionCol (action "\x2" "nsfw") LBlue)
+        | "nsfw" `T.isSuffixOf` txt = T.pack $ action "\x16" (actionCol (action "\x2" "nsfw") LBlue) <> " "
         | otherwise                 = ""
 
       randMessage :: IO T.Text
       randMessage         = randomRIO (8,23) >>= \x ->
                             randomIO         >>= \z ->
-                            randomIO         >>= \y -> fold [nsfwStr <$> randLink, return " "
-                                                            ,randApply x z, return " "
-                                                            ,randLink >>= randApp . T.unpack, return " "
-                                                            ,randApply x y]
+                            randomIO         >>= \y -> -- this randLink forces the computation so the two invocations of it
+                            randLink         >>= \link -> fold [return (nsfwStr link)  -- are consistent with eachother
+                                                               ,randApply x z, return " "
+                                                               ,randApp (T.unpack link), return " "
+                                                               ,randApply x y]
   flip (composeMsg "PRIVMSG" . (" :" <>)) msg <$> randMessage
 
 -- Joins the first channel in the message if the user is an admin else do nothing
@@ -305,7 +306,7 @@ wordMsg = T.words . msgContent
 
 -- UNUSED HELPER FUNCTIONS --------------------------------------------------------------------
 -- Like drpMsg but does it recursively until the break can't be found anymore
-drpMsgRec :: Message -> T.Text -> T.Text ->  [T.Text]
+drpMsgRec :: Message -> T.Text -> T.Text -> [T.Text]
 drpMsgRec msg bkL bkR = recurse [] drpMess
   where recurse acc (x,"") = x:acc
         recurse acc (x,xs) = (recurse (x:acc) . drpRight . snd . drpLeft) xs

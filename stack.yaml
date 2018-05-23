@@ -7,6 +7,7 @@
 # Resolver to choose a 'specific' stackage snapshot or a compiler version.
 # A snapshot resolver dictates the compiler version and the set of packages
 # to be used for project dependencies. For example:
+#compiler: ghc-8.0.2
 # 
 # resolver: lts-3.5
 # resolver: nightly-2015-09-21
@@ -15,8 +16,8 @@
 # resolver:
 #  name: custom-snapshot
 #  location: "./custom-snapshot.yaml"
-resolver: nightly-2016-08-15
-
+#resolver: nightly-2016-08-15
+resolver: lts-11.2
 # User packages to be built.
 # Various formats can be used as shown in the example below.
 # 
@@ -41,6 +42,8 @@ packages:
 # (e.g., acme-missiles-0.3)
 extra-deps: []
 
+
+allow-newer: true
 # Override default flag values for local packages and extra-deps
 flags: {}
 
