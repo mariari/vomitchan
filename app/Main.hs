@@ -9,9 +9,11 @@ import qualified Control.Concurrent             as C
 import qualified Data.HashTable.IO              as H
 import           Data.Monoid
 import qualified Data.Text                      as T
+import           Data.Foldable
 import           Control.Monad.IO.Class
 import           Control.Concurrent.STM
 import           Control.Lens
+import           Control.Monad
 
 import           Bot.Network
 import           Bot.Socket
@@ -32,7 +34,7 @@ forkWithKill tids act = do
     kill = do
       threads <- C.readMVar tids
       mytid <- C.myThreadId
-      mapM_ C.killThread [t | t <- threads, t /= mytid ]
+      traverse_ C.killThread [t | t <- threads, t /= mytid ]
 
  --- ENTRY POINT ------------------------------------------------------------------------------
 
@@ -57,7 +59,8 @@ main = do
           d  <- dreamMode  . netState $ x
           m  <- muteMode   . netState $ x
           f  <- fleecyMode . netState $ x
-          eq <- [(fst d, (snd d, snd m, snd f)) | fst d == fst m && fst m == fst f] -- check if the y and z are talking
-          return $ hashadd (netServer x) eq ht                                      -- about the same channel
+          let chanSettings = (fst f, (snd d, snd m, snd f))
+          guard  $ all ((== fst f) . fst) [d, m]         -- check if the y and z are talking
+          return $ hashadd (netServer x) chanSettings ht -- about the same channel
         hashadd :: T.Text -> (T.Text, (Bool, Bool, Bool)) -> H.BasicHashTable T.Text HashStorage -> IO ()
         hashadd serv (chan, (d, m, f)) ht = H.insert ht (serv <> chan) $ toHashStorage d m f
