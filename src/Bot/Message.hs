@@ -49,7 +49,7 @@ respond msg info state
 
 -- Logs any links posted and appends them to the users .log file
 cmdLog :: Message -> IO ()
-cmdLog = traverse_ . appendLog <*> linLn 
+cmdLog = traverse_ . appendLog <*> linLn
   where linLn = fmap (<> "\n") . allLinks
 
 

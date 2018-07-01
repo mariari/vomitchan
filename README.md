@@ -48,30 +48,30 @@ This file should look like the following:
 
 ```json
 [
-  { "netServer" : "irc.freenode.net"
-  , "netPort"   : 6667
-  , "netSSL"    : false  
-  , "netNick"   : "vomitchan"
-  , "netPass"   : "password"
-  , "netChans"  : [ "#lainchan", "#extra-chan"]
-  , "netState"  : {"dreamMode"   : [["#lainchan", true], ["#extra-chan",  true]]
-                  , "muteMode"   : [["#lainchan", false], ["#extra-chan", false]]
-                  , "fleecyMode" : [["#lainchan", false], ["##loli", false], ["#em.slashem.me", true]]
-                  }
-  },
+    { "netServer" : "irc.freenode.net"
+      , "netPort" : 6697
+      , "netSSL"  : false
+      , "netNick" : "vomitchan"
+      , "netPass" : "PASS"
+      , "netChans" : ["#lainchan", "##loli", "##0chan", "#arisuchan", "#em.slashem.me"]
+      , "netState" : [["#lainchan", {"dream"  : true,
+                                     "mute"   : false,
+                                     "fleecy" : false}]
+                      ,["#em.slashem.me", {"dream"  : true,
+                                           "mute"   : false,
+                                           "fleecy" : true}]]
+    },
 
-  { "netServer" : "lainchan.org"
-  , "netPort" : 6697
-  , "netSSL"  : false
-  , "netNick" : "vomitchan"
-  , "netPass" : ""
-  , "netChans" : ["#lainchan", "#bots"]
-  , "netState" : {"dreamMode" : []
-                 , "muteMode" : []
-                 , "fleecyMode" : []
-                 }
-  }
+    { "netServer" : "lainchan.org"
+      , "netPort" : 6697
+      , "netSSL"  : false
+      , "netNick" : "vomitchan"
+      , "netPass" : ""
+      , "netChans" : ["#bots", "#lainchan"]
+      , "netState" : []
+    }
 ]
+
 ```
 
 You can add multiple networks if you please.  
@@ -85,5 +85,4 @@ The bot can be started within ghci by running `stack ghci` in the project direct
 - Versioning
 - Support for the 'major' IRC networks (Freenode, Rizon, IRCNet, QuakeNet, Etc.)
 - Per-channel rate limiting, to prevent spam
-- add 'modes'
 - use parser combinators for handling messages

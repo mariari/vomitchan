@@ -24,7 +24,7 @@ library
                      , Bot.Commands
                      , Bot.FileOps
   build-depends:       aeson
-                     , base >= 4.7 && < 5
+                     , base >= 4.9 && < 5
                      , bytestring
                      , connection
                      , directory >= 1.2.5

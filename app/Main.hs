@@ -52,15 +52,9 @@ main = do
          mapM_ C.takeMVar handles
 
   where connect s n = joinNetwork n >>= \x -> listen x (netServer n) s
-        -- poorly composed :( Maybe use lenses to fix eventually
         initHash :: [IRCNetwork] -> H.BasicHashTable T.Text HashStorage -> IO ()
         initHash net ht = sequence_ $ do
-          x  <- net
-          d  <- dreamMode  . netState $ x
-          m  <- muteMode   . netState $ x
-          f  <- fleecyMode . netState $ x
-          let chanSettings = (fst f, (snd d, snd m, snd f))
-          guard  $ all ((== fst f) . fst) [d, m]         -- check if the y and z are talking
-          return $ hashadd (netServer x) chanSettings ht -- about the same channel
-        hashadd :: T.Text -> (T.Text, (Bool, Bool, Bool)) -> H.BasicHashTable T.Text HashStorage -> IO ()
-        hashadd serv (chan, (d, m, f)) ht = H.insert ht (serv <> chan) $ toHashStorage d m f
+          x             <- net
+          (chan, modes) <- fromStateConfig (netState x)
+          let serv      = netServer x
+          return $ H.insert ht (serv <> chan) modes

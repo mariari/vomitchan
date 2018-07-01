@@ -72,14 +72,14 @@ joinNetwork net = do
                                             , C.connectionUseSocks  = Nothing
                                             }
   passConnect con
-  
+
   traverse_ (write con) (zip (repeat "JOIN") (netChans net))
 
   return con
   where
     waitForX str h = C.connectionGetLine 10240 h >>= \line -> BC.putStrLn line
                  >> unless (str `BS.isInfixOf` line) (waitForX str h)
-  
+
     waitForAuth = waitForX ":You are now identified"
     waitForSASL = waitForX ":account-notify"
     waitForPlus = waitForX "AUTHENTICATE +"

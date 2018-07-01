@@ -11,13 +11,11 @@ module Bot.StateType (
   VomState,
   toHashStorage,
   toGlobalState,
-  dreamMode,
-  muteMode,
-  fleecyMode,
   fleecy,
   dream,
   mute,
-  hash
+  hash,
+  fromStateConfig
 ) where
 --- IMPORTS -----------------------------------------------------------------------------------
 import qualified Data.Text         as T
@@ -30,32 +28,26 @@ type Chan   = T.Text
 --- DATA STRUCTURES ---------------------------------------------------------------------------
 
 -- IRC State information
-data StateConfig = StateConfig
-                 { dreamMode   :: [(Chan, Bool)]
-                 , muteMode    :: [(Chan, Bool)]
-                 , fleecyMode  :: [(Chan, Bool)]
-                 } deriving (Show, Generic)
+data StateConfig = StateConfig [(Chan, HashStorage)] deriving (Show, Generic)
 
+fromStateConfig (StateConfig xs) = xs
 
 instance JSON.FromJSON StateConfig
 instance JSON.ToJSON   StateConfig
-
-
--- set to fix HashSTorage not being a functor issue
--- data HashStorage a = HashStorage { dream :: a, mute :: a } deriving(Functor)
---data Pt_ a = Pt { pX :: a, pY :: a } deriving(Functor)
---type Pt = Pt_ Integer
-
 
 -- Stores the Hash Information per channel
 data HashStorage = HashStorage
                  { dream  :: Bool
                  , mute   :: Bool
                  , fleecy :: Bool
-                 }
+                 } deriving (Show, Generic)
+
+
+instance JSON.FromJSON HashStorage
+instance JSON.ToJSON   HashStorage
+
 
 -- Generates HashStorage
-toHashStorage :: Bool -> Bool -> Bool -> HashStorage
 toHashStorage = HashStorage
 
 --  All the Global Variables that make up State
