@@ -6,14 +6,15 @@ module Bot.Message (
   respond
 ) where
 --- IMPORTS -----------------------------------------------------------------------------------
-import qualified Data.Text        as T
+import qualified Data.Text as T
 import           Control.Concurrent.STM
 import           Bot.Commands
 import           Bot.MessageType
 import           Bot.FileOps
 import           Bot.StateType
 import           Data.Foldable
-import           Turtle          hiding (fold)
+import qualified Data.Set as S
+import           Turtle hiding (fold)
 --- DATA --------------------------------------------------------------------------------------
 
 -- Lists the type of webpages that are logged
@@ -34,6 +35,9 @@ cmdMisc = ["pdf", "epub", "djvu", "txt", "hs", "lisp", "cpp", "c", "java"]
 
 cmdAll :: [T.Text]
 cmdAll = fold [cmdPic, cmdVid, cmdMus, cmdMisc]
+
+cmdAllS :: S.Set Text
+cmdAllS = S.fromList cmdAll
 
 --- FUNCTIONS ---------------------------------------------------------------------------------
 
@@ -56,8 +60,7 @@ cmdLog = traverse_ . appendLog <*> linLn
 -- Downloads any file and saves it to the user folder
 cmdLogFile :: Message -> IO ()
 cmdLogFile = traverse_ . dwnUsrFile <*> allImg
-  where allImg m = cmdAll >>= myF (allLinks m)
-        myF x y  = filter (y `T.isSuffixOf`) x
+  where allImg m = filter (isSuffix cmdAllS) (allLinks m)
 
 cmdFldr :: Message -> IO ()
 cmdFldr = createUsrFldr
@@ -67,3 +70,9 @@ cmdFldr = createUsrFldr
 -- creates a list of all links
 allLinks :: Message -> [T.Text]
 allLinks = (cmdWbPg >>=) . specWord
+
+
+isSuffix :: S.Set Text -> Text -> Bool
+isSuffix legalExtensions txt = extension `S.member` legalExtensions
+  where
+    (_,extension) = T.breakOnEnd "." txt

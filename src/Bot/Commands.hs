@@ -15,19 +15,19 @@ import           Bot.FileOps
 import           Bot.MessageType
 import           Bot.State
 import           Bot.StateType
+import           Bot.Misc
 import           System.Random
 import           Data.Char
 import           Data.Foldable
 import           Control.Lens
+import           Control.Applicative
+import qualified Data.Map    as M
 import qualified Data.Vector as V
 --- TYPES -------------------------------------------------------------------------------------
 
 -- type of all command functions
 type CmdFunc    = Message -> Maybe (T.Text, T.Text)
 type CmdFuncImp = Message -> IO (Maybe (T.Text, T.Text))
-
--- Used for telling if the command is infix or not
-type Infix = Bool
 
 type CmdAlias = [T.Text]
 
@@ -72,42 +72,46 @@ admins :: [T.Text]
 admins = ["loli"]
 
 -- list of all Pure functions
--- TODO: if the cmdList has over 50~ commands, put it into a hash table instead
-cmdList :: [(CmdFunc, Infix,  CmdAlias)]
-cmdList =  [(cmdBots, False,  [".bots", ".bot vomitchan"])
-           ,(cmdSrc,  False,  [".source vomitchan"])
-           ,(cmdHelp, False,  [".help vomitchan"])
-           ,(cmdQuit, False,  [".quit"])
-           ,(cmdJoin, False,  [".join"])
-           ,(cmdPart, False,  [".leave", ".part"])
-           ,(cmdLotg, False,  [".lotg"])
-           ,(cmdBane, False,  [".amysbane"])]
+cmdList :: [(CmdFunc, [T.Text])]
+cmdList = [(cmdBots, [".bots", ".bot vomitchan"])
+          ,(cmdSrc,   [".source vomitchan"])
+          ,(cmdHelp,  [".help vomitchan"])
+          ,(cmdQuit,  [".quit"])
+          ,(cmdJoin,  [".join"])
+          ,(cmdPart,  [".leave", ".part"])
+          ,(cmdLotg,  [".lotg"])
+          ,(cmdBane,  [".amysbane"])]
 
 -- List of all Impure functions
-cmdListImp :: [(CmdFuncImp,     Infix,  CmdAlias)]
-cmdListImp =  [(cmdVomit,       True,   ["*vomits*"])
-              ,(cmdDream,       False,  ["*cheek pinch*"])
-              ,(cmdFleecy,      False,  ["*step*"])
-              ,(cmdLewds,       False,  [".lewd "])
-              ,(cmdEightBall,   False,  [".8ball"])]
+cmdListImp :: [(CmdFuncImp, [T.Text])]
+cmdListImp = [(cmdVomit,    ["*vomits*"])
+             ,(cmdDream,    ["*cheek pinch*"])
+             ,(cmdFleecy,   ["*step*"])
+             ,(cmdLewds,    [".lewd "])
+             ,(cmdEightBall,[".8ball"])]
 
 
 -- The List of all functions pure <> impure
-cmdTotList :: [(CmdFuncImp, Infix, CmdAlias)]
+cmdTotList :: [(CmdFuncImp, CmdAlias)]
 cmdTotList = cmdList2 <> cmdListImp
-  where cmdList2 = (\(f3,s3,t3) -> (return . f3, s3, t3)) <$> cmdList
+  where cmdList2 = (\(f3,t3) -> (return . f3, t3)) <$> cmdList
 
+-- the Map of all functions that are pure and impure
+cmdMapList :: M.Map T.Text CmdFuncImp
+cmdMapList = M.fromList $ cmdTotList >>= f
+  where
+    f (cfn, aliasList) = (\x -> (x, cfn)) <$> aliasList
 -- FUNCTIONS ----------------------------------------------------------------------------------
 
+-- only 1 space is allowed in a command at this point
 -- returns a corresponding command function from a message
 runCmd :: CmdFuncImp
-runCmd msg = foldr testFunc (return Nothing) cmdTotList
+runCmd msg = bindM ($ msg) (lookup split)
   where
-    testFunc (cmd, inf, p) k
-      | check T.isPrefixOf || (inf && check T.isInfixOf) = cmd msg
-      | otherwise                                        = k
-      where
-        check f = or (fmap (`f` msgContent msg) p)
+    split              = T.split (== ' ') (msgContent msg)
+    lookup (x : y : _) = lookup [x] <|> lookup [(x <> " " <> y)]
+    lookup [x]         = cmdMapList M.!? x
+    lookup []          = Nothing
 
 --- COMMAND FUNCTIONS -------------------------------------------------------------------------
 
@@ -194,10 +198,10 @@ cmdVomit msg = do
       charApply eff chr = randColEff eff chr <$> randomIO
 
       randApply :: Int -> Int -> IO T.Text
-      randApply numT numR = T.pack . concat <$> traverse (charApply effectList) (randVom numT numR)
+      randApply numT numR = T.pack <$> bindM (charApply effectList) (randVom numT numR)
 
       randApplyLink :: String -> IO T.Text
-      randApplyLink str = T.pack . concat <$> traverse (charApply effectListLink) str
+      randApplyLink str = T.pack <$> bindM (charApply effectListLink) str
 
       -- checks if the URL has been marked as nsfw, and if so make a string nsfw in light blue
       nsfwStr txt
