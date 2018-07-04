@@ -87,7 +87,7 @@ cmdListImp :: [(CmdFuncImp, [T.Text])]
 cmdListImp = [(cmdVomit,    ["*vomits*"])
              ,(cmdDream,    ["*cheek pinch*"])
              ,(cmdFleecy,   ["*step*"])
-             ,(cmdLewds,    [".lewd "])
+             ,(cmdLewds,    [".lewd"])
              ,(cmdEightBall,[".8ball"])]
 
 
