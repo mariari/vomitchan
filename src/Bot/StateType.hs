@@ -15,7 +15,8 @@ module Bot.StateType (
   dream,
   mute,
   hash,
-  fromStateConfig
+  fromStateConfig,
+  defaultChanState
 ) where
 --- IMPORTS -----------------------------------------------------------------------------------
 import qualified Data.Text         as T
@@ -42,6 +43,8 @@ data HashStorage = HashStorage
                  , fleecy :: Bool
                  } deriving (Show, Generic)
 
+defaultChanState :: HashStorage
+defaultChanState = toHashStorage True False False
 
 instance JSON.FromJSON HashStorage
 instance JSON.ToJSON   HashStorage

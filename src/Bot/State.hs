@@ -24,7 +24,7 @@ getChanState msg = do
   ht    <- hash <$> (readTVarIO . msgState) msg
   maybs <- H.lookup ht (getHashText msg)
   case maybs of
-    Nothing -> return $ toHashStorage True False False
+    Nothing -> return $ defaultChanState
     Just x -> return x
 
 -- modifies the hash-table state for a message
@@ -33,20 +33,17 @@ modifyChanState msg hStore = do
   ht <- hash <$> (readTVarIO . msgState) msg
   H.insert ht (getHashText msg) hStore
 
--- applys not or identity to all the different states to modify state
-flipChanState :: (Bool -> Bool) -> (Bool -> Bool) -> (Bool -> Bool) -> Message -> IO ()
-flipChanState d m f msg = do
-  state <- getChanState msg
-  modifyChanState msg (toHashStorage . d . dream <*> m . mute <*> f . fleecy $ state)
+updateState :: (HashStorage -> HashStorage) -> Message -> IO ()
+updateState f msg = getChanState msg >>= modifyChanState msg . f
 
 modifyDreamState :: Message -> IO ()
-modifyDreamState = flipChanState not id id
+modifyDreamState = updateState (\s -> s {dream = not (dream s)})
 
 modifyMuteState :: Message -> IO ()
-modifyMuteState = flipChanState id not id
+modifyMuteState = updateState (\s -> s {mute = not (mute s)})
 
 modifyFleecyState :: Message -> IO ()
-modifyFleecyState = flipChanState id id not
+modifyFleecyState = updateState (\s -> s {fleecy = not (fleecy s)})
 
 
 -- Checks if the message is a pm
