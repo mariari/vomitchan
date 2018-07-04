@@ -167,8 +167,8 @@ cmdVomit msg = do
 
       randLink :: IO T.Text
       randLink
-          | dream state   = usrFldrNoLog newUsr >>= \y -> (y ^?) . element <$> randomRIO (0, length y -1) >>= fileCheck
-          | otherwise     = return ""
+          | dream state = usrFldrNoLog newUsr >>= \y -> (y ^?) . element <$> randomRIO (0, length y -1) >>= fileCheck
+          | otherwise   = return ""
 
       -- checks if there is a file to upload!
       fileCheck :: Maybe String -> IO T.Text
@@ -183,21 +183,21 @@ cmdVomit msg = do
 
       randCol :: Int -> String -> String
       randCol num txt
-          | dream state   = actionCol txt (ansiColor V.! randBetween 0 (numAnsiColor - 1) num)
-          | otherwise     = actionCol txt Red
+          | dream state = actionCol txt (ansiColor V.! randBetween 0 (numAnsiColor - 1) num)
+          | otherwise   = actionCol txt Red
 
       randColEff :: V.Vector String -> Char -> Int -> String
-      randColEff eff txt  = randCol <*> randEff eff [txt]
+      randColEff eff txt = randCol <*> randEff eff [txt]
 
       -- consing to text is O(n), thus we deal with strings here
-      charApply :: V.Vector String -> Char -> String -> IO String
-      charApply eff chr str = ((<> str) . randColEff eff chr) <$> randomIO
+      charApply :: V.Vector String -> Char -> IO String
+      charApply eff chr = randColEff eff chr <$> randomIO
 
       randApply :: Int -> Int -> IO T.Text
-      randApply numT numR = T.pack <$> foldrM (charApply effectList) "" (randVom numT numR)
+      randApply numT numR = T.pack . concat <$> traverse (charApply effectList) (randVom numT numR)
 
       randApplyLink :: String -> IO T.Text
-      randApplyLink str = T.pack <$> foldrM (charApply effectListLink) "" str
+      randApplyLink str = T.pack . concat <$> traverse (charApply effectListLink) str
 
       -- checks if the URL has been marked as nsfw, and if so make a string nsfw in light blue
       nsfwStr txt
