@@ -8,7 +8,8 @@ module Bot.FileOps (
   dwnUsrFile,
   usrFldrNoLog,
   upUsrFile,
-  getUsrFldr
+  getUsrFldr,
+  getUsrFldrT
 ) where
 --- IMPORTS -----------------------------------------------------------------------------------
 import qualified Data.Text          as T
@@ -34,7 +35,7 @@ appendLog msg = T.appendFile (getUsrFldr msg <> "Links.log")
 
 -- Downloads the requested file to the users path
 dwnUsrFile :: MonadIO io => Message -> Text -> io ExitCode
-dwnUsrFile msg url = shell ("cd " <> (fromString . getUsrFldr $ msg) <>
+dwnUsrFile msg url = shell ("cd " <> (getUsrFldrT $ msg) <>
                             " && curl --max-filesize 104857600 -O " <> url) empty
 
 upUsrFile :: MonadIO m => T.Text -> m T.Text
@@ -45,9 +46,12 @@ upUsrFile file = check <$> procStrict "curl" ["-F", "file=@" <> file, "https://0
 
 -- HELPER FUNCTIONS ---------------------------------------------------------------------------
 
+getUsrFldrT :: Message -> T.Text
+getUsrFldrT msg = fold ["./data/logs/", msgChan msg, "/", msgNick msg, "/"]
+
 -- Gets folder path based on Message (Chan <> Nick)
 getUsrFldr :: Message -> FilePath
-getUsrFldr msg = (fromString . T.unpack . fold) ["./data/logs/", msgChan msg, "/", msgNick msg, "/"]
+getUsrFldr = T.unpack . getUsrFldrT
 
 -- Lists all the files in the users directory
 listUsrFldr :: Message -> IO [FilePath]

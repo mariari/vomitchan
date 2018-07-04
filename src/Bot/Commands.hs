@@ -35,6 +35,35 @@ data Color = White | Black | Blue  | Green | Red  | Brown | Purple | Orange | Ye
            | Teal  | LCyan | LBlue | Pink  | Grey | LGrey
            deriving (Enum, Show)
 
+ansiColor :: V.Vector Color
+ansiColor = V.fromList [White .. LGrey]
+
+numAnsiColor :: Int
+numAnsiColor = V.length ansiColor
+
+-- underline and strikeThrough are new
+data Effects = Bold      | Italics   | Color
+             | UnderLine | Reverse   | Hex
+             | Reset     | MonoSpace | None
+             | Strikethrough
+
+instance Show Effects where
+  show Bold          = "\x2"
+  show Italics       = "\x1D"
+  show UnderLine     = "\x1F"
+  show Strikethrough = "\x1E"
+  show MonoSpace     = "\x11"
+  show Color         = "\x3"
+  show Hex           = "\x4"
+  show Reverse       = "\x16"
+  show Reset         = "\xF"
+  show None          = ""
+
+effectListLink :: V.Vector String
+effectListLink = V.fromList $ fmap show [Bold, Italics, UnderLine, Reverse]
+
+effectList :: V.Vector String
+effectList = V.fromList (" " : fmap show [MonoSpace, Strikethrough, None]) <> effectListLink
 --- DATA --------------------------------------------------------------------------------------
 
 -- list of admins allowed to use certain commands
@@ -127,16 +156,14 @@ cmdVomit :: CmdFuncImp
 cmdVomit msg = do
   state <- getChanState msg
   let
-      effectList :: [String]
-      effectList = ["\x2","\x1D","\x1F","\x16", "", " "]
      -- has to be string so foldrM doesn't get annoyed in randApply
       randVom :: Int -> Int -> String
       randVom numT numG
         | fleecy state = replicate numT '♥'
         | otherwise    = fmap (randRange V.!) . take numT . randomRs (0, length randRange - 1) . mkStdGen $ numG
 
-      newUsr              = changeNickFstArg msg
-      randRang x y        = fst . randomR (x,y) . mkStdGen
+      newUsr          = changeNickFstArg msg
+      randBetween x y = fst . randomR (x,y) . mkStdGen
 
       randLink :: IO T.Text
       randLink
@@ -145,46 +172,48 @@ cmdVomit msg = do
 
       -- checks if there is a file to upload!
       fileCheck :: Maybe String -> IO T.Text
-      fileCheck (Just xs) = upUsrFile . T.pack . (getUsrFldr newUsr <>) $ xs
+      fileCheck (Just xs) = upUsrFile . (getUsrFldrT newUsr <>) . T.pack $ xs
       fileCheck Nothing   = return ""
 
-      randEff :: [String] -> String -> Int -> String
+      randEff :: V.Vector String -> String -> Int -> String
       randEff effectList txt num
-          | dream state   = f txt
-          | otherwise     = f (action "\x16" txt)
-          where f = action (effectList !! randRang 0 (length effectList - 1) num)
+          | dream state = f txt
+          | otherwise   = f (action (show Reverse) txt)
+          where f = action (effectList V.! randBetween 0 (length effectList - 1) num)
 
       randCol :: Int -> String -> String
-      randCol num txt       -- 15 is the last element LGrey
-          | dream state   = actionCol txt ([White .. LGrey] !! randRang 0 15 num)
+      randCol num txt
+          | dream state   = actionCol txt (ansiColor V.! randBetween 0 (numAnsiColor - 1) num)
           | otherwise     = actionCol txt Red
 
-      randColEff :: [String] -> Char -> Int -> String
+      randColEff :: V.Vector String -> Char -> Int -> String
       randColEff eff txt  = randCol <*> randEff eff [txt]
 
       -- consing to text is O(n), thus we deal with strings here
-      charApply :: [String] -> Char -> String -> IO String
+      charApply :: V.Vector String -> Char -> String -> IO String
       charApply eff chr str = ((<> str) . randColEff eff chr) <$> randomIO
 
       randApply :: Int -> Int -> IO T.Text
       randApply numT numR = T.pack <$> foldrM (charApply effectList) "" (randVom numT numR)
 
-      randApp :: String -> IO T.Text
-      randApp str         = T.pack <$> foldrM (charApply . init . init $ effectList) "" str
+      randApplyLink :: String -> IO T.Text
+      randApplyLink str = T.pack <$> foldrM (charApply effectListLink) "" str
 
       -- checks if the URL has been marked as nsfw, and if so make a string nsfw in light blue
       nsfwStr txt
-        | "nsfw" `T.isSuffixOf` txt = T.pack $ action "\x16" (actionCol (action "\x2" "nsfw") LBlue) <> " "
+        | "nsfw" `T.isSuffixOf` txt = T.pack $ action (show Reverse) (actionCol (action (show Bold) "nsfw") LBlue) <> " "
         | otherwise                 = ""
 
       randMessage :: IO T.Text
-      randMessage         = randomRIO (8,23) >>= \x ->
-                            randomIO         >>= \z ->
-                            randomIO         >>= \y -> -- this randLink forces the computation so the two invocations of it
-                            randLink         >>= \link -> fold [return (nsfwStr link)  -- are consistent with eachother
-                                                               ,randApply x z, return " "
-                                                               ,randApp (T.unpack link), return " "
-                                                               ,randApply x y]
+      randMessage = do
+        x    <- randomRIO (8,23)
+        y    <- randomIO
+        z    <- randomIO
+        link <- randLink
+        fold [ return (nsfwStr link)
+             , randApply x y,                 return " "
+             , randApplyLink (T.unpack link), return " "
+             , randApply x z]
   flip (composeMsg "PRIVMSG" . (" :" <>)) msg <$> randMessage
 
 -- Joins the first channel in the message if the user is an admin else do nothing
@@ -287,7 +316,10 @@ action cmd txt = cmd <> txt <> cmd
 
 -- Used for color commnad... color can go all the way up to 15
 actionCol :: String -> Color -> String
-actionCol txt num = action "\0003" (show (fromEnum num) <> txt)
+actionCol txt col = action (show Color) (show (fromEnum col) <> txt)
+
+actionColN :: String -> Int -> String
+actionColN txt num = action (show Color) (show num <> txt)
 
 -- Changes the nick of the msg
 changeNick :: T.Text -> Message -> Message
