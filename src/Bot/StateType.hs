@@ -62,4 +62,4 @@ toGlobalState :: M.Map T.Text HashStorage -> GlobalState
 toGlobalState = GlobalState
 
 -- Our globalState type
-type VomState = TVar GlobalState
+type VomState = GlobalState

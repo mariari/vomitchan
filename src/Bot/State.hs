@@ -20,18 +20,18 @@ import Bot.MessageType
 
 -- Returns the hash-table state for a message
 getChanState :: Message -> IO HashStorage
-getChanState msg = atomically $ do
-  ht    <- hash <$> (readTVar . msgState) msg
-  maybs <- M.lookup (getHashText msg) ht
-  case maybs of
-    Nothing -> return defaultChanState
-    Just x  -> return x
+getChanState msg = atomically (f <$> M.lookup (getHashText msg) ht)
+  where
+    ht = hash . msgState $ msg
+    f Nothing  = defaultChanState
+    f (Just x) = x
 
 -- modifies the hash-table state for a message
 modifyChanState :: Message -> HashStorage -> IO ()
-modifyChanState msg hStore = atomically $ do
-  ht <- hash <$> (readTVar . msgState) msg
-  M.insert hStore (getHashText msg) ht
+modifyChanState msg hStore = atomically (M.insert hStore (getHashText msg)  ht)
+  where
+    ht = hash . msgState $ msg
+
 
 updateState :: (HashStorage -> HashStorage) -> Message -> IO ()
 updateState f msg = getChanState msg >>= modifyChanState msg . f

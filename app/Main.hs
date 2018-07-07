@@ -41,15 +41,14 @@ forkWithKill tids act = do
 
 main :: IO ()
 main = do
-  nets   <- readNetworks "data/networks.json"
-  stateT <- M.newIO >>= newTVarIO . toGlobalState
-  state  <- readTVarIO stateT
+  nets  <- readNetworks "data/networks.json"
+  state <- toGlobalState <$> M.newIO
   case nets of
        Nothing       -> putStrLn "ERROR loading servers from JSON"
        Just networks -> do
          initHash networks (hash state)
          tids    <- C.newMVar []
-         handles <- traverse (forkWithKill tids . connect stateT) networks
+         handles <- traverse (forkWithKill tids . connect state) networks
          traverse_ C.takeMVar handles
 
   where connect s n = joinNetwork n >>= \x -> listen x (netServer n) s
