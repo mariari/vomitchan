@@ -10,9 +10,9 @@ module Bot.State (
 
 --- IMPORTS -----------------------------------------------------------------------------------
 import qualified Data.Text         as T
-import qualified Data.HashTable.IO as H
 import           Control.Concurrent.STM
 import           Data.Monoid
+import qualified STMContainers.Map as M
 
 import Bot.StateType
 import Bot.MessageType
@@ -20,18 +20,18 @@ import Bot.MessageType
 
 -- Returns the hash-table state for a message
 getChanState :: Message -> IO HashStorage
-getChanState msg = do
-  ht    <- hash <$> (readTVarIO . msgState) msg
-  maybs <- H.lookup ht (getHashText msg)
+getChanState msg = atomically $ do
+  ht    <- hash <$> (readTVar . msgState) msg
+  maybs <- M.lookup (getHashText msg) ht
   case maybs of
-    Nothing -> return $ defaultChanState
-    Just x -> return x
+    Nothing -> return defaultChanState
+    Just x  -> return x
 
 -- modifies the hash-table state for a message
 modifyChanState :: Message -> HashStorage -> IO ()
-modifyChanState msg hStore = do
-  ht <- hash <$> (readTVarIO . msgState) msg
-  H.insert ht (getHashText msg) hStore
+modifyChanState msg hStore = atomically $ do
+  ht <- hash <$> (readTVar . msgState) msg
+  M.insert hStore (getHashText msg) ht
 
 updateState :: (HashStorage -> HashStorage) -> Message -> IO ()
 updateState f msg = getChanState msg >>= modifyChanState msg . f

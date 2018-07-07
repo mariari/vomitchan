@@ -21,8 +21,8 @@ module Bot.StateType (
 --- IMPORTS -----------------------------------------------------------------------------------
 import qualified Data.Text         as T
 import qualified Data.Aeson        as JSON
+import qualified STMContainers.Map as M
 import           GHC.Generics
-import qualified Data.HashTable.IO as H
 import           Control.Concurrent.STM
 --- TYPES -------------------------------------------------------------------------------------
 type Chan   = T.Text
@@ -55,10 +55,10 @@ toHashStorage = HashStorage
 
 --  All the Global Variables that make up State
 newtype GlobalState = GlobalState
-                 {hash :: H.BasicHashTable T.Text HashStorage}
+                 {hash :: M.Map T.Text HashStorage}
 
 -- Generates GlobalState
-toGlobalState :: H.BasicHashTable T.Text HashStorage -> GlobalState
+toGlobalState :: M.Map T.Text HashStorage -> GlobalState
 toGlobalState = GlobalState
 
 -- Our globalState type

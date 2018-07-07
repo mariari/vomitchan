@@ -36,7 +36,7 @@ listen :: C.Connection -> T.Text -> TVar GlobalState -> IO ()
 listen h net state = iterateUntil (== Just ()) resLoop >> (liftIO . C.connectionClose) h
   where
     resLoop = do
-        s    <-  (T.pack . BU.toString) <$> C.connectionGetLine 10240 h
+        s    <- (T.pack . BU.toString) <$> C.connectionGetLine 10240 h
         T.putStrLn s
         print net
         quit <- C.newEmptyMVar

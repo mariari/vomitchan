@@ -29,7 +29,7 @@ import           Data.Foldable
 import           Bot.MessageType
 import           Bot.Socket
 import           Bot.StateType
---- DATA STRUCTURES --------------------------------------------------------------------------- 
+--- DATA STRUCTURES ---------------------------------------------------------------------------
 
 -- IRC network table
 data IRCNetwork = IRCNetwork
@@ -72,7 +72,6 @@ joinNetwork net = do
                                             , C.connectionUseSocks  = Nothing
                                             }
   passConnect con
-
   traverse_ (write con) (zip (repeat "JOIN") (netChans net))
 
   return con

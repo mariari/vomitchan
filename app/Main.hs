@@ -5,10 +5,11 @@
 --- MODULE DEFINITION -------------------------------------------------------------------------
 module Main where
 --- IMPORTS -----------------------------------------------------------------------------------
-import qualified Control.Concurrent             as C
-import qualified Data.HashTable.IO              as H
+import qualified Control.Concurrent      as C
+import qualified STMContainers.Map       as M
+
 import           Data.Monoid
-import qualified Data.Text                      as T
+import qualified Data.Text               as T
 import           Data.Foldable
 import           Control.Monad.IO.Class
 import           Control.Concurrent.STM
@@ -25,7 +26,7 @@ import           Bot.StateType
 forkWithKill :: C.MVar[C.ThreadId] -> IO () -> IO (C.MVar ())
 forkWithKill tids act = do
   handle <- C.newEmptyMVar
-  _ <- C.forkFinally spawn (\_ -> kill >> C.putMVar handle ())
+  C.forkFinally spawn (\_ -> kill >> C.putMVar handle ())
   return handle
 
   where
@@ -41,20 +42,20 @@ forkWithKill tids act = do
 main :: IO ()
 main = do
   nets   <- readNetworks "data/networks.json"
-  stateT <- H.new >>= newTVarIO . toGlobalState
+  stateT <- M.newIO >>= newTVarIO . toGlobalState
   state  <- readTVarIO stateT
   case nets of
        Nothing       -> putStrLn "ERROR loading servers from JSON"
        Just networks -> do
          initHash networks (hash state)
          tids    <- C.newMVar []
-         handles <- mapM (forkWithKill tids . connect stateT) networks
-         mapM_ C.takeMVar handles
+         handles <- traverse (forkWithKill tids . connect stateT) networks
+         traverse_ C.takeMVar handles
 
   where connect s n = joinNetwork n >>= \x -> listen x (netServer n) s
-        initHash :: [IRCNetwork] -> H.BasicHashTable T.Text HashStorage -> IO ()
-        initHash net ht = sequence_ $ do
+        initHash :: [IRCNetwork] -> M.Map T.Text HashStorage -> IO ()
+        initHash net ht = atomically . sequence_ $ do
           x             <- net
           (chan, modes) <- fromStateConfig (netState x)
           let serv      = netServer x
-          return $ H.insert ht (serv <> chan) modes
+          return $ M.insert modes (serv <> chan) ht
