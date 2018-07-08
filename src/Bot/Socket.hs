@@ -34,17 +34,17 @@ write h (act,args) = C.connectionPut h (BU.fromString . T.unpack . fold $ [act, 
 -- simply listens to a socket forever
 listen :: C.Connection -> T.Text -> GlobalState -> IO Quit
 listen h net state = do
-  Just exit <- iterateUntil (not . (== Nothing)) resLoop
+  quit      <- C.newEmptyMVar
+  Just exit <- iterateUntil (not . (== Nothing)) (resLoop quit)
   C.connectionClose h
   return exit
   where
-    resLoop = do
+    resLoop quit = do
       s <- T.pack . BU.toString <$> C.connectionGetLine 10240 h
 
       T.putStrLn s
       print net
 
-      quit <- C.newEmptyMVar
       forkIO (inout s net quit state)
       C.tryTakeMVar quit
 

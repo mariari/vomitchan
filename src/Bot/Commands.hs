@@ -138,10 +138,11 @@ cmdQuit msg
   | msgUser msg `elem` admins = response
   | otherwise                 = NoResponse
   where
-    allOrCurrnet = wordMsg msg !! 1
+    words        = wordMsg msg
+    allOrCurrnet = words !! 1
     response
-      | T.toLower allOrCurrnet == "all" = Quit AllNetworks
-      | otherwise                       = Quit CurrentNetwork
+      | length words > 1 && T.toLower allOrCurrnet == "all" = Quit AllNetworks
+      | otherwise                                           = Quit CurrentNetwork
 cmdLewds :: CmdFuncImp
 cmdLewds msg = getChanState msg >>= f
   where f state

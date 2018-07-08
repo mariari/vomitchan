@@ -28,7 +28,7 @@ getChanState msg = atomically (f <$> M.lookup (getHashText msg) ht)
 
 -- modifies the hash-table state for a message
 modifyChanState :: Message -> HashStorage -> IO ()
-modifyChanState msg hStore = atomically (M.insert hStore (getHashText msg)  ht)
+modifyChanState msg hStore = atomically (M.insert hStore (getHashText msg) ht)
   where
     ht = hash . msgState $ msg
 

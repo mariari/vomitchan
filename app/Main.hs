@@ -7,6 +7,7 @@ module Main where
 --- IMPORTS -----------------------------------------------------------------------------------
 import qualified Control.Concurrent      as C
 import qualified STMContainers.Map       as M
+import qualified Data.List               as L
 
 import           Data.Monoid
 import qualified Data.Text               as T
@@ -28,12 +29,16 @@ forkWithKill tids act = do
   handle <- C.newEmptyMVar
   let f (Right AllNetworks)    = kill >> C.putMVar handle ()
       f (Right CurrentNetwork) = C.putMVar handle ()
-      f (Left e)               = print (show e)
+      f (Left e)               = C.putMVar handle () >> print (show e <> " in forkWithKill")
   C.forkFinally spawn f
   return handle
   where
-    spawn = C.myThreadId >>= (\tid -> C.modifyMVar_ tids (return . (tid :))) >> act
-
+    spawn = do
+      tid <- C.myThreadId
+      C.modifyMVar_ tids (return . (tid :))
+      answer <- act
+      C.modifyMVar_ tids (return . L.delete tid)
+      return answer
     kill = do
       threads <- C.readMVar tids
       mytid <- C.myThreadId
