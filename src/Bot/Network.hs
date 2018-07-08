@@ -52,7 +52,7 @@ instance JSON.ToJSON IRCNetwork
 -- read IRC networks from file
 readNetworks :: FilePath -> IO (Maybe [IRCNetwork])
 readNetworks file = do
-  jsonData <- (JSON.eitherDecode <$> B.readFile file) :: IO (Either String [IRCNetwork])
+  jsonData <- JSON.eitherDecode <$> B.readFile file :: IO (Either String [IRCNetwork])
   case jsonData of
     Left  err  -> putStrLn err >> return Nothing
     Right nets -> return $ Just nets
@@ -73,11 +73,12 @@ joinNetwork net = do
                                             }
   passConnect con
   traverse_ (write con) (zip (repeat "JOIN") (netChans net))
-
   return con
   where
-    waitForX str h = C.connectionGetLine 10240 h >>= \line -> BC.putStrLn line
-                 >> unless (str `BS.isInfixOf` line) (waitForX str h)
+    waitForX str h = do
+      line <- C.connectionGetLine 10240 h
+      BC.putStrLn line
+      unless (str `BS.isInfixOf` line) (waitForX str h)
 
     waitForAuth = waitForX ":You are now identified"
     waitForSASL = waitForX ":account-notify"
@@ -86,10 +87,12 @@ joinNetwork net = do
     waitForHost = waitForX ":*** Looking up your hostname..."
 
     passConnect con
-      | not (netSSL net) = write con ("NICK", netNick net) >> write con ("USER", netNick net <> " 0 * :connected")
-                      >> unless (netPass net == "")
-                                (write con ("NICKSERV :IDENTIFY", netPass net) >> waitForAuth con)
-      | otherwise        = do
+      | not (netSSL net) = do
+          write con ("NICK", netNick net)
+          write con ("USER", netNick net <> " 0 * :connected")
+          unless (netPass net == "")
+                 (write con ("NICKSERV :IDENTIFY", netPass net) >> waitForAuth con)
+      | otherwise = do
           write con ("CAP", "LS 302")
           write con ("CAP REQ", "sasl")
           write con ("NICK", netNick net)

@@ -33,10 +33,10 @@ write h (act,args) = C.connectionPut h (BU.fromString . T.unpack . fold $ [act, 
 
 -- simply listens to a socket forever
 listen :: C.Connection -> T.Text -> GlobalState -> IO ()
-listen h net state = iterateUntil (== Just ()) resLoop >> (liftIO . C.connectionClose) h
+listen h net state = iterateUntil (== Just ()) resLoop >> C.connectionClose h
   where
     resLoop = do
-        s    <- (T.pack . BU.toString) <$> C.connectionGetLine 10240 h
+        s    <- T.pack . BU.toString <$> C.connectionGetLine 10240 h
         T.putStrLn s
         print net
         quit <- C.newEmptyMVar
