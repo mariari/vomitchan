@@ -32,20 +32,29 @@ write h (act,args) = C.connectionPut h (BU.fromString . T.unpack . fold $ [act, 
 
 
 -- simply listens to a socket forever
-listen :: C.Connection -> T.Text -> GlobalState -> IO ()
-listen h net state = iterateUntil (== Just ()) resLoop >> C.connectionClose h
+listen :: C.Connection -> T.Text -> GlobalState -> IO Quit
+listen h net state = do
+  Just exit <- iterateUntil (not . (== Nothing)) resLoop
+  C.connectionClose h
+  return exit
   where
     resLoop = do
-        s    <- T.pack . BU.toString <$> C.connectionGetLine 10240 h
-        T.putStrLn s
-        print net
-        quit <- C.newEmptyMVar
-        _    <- forkIO(inout s net quit state)
+      s <- T.pack . BU.toString <$> C.connectionGetLine 10240 h
 
-        C.tryTakeMVar quit
+      T.putStrLn s
+      print net
+
+      quit <- C.newEmptyMVar
+      forkIO (inout s net quit state)
+      C.tryTakeMVar quit
 
     inout s net quit state = do
       res <- respond s net state
       case res of
-        Just x  -> write h x >> when (fst x == T.pack "QUIT") (C.putMVar quit ())
-        Nothing -> return ()
+        Response x          -> write h x
+        Quit CurrentNetwork -> quitNetwork h >> C.putMVar quit CurrentNetwork
+        Quit AllNetworks    -> quitNetwork h >> C.putMVar quit AllNetworks
+        NoResponse          -> return ()
+
+
+quitNetwork h = write h ("QUIT", ":Exiting")

@@ -42,12 +42,12 @@ cmdAllS = S.fromList cmdAll
 --- FUNCTIONS ---------------------------------------------------------------------------------
 
 -- takes an IRC message and generates the correct response
-respond :: T.Text -> T.Text -> VomState -> IO (Maybe (T.Text, T.Text))
+respond :: T.Text -> T.Text -> VomState -> IO (Response (T.Text, T.Text))
 respond msg info state
-  | "PING"   `T.isPrefixOf` msg = return $ Just ("PONG", T.drop 5 msg)
+  | "PING"   `T.isPrefixOf` msg = return $ Response ("PONG", T.drop 5 msg)
   | "PRIVMSG" `T.isInfixOf` msg = foldr (\c -> (((>>) . c) <*>))
                                         runCmd [cmdFldr, cmdLog, cmdLogFile] $ toMessage msg info state
-  | otherwise                   = return Nothing
+  | otherwise                   = return NoResponse
 
 --- LOGGING -----------------------------------------------------------------------------------
 

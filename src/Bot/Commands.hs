@@ -26,8 +26,8 @@ import qualified Data.Vector as V
 --- TYPES -------------------------------------------------------------------------------------
 
 -- type of all command functions
-type CmdFunc    = Message -> Maybe (T.Text, T.Text)
-type CmdFuncImp = Message -> IO (Maybe (T.Text, T.Text))
+type CmdFunc    = Message -> Response (T.Text, T.Text)
+type CmdFuncImp = Message -> IO (Response (T.Text, T.Text))
 
 type CmdAlias = [T.Text]
 
@@ -105,8 +105,12 @@ cmdMapList = M.fromList $ cmdTotList >>= f
 
 -- only 1 space is allowed in a command at this point
 -- returns a corresponding command function from a message
-runCmd :: CmdFuncImp
-runCmd msg = bindM ($ msg) (lookup split)
+--runCmd :: CmdFuncImp
+runCmd msg = do
+  mresponse <- traverse ($ msg) (lookup split)
+  case mresponse of
+    Nothing  -> return NoResponse
+    Just res -> return res
   where
     split              = T.split (== ' ') (msgContent msg)
     lookup (x : y : _) = lookup [x] <|> lookup [(x <> " " <> y)]
@@ -131,9 +135,13 @@ cmdHelp = composeMsg "NOTICE" " :Commands: (.lewd <someone>), (*vomits* [nick]),
 -- quit
 cmdQuit :: CmdFunc
 cmdQuit msg
-  | msgUser msg `elem` admins = Just ("QUIT", ":Exiting")
-  | otherwise                 = Nothing
-
+  | msgUser msg `elem` admins = response
+  | otherwise                 = NoResponse
+  where
+    allOrCurrnet = wordMsg msg !! 1
+    response
+      | T.toLower allOrCurrnet == "all" = Quit AllNetworks
+      | otherwise                       = Quit CurrentNetwork
 cmdLewds :: CmdFuncImp
 cmdLewds msg = getChanState msg >>= f
   where f state
@@ -223,15 +231,15 @@ cmdVomit msg = do
 -- Joins the first channel in the message if the user is an admin else do nothing
 cmdJoin :: CmdFunc
 cmdJoin msg
-  | msgUser msg `elem` admins && length (wordMsg msg) > 1 = Just ("JOIN", wordMsg msg !! 1)
-  | otherwise                                             = Nothing
+  | msgUser msg `elem` admins && length (wordMsg msg) > 1 = Response ("JOIN", wordMsg msg !! 1)
+  | otherwise                                             = NoResponse
 
 -- Leaves the first channel in the message if the user is an admin else do nothing
 cmdPart :: CmdFunc
 cmdPart msg
-  | isAdmin && length (wordMsg msg) > 1       = Just ("PART", wordMsg msg !! 1)
-  | isAdmin && "#" `T.isPrefixOf` msgChan msg = Just ("PART", msgChan msg)
-  | otherwise                                 = Nothing
+  | isAdmin && length (wordMsg msg) > 1       = Response ("PART", wordMsg msg !! 1)
+  | isAdmin && "#" `T.isPrefixOf` msgChan msg = Response ("PART", msgChan msg)
+  | otherwise                                 = NoResponse
   where isAdmin = msgUser msg `elem` admins
 
 
@@ -307,7 +315,7 @@ drpMsg msg bk = (snd . T.breakOn bk . msgContent) msg
 
 -- composes the format that the final send message will be
 composeMsg :: T.Text -> T.Text -> CmdFunc
-composeMsg method str msg = Just (method, msgDest msg <> str)
+composeMsg method str msg = Response (method, msgDest msg <> str)
 
 -- Used for /me commands
 actionMe :: T.Text -> T.Text

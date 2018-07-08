@@ -1,7 +1,7 @@
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE Haskell2010       #-}
 {-# LANGUAGE OverloadedStrings #-}
-
+{-# LANGUAGE DeriveFunctor #-}
 
 --- MODULE DEFINITION -------------------------------------------------------------------------
 module Bot.StateType (
@@ -9,6 +9,8 @@ module Bot.StateType (
   GlobalState,
   HashStorage,
   VomState,
+  Quit (CurrentNetwork, AllNetworks),
+  Response (Response, NoResponse, Quit),
   toHashStorage,
   toGlobalState,
   fleecy,
@@ -49,7 +51,6 @@ defaultChanState = toHashStorage True False False
 instance JSON.FromJSON HashStorage
 instance JSON.ToJSON   HashStorage
 
-
 -- Generates HashStorage
 toHashStorage = HashStorage
 
@@ -63,3 +64,14 @@ toGlobalState = GlobalState
 
 -- Our globalState type
 type VomState = GlobalState
+
+-- Exit codes for smart exiting
+data Quit = AllNetworks
+          | CurrentNetwork
+          deriving (Show, Eq)
+
+-- Basically the Maybe Monad but with exit codes
+data Response a = Response a
+                | NoResponse
+                | Quit Quit
+                deriving (Show, Functor)

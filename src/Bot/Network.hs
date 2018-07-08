@@ -24,7 +24,7 @@ import           GHC.Generics
 import qualified Network.Connection    as C
 import           Data.Monoid
 
-
+import           Control.Exception (try,SomeException)
 import           Data.Foldable
 import           Bot.MessageType
 import           Bot.Socket
@@ -63,17 +63,20 @@ saveNetworks :: FilePath -> [IRCNetwork] -> IO ()
 saveNetworks file nets = B.writeFile file (JSON.encode nets)
 
 -- joins a network and returns a handle
-joinNetwork :: IRCNetwork -> IO C.Connection
+joinNetwork :: IRCNetwork -> IO (Maybe C.Connection)
 joinNetwork net = do
   ctx <- C.initConnectionContext
-  con <- C.connectTo ctx C.ConnectionParams { C.connectionHostname  = T.unpack $ netServer net
-                                            , C.connectionPort      = fromIntegral $ netPort net
-                                            , C.connectionUseSecure = Just $ C.TLSSettingsSimple False False True
-                                            , C.connectionUseSocks  = Nothing
-                                            }
-  passConnect con
-  traverse_ (write con) (zip (repeat "JOIN") (netChans net))
-  return con
+  con <- try $ C.connectTo ctx C.ConnectionParams { C.connectionHostname  = T.unpack $ netServer net
+                                                  , C.connectionPort      = fromIntegral $ netPort net
+                                                  , C.connectionUseSecure = Just $ C.TLSSettingsSimple False False True
+                                                  , C.connectionUseSocks  = Nothing
+                                                  } :: IO (Either SomeException C.Connection)
+  case con of
+    Left ex -> putStrLn (show ex) >> return Nothing
+    Right con -> do
+      passConnect con
+      traverse_ (write con) (zip (repeat "JOIN") (netChans net))
+      return (Just con)
   where
     waitForX str h = do
       line <- C.connectionGetLine 10240 h
