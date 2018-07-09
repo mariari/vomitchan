@@ -12,32 +12,41 @@ An IRC bot written in Haskell.  *cheek pinch*
 - `*vomits* <someone>` - 'vomits' a link posted by you, or optionally someone else
 - `*cheek pinch*` - turns off and on dreammode for a channel
 - `*step*` - turns off and on fleecyMode for a channel
-- '.lotg <someone>' - gives the luck of the grasshopper to a user
-- '.8ball <question>' - acts like an eight ball!
+- `.lotg <someone>` - gives the luck of the grasshopper to a user
+- `.8ball <question>` - acts like an eight ball!
 
 ### Admin Only
-- `.quit` - kill vomitchan ;-;
+- Currently admins are stored in the admins list in Command.hs (will be read from a file later)
+- `.quit` - kills vomitchan from the current server ;-;
+- `.part` - an alias for quit
+- `.quit all` - Kills vomitchan from all servers ;-;
+- `.join <channel>` - vomitchan joins specified channel
+- `.leave <channel>` - vomitchan leaves the spcified channel
+- `.leave` - vomitchan leaves the current channel
 
 ## Building
 ### Requirements
 - Stack
 - Haskell packages (stack should install these for you):
+  - bytestring
+  - connection
+  - directory >= 1.2.5
+  - lens
+  - monad-loops
   - network
+  - random
+  - regex-tdfa
+  - stm
   - text
   - text-format
-  - regex-tdfa
-  - bytestring
-  - aeson
-  - monad-loops
   - turtle
-  - connection
-  - bytestring
-  - random
-  - stm
-  - hashtables
+  - utf8-string
+  - vector
+  - containers
+  - stm-containers
 
 ### Building on Linux
-- clone this repo using `git clone https://gitla.in/nymphet/vomitchan.git`
+- clone this repo using `git clone https://github.com/mariari/vomitchan.git`
 - run `cd vomitchan && stack setup && stack build` to compile
 
 ## Configuration
@@ -74,15 +83,14 @@ This file should look like the following:
 
 ```
 
-You can add multiple networks if you please.  
+You can add multiple networks if you please.
 **NOTE: Some networks may not get the join messages if one does not wait for authentication**
 
 ## Running
-The bot can be started within ghci by running `stack ghci` in the project directory. Once at the prompt, run the `main` function.  
+The bot can be started within ghci by running `stack ghci` in the project directory. Once at the prompt, run the `main` function.
 `stack build` should also create an executable that can be started with `stack exec vomitchan-exe`
 
 ## Planned Features
 - Versioning
-- Support for the 'major' IRC networks (Freenode, Rizon, IRCNet, QuakeNet, Etc.)
 - Per-channel rate limiting, to prevent spam
-- use parser combinators for handling messages
+- Use parser combinators for handling messages

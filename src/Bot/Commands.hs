@@ -322,7 +322,6 @@ composeMsg method str msg = Response (method, msgDest msg <> str)
 actionMe :: T.Text -> T.Text
 actionMe txt = " :\0001ACTION " <> txt <> "\0001"
 
-
 -- Used as a generic version for making bold, italic, underlined, and swap, for strings
 action :: Monoid m => m -> m -> m
 action cmd txt = cmd <> txt <> cmd

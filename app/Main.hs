@@ -33,17 +33,18 @@ forkWithKill tids act = do
   C.forkFinally spawn f
   return handle
   where
-    spawn = do
-      tid <- C.myThreadId
-      C.modifyMVar_ tids (return . (tid :))
-      answer <- act
-      C.modifyMVar_ tids (return . L.delete tid)
-      return answer
-    kill = do
+    spawn = withThread act tids
+    kill  = do
       threads <- C.readMVar tids
-      mytid <- C.myThreadId
-      traverse_ C.killThread [t | t <- threads, t /= mytid ]
+      mytid   <- C.myThreadId
+      traverse_ C.killThread (filter (/= mytid) threads)
 
+withThread :: IO a -> C.MVar [C.ThreadId] -> IO a
+withThread act tids = do
+  tid <- C.myThreadId
+  modifyVar (:) tid *> act <* modifyVar L.delete tid
+  where
+    modifyVar f tid = C.modifyMVar_ tids (return . f tid)
  --- ENTRY POINT ------------------------------------------------------------------------------
 
 main :: IO ()

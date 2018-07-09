@@ -5,9 +5,9 @@ description:         Please see README.md
 homepage:            https://gitla.in/nymphet/vomitchan
 license:             BSD3
 license-file:        LICENSE
-author:              MrDetonia & nymphet
+author:              MrDetonia & mariari
 maintainer:          nymphet@protonmail.com
-copyright:           2016 MrDetonia & nymphet
+copyright:           2016 MrDetonia & mariari
 category:            Web
 build-type:          Simple
 -- extra-source-files:
