@@ -27,11 +27,11 @@ import qualified STMContainers.Map as M
 import           GHC.Generics
 import           Control.Concurrent.STM
 --- TYPES -------------------------------------------------------------------------------------
-type Chan   = T.Text
+type Chan = T.Text
 --- DATA STRUCTURES ---------------------------------------------------------------------------
 
 -- IRC State information
-data StateConfig = StateConfig [(Chan, HashStorage)] deriving (Show, Generic)
+newtype StateConfig = StateConfig [(Chan, HashStorage)] deriving (Show, Generic)
 
 fromStateConfig (StateConfig xs) = xs
 

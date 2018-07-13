@@ -36,7 +36,7 @@ appendLog msg = T.appendFile (getUsrFldr msg <> "Links.log")
 -- Downloads the requested file to the users path
 dwnUsrFile :: MonadIO io => Message -> Text -> io ExitCode
 dwnUsrFile msg url = shell ("cd " <> getUsrFldrT msg <>
-                            " && curl --max-filesize 104857600 -O " <> url) empty
+                            " && curl --max-filesize 104857600 --range 0-104857600 -O " <> url) empty
 
 upUsrFile :: MonadIO m => T.Text -> m T.Text
 upUsrFile file = check <$> procStrict "curl" ["-F", "file=@" <> file, "https://0x0.st"] empty
