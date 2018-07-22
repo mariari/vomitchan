@@ -55,8 +55,7 @@ instance JSON.ToJSON   HashStorage
 toHashStorage = HashStorage
 
 --  All the Global Variables that make up State
-newtype GlobalState = GlobalState
-                 {hash :: M.Map T.Text HashStorage}
+newtype GlobalState = GlobalState {hash :: M.Map T.Text HashStorage}
 
 -- Generates GlobalState
 toGlobalState :: M.Map T.Text HashStorage -> GlobalState

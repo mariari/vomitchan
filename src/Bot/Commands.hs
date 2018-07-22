@@ -21,6 +21,7 @@ import           Data.Char
 import           Data.Foldable
 import           Control.Lens
 import           Control.Applicative
+import           Data.Maybe
 import qualified Data.Map    as M
 import qualified Data.Vector as V
 --- TYPES -------------------------------------------------------------------------------------
@@ -105,12 +106,8 @@ cmdMapList = M.fromList $ cmdTotList >>= f
 
 -- only 1 space is allowed in a command at this point
 -- returns a corresponding command function from a message
---runCmd :: CmdFuncImp
-runCmd msg = do
-  mresponse <- traverse ($ msg) (lookup split)
-  case mresponse of
-    Nothing  -> return NoResponse
-    Just res -> return res
+runCmd :: CmdFuncImp
+runCmd msg = fromMaybe NoResponse <$> traverse ($ msg) (lookup split)
   where
     split              = T.split (== ' ') (msgContent msg)
     lookup (x : y : _) = lookup [x] <|> lookup [(x <> " " <> y)]
@@ -185,8 +182,7 @@ cmdVomit msg = do
 
       -- checks if there is a file to upload!
       fileCheck :: Maybe String -> IO T.Text
-      fileCheck (Just xs) = upUsrFile . (getUsrFldrT newUsr <>) . T.pack $ xs
-      fileCheck Nothing   = return ""
+      fileCheck = maybe (return "") $ upUsrFile . (getUsrFldrT newUsr <>) . T.pack
 
       randEff :: V.Vector String -> String -> Int -> String
       randEff effectList txt num

@@ -45,7 +45,7 @@ cmdAllS = S.fromList cmdAll
 respond :: T.Text -> T.Text -> VomState -> IO (Response (T.Text, T.Text))
 respond msg info state
   | "PING"   `T.isPrefixOf` msg = return $ Response ("PONG", T.drop 5 msg)
-  | "PRIVMSG" `T.isInfixOf` msg = foldr (\c -> (((>>) . c) <*>))
+  | "PRIVMSG" `T.isInfixOf` msg = foldr (liftA2 (>>)) -- the functor here is a function!
                                         runCmd [cmdFldr, cmdLog, cmdLogFile] $ toMessage msg info state
   | otherwise                   = return NoResponse
 

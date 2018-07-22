@@ -12,6 +12,7 @@ module Bot.State (
 import qualified Data.Text         as T
 import           Control.Concurrent.STM
 import           Data.Monoid
+import           Data.Maybe
 import qualified STMContainers.Map as M
 
 import Bot.StateType
@@ -20,11 +21,9 @@ import Bot.MessageType
 
 -- Returns the hash-table state for a message
 getChanState :: Message -> IO HashStorage
-getChanState msg = atomically (f <$> M.lookup (getHashText msg) ht)
+getChanState msg = atomically (fromMaybe defaultChanState <$> M.lookup (getHashText msg) ht)
   where
     ht = hash . msgState $ msg
-    f Nothing  = defaultChanState
-    f (Just x) = x
 
 -- modifies the hash-table state for a message
 modifyChanState :: Message -> HashStorage -> IO ()
