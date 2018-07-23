@@ -10,6 +10,7 @@ module Bot.Socket (
 --- IMPORTS ------------------------------------------------------------------------------ ----
 import           Control.Monad
 import           Control.Monad.Loops
+import           Control.Monad.Reader
 import           Control.Concurrent as C
 import qualified Data.Text          as T
 import qualified Data.Text.Format   as T
@@ -21,6 +22,7 @@ import           Data.Foldable
 import qualified Data.ByteString.UTF8 as BU
 
 
+import           Bot.MessageType
 import           Bot.Message
 import           Bot.StateType
 --- FUNCTIONS ------------------------------------------------------------------------------ --
@@ -49,7 +51,7 @@ listen h net state = do
       C.tryTakeMVar quit
 
     inout s net quit state = do
-      res <- respond s net state
+      res <- runReaderT (respond s) (toMessage s net state)
       case res of
         Response x          -> write h x
         Quit CurrentNetwork -> quitNetwork h >> C.putMVar quit CurrentNetwork

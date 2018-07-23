@@ -15,12 +15,14 @@ module Bot.FileOps (
 import qualified Data.Text          as T
 import qualified Data.Text.IO       as T
 import           Data.Monoid
-import           Bot.MessageType
 import           Data.Foldable     (fold)
 
 import           System.Directory
 import           Turtle             hiding (FilePath, fold)
 import           Data.List
+
+import Bot.MessageType
+
 -- FUNCTIONS ----------------------------------------------------------------------------------
 
 -- Creates a folder of the irc channel and a user inside of it

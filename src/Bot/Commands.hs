@@ -1,6 +1,6 @@
 {-# LANGUAGE Haskell2010       #-}
 {-# LANGUAGE OverloadedStrings #-}
-
+{-# LANGUAGE FlexibleContexts #-}
 --- MODULE DEFINITION -------------------------------------------------------------------------
 module Bot.Commands (
   runCmd,
@@ -16,17 +16,20 @@ import           Bot.MessageType
 import           Bot.State
 import           Bot.StateType
 import           Bot.Misc
+import           Bot.EffType
 import           System.Random
 import           Data.Char
 import           Data.Foldable
 import           Control.Lens
 import           Control.Applicative
 import           Data.Maybe
+import           Control.Monad.Reader
 import qualified Data.Map    as M
 import qualified Data.Vector as V
 --- TYPES -------------------------------------------------------------------------------------
 
 -- type of all command functions
+
 type CmdFunc    = Message -> Response (T.Text, T.Text)
 type CmdFuncImp = Message -> IO (Response (T.Text, T.Text))
 
@@ -72,8 +75,9 @@ effectList = V.fromList (" " : fmap show [MonoSpace, Strikethrough, None]) <> ef
 admins :: [T.Text]
 admins = ["loli"]
 
+
 -- list of all Pure functions
-cmdList :: [(CmdFunc, [T.Text])]
+cmdList :: Cmd m => [(m Func, [T.Text])]
 cmdList = [(cmdBots, [".bots", ".bot vomitchan"])
           ,(cmdSrc,   [".source vomitchan"])
           ,(cmdHelp,  [".help vomitchan"])
@@ -84,21 +88,19 @@ cmdList = [(cmdBots, [".bots", ".bot vomitchan"])
           ,(cmdBane,  [".amysbane"])]
 
 -- List of all Impure functions
-cmdListImp :: [(CmdFuncImp, [T.Text])]
+cmdListImp :: CmdImp m => [(m Func, [T.Text])]
 cmdListImp = [(cmdVomit,    ["*vomits*"])
              ,(cmdDream,    ["*cheek pinch*"])
              ,(cmdFleecy,   ["*step*"])
              ,(cmdLewds,    [".lewd"])
              ,(cmdEightBall,[".8ball"])]
 
-
 -- The List of all functions pure <> impure
-cmdTotList :: [(CmdFuncImp, CmdAlias)]
-cmdTotList = cmdList2 <> cmdListImp
-  where cmdList2 = (\(f3,t3) -> (return . f3, t3)) <$> cmdList
+cmdTotList :: CmdImp m => [(m Func, CmdAlias)]
+cmdTotList = cmdList <> cmdListImp
 
 -- the Map of all functions that are pure and impure
-cmdMapList :: M.Map T.Text CmdFuncImp
+cmdMapList :: CmdImp m => M.Map T.Text (m Func)
 cmdMapList = M.fromList $ cmdTotList >>= f
   where
     f (cfn, aliasList) = (\x -> (x, cfn)) <$> aliasList
@@ -106,10 +108,12 @@ cmdMapList = M.fromList $ cmdTotList >>= f
 
 -- only 1 space is allowed in a command at this point
 -- returns a corresponding command function from a message
-runCmd :: CmdFuncImp
-runCmd msg = fromMaybe NoResponse <$> traverse ($ msg) (lookup split)
+runCmd :: CmdImp m => m Func
+runCmd = do
+  msg <- ask
+  fromMaybe (return NoResponse) (lookup (split msg))
   where
-    split              = T.split (== ' ') (msgContent msg)
+    split  msg         = T.split (== ' ') (msgContent msg)
     lookup (x : y : _) = lookup [x] <|> lookup [(x <> " " <> y)]
     lookup [x]         = cmdMapList M.!? x
     lookup []          = Nothing
@@ -117,54 +121,66 @@ runCmd msg = fromMaybe NoResponse <$> traverse ($ msg) (lookup split)
 --- COMMAND FUNCTIONS -------------------------------------------------------------------------
 
 -- print bot info
-cmdBots :: CmdFunc
+cmdBots :: Cmd m => m Func
 cmdBots = composeMsg "NOTICE" " :I am a queasy bot written in Haskell by MrDetonia and loli"
 
 -- print source link
-cmdSrc :: CmdFunc
+cmdSrc :: Cmd m => m Func
 cmdSrc = composeMsg "NOTICE" " :[Haskell] https://github.com/mariari/vomitchan"
 
 -- prints help information
 -- TODO: Store command info in cmdList and generate this text on the fly
-cmdHelp :: CmdFunc
+cmdHelp :: Cmd m => m Func
 cmdHelp = composeMsg "NOTICE" " :Commands: (.lewd <someone>), (*vomits* [nick]), (*cheek pinch*)"
 
 -- quit
-cmdQuit :: CmdFunc
-cmdQuit msg
-  | msgUser msg `elem` admins = response
-  | otherwise                 = NoResponse
+cmdQuit :: Cmd m => m Func
+cmdQuit = shouldQuit <$> ask
   where
-    words        = wordMsg msg
-    allOrCurrnet = words !! 1
-    response
-      | length words > 1 && T.toLower allOrCurrnet == "all" = Quit AllNetworks
-      | otherwise                                           = Quit CurrentNetwork
-cmdLewds :: CmdFuncImp
-cmdLewds msg = getChanState msg >>= f
+    shouldQuit msg
+      | isAdmin msg = response
+      | otherwise   = NoResponse
+      where
+        words        = wordMsg msg
+        allOrCurrnet = words !! 1
+        response
+          | length words > 1 && T.toLower allOrCurrnet == "all" = Quit AllNetworks
+          | otherwise                                           = Quit CurrentNetwork
+{-
+cldLewds :: Cmd m => m FuncImp
+cmdLewds = f <$> getChanState msg
   where f state
           | dream state = return . cmdLewd $ msg
           | otherwise   = cmdVomit msg
+-}
+
+cmdLewds :: CmdImp m => m Func
+cmdLewds = getChanStateM >>= f
+  where f state
+          | dream state = cmdLewd
+          | otherwise   = cmdVomit
 
 -- lewd someone (rip halpybot)
-cmdLewd :: CmdFunc
-cmdLewd msg = (composeMsg "PRIVMSG" . actionMe) ("lewds " <> target) msg
-  where target = T.tail $ drpMsg msg " "
+cmdLewd :: Cmd m => m Func
+cmdLewd = do
+  target <- T.tail <$> drpMsg " "
+  composeMsg "PRIVMSG" $ actionMe ("lewds " <> target)
 
 
 -- Causes Vomitchan to sleep ∨ awaken
-cmdDream :: CmdFuncImp
-cmdDream msg = modifyDreamState msg >> return (composeMsg "PRIVMSG" " :dame" msg)
+cmdDream :: CmdImp m => m Func
+cmdDream = modifyDreamState >> composeMsg "PRIVMSG" " :dame"
 
 -- Causes vomit to go into fleecy mode (at the moment just prints <3's instead of actual text in cmdVomit)
-cmdFleecy :: CmdFuncImp
-cmdFleecy msg = modifyFleecyState msg >> return (composeMsg "PRIVMSG" " :dame" msg)
+cmdFleecy :: CmdImp m => m Func
+cmdFleecy = modifyFleecyState >> composeMsg "PRIVMSG" " :dame"
 
 
 -- Vomits up a colorful rainbow if vomitchan is asleep else it just vomits up red with no link
-cmdVomit :: CmdFuncImp
-cmdVomit msg = do
-  state <- getChanState msg
+cmdVomit :: CmdImp m => m Func
+cmdVomit = do
+  msg <- ask
+  state <- getChanStateM
   let
      -- has to be string so foldrM doesn't get annoyed in randApply
       randVom :: Int -> Int -> String
@@ -223,57 +239,49 @@ cmdVomit msg = do
              , randApply x y,                 return " "
              , randApplyLink (T.unpack link), return " "
              , randApply x z]
-  flip (composeMsg "PRIVMSG" . (" :" <>)) msg <$> randMessage
+  toWrite <- liftIO randMessage
+  composeMsg "PRIVMSG" (" :" <> toWrite)
 
 -- Joins the first channel in the message if the user is an admin else do nothing
-cmdJoin :: CmdFunc
-cmdJoin msg
-  | msgUser msg `elem` admins && length (wordMsg msg) > 1 = Response ("JOIN", wordMsg msg !! 1)
-  | otherwise                                             = NoResponse
+cmdJoin :: Cmd m => m Func
+cmdJoin = join <$> ask
+  where
+    join msg
+      | isAdmin msg && length (wordMsg msg) > 1 = Response ("JOIN", wordMsg msg !! 1)
+      | otherwise                               = NoResponse
 
 -- Leaves the first channel in the message if the user is an admin else do nothing
-cmdPart :: CmdFunc
-cmdPart msg
-  | isAdmin && length (wordMsg msg) > 1       = Response ("PART", wordMsg msg !! 1)
-  | isAdmin && "#" `T.isPrefixOf` msgChan msg = Response ("PART", msgChan msg)
-  | otherwise                                 = NoResponse
-  where isAdmin = msgUser msg `elem` admins
+cmdPart :: Cmd m => m Func
+cmdPart = part <$> ask
+  where
+    part msg
+      | isAdmin msg && length (wordMsg msg) > 1       = Response ("PART", wordMsg msg !! 1)
+      | isAdmin msg && "#" `T.isPrefixOf` msgChan msg = Response ("PART", msgChan msg)
+      | otherwise                                      = NoResponse
+
 
 
 -- SLEX COMMANDS--------------------------------------------------------------------------------
-cmdLotg :: CmdFunc
-cmdLotg msg = composeMsg "PRIVMSG" (" :May the Luck of the Grasshopper be with you always, " <> target) msg
-  where target = T.tail $ drpMsg msg " "
+
+cmdLotg :: Cmd m => m Func
+cmdLotg = do
+  target <- T.tail <$> drpMsg " "
+  composeMsg "PRIVMSG" (" :May the Luck of the Grasshopper be with you always, " <> target)
 
 
-cmdEightBall :: CmdFuncImp
-cmdEightBall msg = (\x -> composeMsg "PRIVMSG" (" :" <> respones V.! x) msg) <$> answer
-  where respones = V.fromList ["It is certain",
-                               "It is decidedly so",
-                               "Without a doubt",
-                               "Yes definitely",
-                               "You may rely on it",
-                               "As I see it, yes",
-                               "Most likely",
-                               "Outlook good",
-                               "Yes",
-                               "Signs point to yes",
-                               "Reply hazy try again",
-                               "Ask again later",
-                               "Better not tell you now",
-                               "Cannot predict now",
-                               "Concentrate and ask again",
-                               "Don't count on it",
-                               "My reply is no"]
-        answer = randomRIO (0,length respones - 1)
+cmdEightBall :: CmdImp m => m Func
+cmdEightBall = do
+  loc <- liftIO (randomRIO (0,length respones - 1))
+  composeMsg "PRIVMSG" (" :" <> respones V.! loc)
 
-cmdBane :: CmdFunc
-cmdBane msg = composeMsg "PRIVMSG" (" :The elder priest tentacles to tentacle "
-                                     <> target
-                                     <> "! "
-                                     <> target
-                                     <> "'s cloak of magic resistance disintegrates!") msg
-  where target = T.tail $ drpMsg msg " "
+cmdBane :: Cmd m => m Func
+cmdBane = do
+  target <- T.tail <$> drpMsg " "
+  composeMsg "PRIVMSG" (" :The elder priest tentacles to tentacle "
+                         <> target
+                         <> "! "
+                         <> target
+                         <> "'s cloak of magic resistance disintegrates!")
 -- TODO's -------------------------------------------------------------------------------------
 --
 -- TODO: add a *cheek pinch* function that puts the bot into reality mode
@@ -287,6 +295,10 @@ cmdBane msg = composeMsg "PRIVMSG" (" :The elder priest tentacles to tentacle "
 --
 --- HELPER FUNCTIONS --------------------------------------------------------------------------
 
+-- checks if the user is an admin
+isAdmin :: Message -> Bool
+isAdmin msg = msgUser msg `elem` admins
+
 -- generates the randomRange for the cmdVomit command
 randRange :: V.Vector Char
 randRange = (chr <$>) . V.fromList $  [8704..8959]   -- Mathematical symbols
@@ -294,6 +306,26 @@ randRange = (chr <$>) . V.fromList $  [8704..8959]   -- Mathematical symbols
                                    <> [10627,10628]  -- obscure braces
                                    <> [10631, 10632] -- obscure braces
                                    <> [945..969]     -- greek symbols
+
+respones = V.fromList ["It is certain"
+                      ,"It is decidedly so"
+                      ,"Without a doubt"
+                      ,"Yes definitely"
+                      ,"You may rely on it"
+                      ,"As I see it, yes"
+                      ,"Most likely"
+                      ,"Outlook good"
+                      ,"Yes"
+                      ,"Signs point to yes"
+                      ,"Reply hazy try again"
+                      ,"Ask again later"
+                      ,"Better not tell you now"
+                      ,"Cannot predict now"
+                      ,"Concentrate and ask again"
+                      ,"Don't count on it"
+                      ,"My reply is no"
+                      ]
+
 
 -- Figures out where to send a response to
 msgDest :: Message -> T.Text
@@ -307,12 +339,15 @@ specWord msg search = (isElemList . T.words . msgContent) msg
   where isElemList = filter (search `T.isPrefixOf`)
 
 -- Drops the command message [.lewd *vomits*]... send *command* messages via T.tail msg
-drpMsg :: Message -> T.Text -> T.Text
-drpMsg msg bk = (snd . T.breakOn bk . msgContent) msg
+drpMsg :: Cmd m => T.Text -> m T.Text
+drpMsg bk = snd . T.breakOn bk . msgContent <$> ask
 
 -- composes the format that the final send message will be
-composeMsg :: T.Text -> T.Text -> CmdFunc
-composeMsg method str msg = Response (method, msgDest msg <> str)
+--composeMsg :: Cmd m => T.Text -> T.Text -> m (Response (T.Text, T.Text))
+composeMsg :: Cmd m => T.Text -> T.Text -> m Func
+composeMsg method str = do
+  msg <- ask
+  return $ Response (method, msgDest msg <> str)
 
 -- Used for /me commands
 actionMe :: T.Text -> T.Text
@@ -350,7 +385,7 @@ drpMsgRec :: Message -> T.Text -> T.Text -> [T.Text]
 drpMsgRec msg bkL bkR = recurse [] drpMess
   where recurse acc (x,"") = x:acc
         recurse acc (x,xs) = (recurse (x:acc) . drpRight . snd . drpLeft) xs
-        drpMess            = T.breakOn bkR (drpMsg msg bkL)
+        drpMess            = T.breakOn bkR (drpMsg bkL msg)
         drpLeft            = T.breakOn bkL
         drpRight           = T.breakOn bkR
 

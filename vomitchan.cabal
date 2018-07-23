@@ -24,6 +24,7 @@ library
                      , Bot.Commands
                      , Bot.FileOps
                      , Bot.Misc
+                     , Bot.EffType
   build-depends:       aeson
                      , base >= 4.9 && < 5
                      , bytestring
@@ -42,6 +43,7 @@ library
                      , vector
                      , containers
                      , stm-containers
+                     , mtl
   default-language:    Haskell2010
 
 executable vomitchan-exe

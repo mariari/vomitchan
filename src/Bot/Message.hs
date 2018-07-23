@@ -1,6 +1,6 @@
 {-# LANGUAGE Haskell2010       #-}
 {-# LANGUAGE OverloadedStrings #-}
-
+{-# LANGUAGE FlexibleContexts #-}
 --- MODULE DEFINITION -------------------------------------------------------------------------
 module Bot.Message (
   respond
@@ -8,13 +8,16 @@ module Bot.Message (
 --- IMPORTS -----------------------------------------------------------------------------------
 import qualified Data.Text as T
 import           Control.Concurrent.STM
-import           Bot.Commands
-import           Bot.MessageType
-import           Bot.FileOps
-import           Bot.StateType
 import           Data.Foldable
+import           Control.Monad.Reader
 import qualified Data.Set as S
 import           Turtle hiding (fold)
+
+import Bot.Commands
+import Bot.MessageType
+import Bot.FileOps
+import Bot.StateType
+import Bot.EffType
 --- DATA --------------------------------------------------------------------------------------
 
 -- Lists the type of webpages that are logged
@@ -42,14 +45,16 @@ cmdAllS = S.fromList cmdAll
 --- FUNCTIONS ---------------------------------------------------------------------------------
 
 -- takes an IRC message and generates the correct response
-respond :: T.Text -> T.Text -> VomState -> IO (Response (T.Text, T.Text))
-respond msg info state
-  | "PING"   `T.isPrefixOf` msg = return $ Response ("PONG", T.drop 5 msg)
-  | "PRIVMSG" `T.isInfixOf` msg = foldr (liftA2 (>>)) -- the functor here is a function!
-                                        runCmd [cmdFldr, cmdLog, cmdLogFile] $ toMessage msg info state
-  | otherwise                   = return NoResponse
+respond :: CmdImp m => T.Text -> m Func
+respond txt
+      | "PING"   `T.isPrefixOf` txt = return $ Response ("PONG", T.drop 5 txt)
+      | "PRIVMSG" `T.isInfixOf` txt = sequence allLogsM >> runCmd
+      | otherwise                   = return NoResponse
 
 --- LOGGING -----------------------------------------------------------------------------------
+
+allLogsM :: CmdImp m => [m ()]
+allLogsM = map (\x -> reader x >>= liftIO) [cmdFldr, cmdLog, cmdLogFile]
 
 -- Logs any links posted and appends them to the users .log file
 cmdLog :: Message -> IO ()
