@@ -28,11 +28,6 @@ import qualified Data.Map    as M
 import qualified Data.Vector as V
 --- TYPES -------------------------------------------------------------------------------------
 
--- type of all command functions
-
-type CmdFunc    = Message -> Response (T.Text, T.Text)
-type CmdFuncImp = Message -> IO (Response (T.Text, T.Text))
-
 type CmdAlias = [T.Text]
 
 data Color = White | Black | Blue  | Green | Red  | Brown | Purple | Orange | Yellow | LGreen
@@ -146,13 +141,6 @@ cmdQuit = shouldQuit <$> ask
         response
           | length words > 1 && T.toLower allOrCurrnet == "all" = Quit AllNetworks
           | otherwise                                           = Quit CurrentNetwork
-{-
-cldLewds :: Cmd m => m FuncImp
-cmdLewds = f <$> getChanState msg
-  where f state
-          | dream state = return . cmdLewd $ msg
-          | otherwise   = cmdVomit msg
--}
 
 cmdLewds :: CmdImp m => m Func
 cmdLewds = getChanStateM >>= f
@@ -257,7 +245,7 @@ cmdPart = part <$> ask
     part msg
       | isAdmin msg && length (wordMsg msg) > 1       = Response ("PART", wordMsg msg !! 1)
       | isAdmin msg && "#" `T.isPrefixOf` msgChan msg = Response ("PART", msgChan msg)
-      | otherwise                                      = NoResponse
+      | otherwise                                     = NoResponse
 
 
 

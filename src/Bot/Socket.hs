@@ -32,7 +32,6 @@ write :: C.Connection -> (T.Text, T.Text) -> IO ()
 write h (act,args) = C.connectionPut h (BU.fromString . T.unpack . fold $ [act, " ", args, "\r\n"])
                   >> T.print "{} {}\n" [act,args]
 
-
 -- simply listens to a socket forever
 listen :: C.Connection -> T.Text -> GlobalState -> IO Quit
 listen h net state = do

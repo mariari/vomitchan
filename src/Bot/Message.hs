@@ -48,13 +48,13 @@ cmdAllS = S.fromList cmdAll
 respond :: CmdImp m => T.Text -> m Func
 respond txt
       | "PING"   `T.isPrefixOf` txt = return $ Response ("PONG", T.drop 5 txt)
-      | "PRIVMSG" `T.isInfixOf` txt = sequence allLogsM >> runCmd
+      | "PRIVMSG" `T.isInfixOf` txt = allLogsM >> runCmd
       | otherwise                   = return NoResponse
 
 --- LOGGING -----------------------------------------------------------------------------------
 
-allLogsM :: CmdImp m => [m ()]
-allLogsM = map (\x -> reader x >>= liftIO) [cmdFldr, cmdLog, cmdLogFile]
+allLogsM :: CmdImp m => m ()
+allLogsM = traverse_ toReaderImp [cmdFldr, cmdLog, cmdLogFile]
 
 -- Logs any links posted and appends them to the users .log file
 cmdLog :: Message -> IO ()

@@ -30,7 +30,7 @@ getChanState msg = atomically (fromMaybe defaultChanState <$> M.lookup (getHashT
     ht = hash . msgState $ msg
 
 getChanStateM :: CmdImp m => m HashStorage
-getChanStateM = reader getChanState >>= liftIO
+getChanStateM = toReaderImp getChanState
 
 -- modifies the hash-table state for a message
 modifyChanState :: Message -> HashStorage -> IO ()
@@ -38,11 +38,10 @@ modifyChanState msg hStore = atomically (M.insert hStore (getHashText msg) ht)
   where
     ht = hash . msgState $ msg
 
-
 updateState :: (HashStorage -> HashStorage) -> Message -> IO ()
 updateState f msg = getChanState msg >>= modifyChanState msg . f
 
-updateStateR f = reader (updateState f) >>= liftIO
+updateStateR f = toReaderImp (updateState f)
 
 modifyDreamState :: CmdImp m => m ()
 modifyDreamState = updateStateR (\s -> s {dream = not (dream s)})
