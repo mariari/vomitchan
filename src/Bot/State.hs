@@ -24,21 +24,21 @@ import Bot.EffType
 -- Functions ----------------------------------------------------------------------------------
 
 -- Returns the hash-table state for a message
-getChanState :: Info -> IO HashStorage
+getChanState :: Message -> IO HashStorage
 getChanState msg = atomically (fromMaybe defaultChanState <$> M.lookup (getHashText msg) ht)
   where
-    ht = hash . vomState $ msg
+    ht = hash . msgState $ msg
 
 getChanStateM :: CmdImp m => m HashStorage
 getChanStateM = toReaderImp getChanState
 
 -- modifies the hash-table state for a message
-modifyChanState :: Info -> HashStorage -> IO ()
+modifyChanState :: Message -> HashStorage -> IO ()
 modifyChanState msg hStore = atomically (M.insert hStore (getHashText msg) ht)
   where
-    ht = hash . vomState $ msg
+    ht = hash . msgState $ msg
 
-updateState :: (HashStorage -> HashStorage) -> Info -> IO ()
+updateState :: (HashStorage -> HashStorage) -> Message -> IO ()
 updateState f msg = getChanState msg >>= modifyChanState msg . f
 
 updateStateR f = toReaderImp (updateState f)
@@ -54,12 +54,12 @@ modifyFleecyState = updateStateR (\s -> s {fleecy = not (fleecy s)})
 
 
 -- Checks if the message is a pm
-isPM :: Info -> Bool
-isPM = not . ("#" `T.isPrefixOf`) . infoChan
+isPM :: Message -> Bool
+isPM = not . ("#" `T.isPrefixOf`) . msgChan
 
 -- gives back the hashname for the message
-getHashText :: Info -> T.Text
+getHashText :: Message -> T.Text
 getHashText msg
-  | isPM msg  = createText infoNick
-  | otherwise = createText infoChan
-  where createText f = server msg <> f msg
+  | isPM msg  = createText msgNick
+  | otherwise = createText msgChan
+  where createText f = msgServer msg <> f msg
