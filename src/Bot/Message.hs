@@ -54,7 +54,7 @@ respond txt
 --- LOGGING -----------------------------------------------------------------------------------
 
 allLogsM :: CmdImp m => m ()
-allLogsM = traverse_ toReaderImp [cmdFldr, cmdLog, cmdLogFile]
+allLogsM = traverse_ (toReaderImp . (. message)) [cmdFldr, cmdLog, cmdLogFile]
 
 -- Logs any links posted and appends them to the users .log file
 cmdLog :: Message -> IO ()

@@ -105,7 +105,7 @@ cmdMapList = M.fromList $ cmdTotList >>= f
 -- returns a corresponding command function from a message
 runCmd :: CmdImp m => m Func
 runCmd = do
-  msg <- ask
+  msg <- message <$> ask
   fromMaybe (return NoResponse) (lookup (split msg))
   where
     split  msg         = T.split (== ' ') (msgContent msg)
@@ -130,7 +130,7 @@ cmdHelp = composeMsg "NOTICE" " :Commands: (.lewd <someone>), (*vomits* [nick]),
 
 -- quit
 cmdQuit :: Cmd m => m Func
-cmdQuit = shouldQuit <$> ask
+cmdQuit = shouldQuit . message <$> ask
   where
     shouldQuit msg
       | isAdmin msg = response
@@ -167,7 +167,7 @@ cmdFleecy = modifyFleecyState >> composeMsg "PRIVMSG" " :dame"
 -- Vomits up a colorful rainbow if vomitchan is asleep else it just vomits up red with no link
 cmdVomit :: CmdImp m => m Func
 cmdVomit = do
-  msg <- ask
+  msg   <- message <$> ask
   state <- getChanStateM
   let
      -- has to be string so foldrM doesn't get annoyed in randApply
@@ -232,7 +232,7 @@ cmdVomit = do
 
 -- Joins the first channel in the message if the user is an admin else do nothing
 cmdJoin :: Cmd m => m Func
-cmdJoin = join <$> ask
+cmdJoin = join . message <$> ask
   where
     join msg
       | isAdmin msg && length (wordMsg msg) > 1 = Response ("JOIN", wordMsg msg !! 1)
@@ -240,7 +240,7 @@ cmdJoin = join <$> ask
 
 -- Leaves the first channel in the message if the user is an admin else do nothing
 cmdPart :: Cmd m => m Func
-cmdPart = part <$> ask
+cmdPart = part . message <$> ask
   where
     part msg
       | isAdmin msg && length (wordMsg msg) > 1       = Response ("PART", wordMsg msg !! 1)
@@ -328,13 +328,13 @@ specWord msg search = (isElemList . T.words . msgContent) msg
 
 -- Drops the command message [.lewd *vomits*]... send *command* messages via T.tail msg
 drpMsg :: Cmd m => T.Text -> m T.Text
-drpMsg bk = snd . T.breakOn bk . msgContent <$> ask
+drpMsg bk = snd . T.breakOn bk . msgContent . message <$> ask
 
 -- composes the format that the final send message will be
 --composeMsg :: Cmd m => T.Text -> T.Text -> m (Response (T.Text, T.Text))
 composeMsg :: Cmd m => T.Text -> T.Text -> m Func
 composeMsg method str = do
-  msg <- ask
+  msg <- message <$> ask
   return $ Response (method, msgDest msg <> str)
 
 -- Used for /me commands
@@ -365,18 +365,3 @@ changeNickFstArg msg
 -- converts a message into a list containing a list of the contents based on words
 wordMsg :: Message -> [T.Text]
 wordMsg = T.words . msgContent
-
-
--- UNUSED HELPER FUNCTIONS --------------------------------------------------------------------
--- Like drpMsg but does it recursively until the break can't be found anymore
-drpMsgRec :: Message -> T.Text -> T.Text -> [T.Text]
-drpMsgRec msg bkL bkR = recurse [] drpMess
-  where recurse acc (x,"") = x:acc
-        recurse acc (x,xs) = (recurse (x:acc) . drpRight . snd . drpLeft) xs
-        drpMess            = T.breakOn bkR (drpMsg bkL msg)
-        drpLeft            = T.breakOn bkL
-        drpRight           = T.breakOn bkR
-
--- Used for color commnad... color can go all the way up to 15
-actionColT :: T.Text -> Int -> T.Text
-actionColT txt num = "\0003" <> T.pack (show num) <> txt <> "\0003"
