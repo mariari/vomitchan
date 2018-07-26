@@ -50,7 +50,7 @@ listen h net state = do
       C.tryTakeMVar quit
 
     inout s net quit state = do
-      res <- runReaderT (respond s) (toMessage s net state)
+      res <- runReaderT (respond s) (toInfo s net state)
       case res of
         Response x          -> write h x
         Quit CurrentNetwork -> quitNetwork h >> C.putMVar quit CurrentNetwork

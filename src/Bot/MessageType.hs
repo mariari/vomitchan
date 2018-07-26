@@ -11,15 +11,23 @@ module Bot.MessageType (
   Host,
   Pass,
   Chan,
+  Info,
   Message,
+  message,
   msgNick,
   msgUser,
   msgHost,
   msgChan,
   msgContent,
-  msgServer,
-  msgState,
-  toMessage
+  toMessage,
+  server,
+  vomState,
+  infoNick,
+  infoUser,
+  infoHost,
+  infoChan,
+  infoContent,
+  toInfo
 ) where
 --- IMPORTS -----------------------------------------------------------------------------------
 import qualified Data.Text       as T
@@ -39,6 +47,11 @@ type Chan   = T.Text
 
 --- DATA STRUCTURES ---------------------------------------------------------------------------
 
+data Info = Info { message  :: Message
+                 , server   :: T.Text
+                 , vomState :: VomState
+                 } deriving Show
+
 -- IRC message structure
 data Message = Message
              { msgNick    :: Nick
@@ -46,21 +59,21 @@ data Message = Message
              , msgHost    :: Host
              , msgChan    :: Chan
              , msgContent :: T.Text
-             , msgServer  :: T.Text
-             , msgState   :: VomState
-             }
+             } deriving Show
 
-instance Show Message where
-  show a = fold ["Message {msgNick = ", show (msgNick a),
-                 ", msgUsr = ", show (msgUser a),
-                 ", msgChan = ", show (msgChan a),
-                 ", msgContent = ", show (msgContent a),
-                 ", msgServer = ", show (msgServer a),
-                 ", MsgState = VomState }"]
+infoNick    = msgNick    . message
+infoUser    = msgUser    . message
+infoHost    = msgHost    . message
+infoChan    = msgChan    . message
+infoContent = msgContent . message
 
 --- FUNCTIONS ---------------------------------------------------------------------------------
+
+toInfo :: T.Text -> T.Text -> VomState -> Info
+toInfo str = Info (toMessage str)
+
 -- converts a string to a Message
-toMessage :: T.Text -> T.Text -> VomState -> Message
+toMessage :: T.Text -> Message
 toMessage str = Message nick user host chan content
   where
     nick    = T.tail            $ regex str  ":[^!]*"
