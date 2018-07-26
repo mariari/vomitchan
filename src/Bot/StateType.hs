@@ -57,6 +57,9 @@ toHashStorage = HashStorage
 --  All the Global Variables that make up State
 newtype GlobalState = GlobalState {hash :: M.Map T.Text HashStorage}
 
+instance Show GlobalState where
+  show _ = "VomState"
+
 -- Generates GlobalState
 toGlobalState :: M.Map T.Text HashStorage -> GlobalState
 toGlobalState = GlobalState
