@@ -109,7 +109,7 @@ runCmd = do
   fromMaybe (return NoResponse) (lookup (split msg))
   where
     split  msg         = T.split (== ' ') (msgContent msg)
-    lookup (x : y : _) = lookup [x] <|> lookup [(x <> " " <> y)]
+    lookup (x : y : _) = lookup [x] <|> lookup [x <> " " <> y]
     lookup [x]         = cmdMapList M.!? x
     lookup []          = Nothing
 

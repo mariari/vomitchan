@@ -5,18 +5,14 @@
 
 --- MODULE DEFINITION -------------------------------------------------------------------------
 module Bot.StateType (
-  StateConfig,
-  GlobalState,
-  HashStorage,
+  StateConfig(..),
+  GlobalState(..),
+  HashStorage(..),
   VomState,
-  Quit (CurrentNetwork, AllNetworks),
-  Response (Response, NoResponse, Quit),
+  Quit(..),
+  Response(..),
   toHashStorage,
   toGlobalState,
-  fleecy,
-  dream,
-  mute,
-  hash,
   fromStateConfig,
   defaultChanState
 ) where
