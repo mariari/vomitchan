@@ -20,6 +20,7 @@ import           Control.Monad
 import           Bot.Network
 import           Bot.Socket
 import           Bot.StateType
+import GHC.Conc (numCapabilities)
 --- FUNCTIONS ---------------------------------------------------------------------------------
 
 -- creates a thread and adds its thread ID to an MVar list, kills all
@@ -49,6 +50,7 @@ withThread act tids = do
 
 main :: IO ()
 main = do
+  putStrLn $ "number of cores: " ++ show numCapabilities
   nets  <- readNetworks "data/networks.json"
   state <- toGlobalState <$> M.newIO
   case nets of

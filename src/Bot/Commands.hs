@@ -4,7 +4,6 @@
 --- MODULE DEFINITION -------------------------------------------------------------------------
 module Bot.Commands (
   runCmd,
-  createUsrFldr,
   specWord,
 ) where
 --- IMPORTS -----------------------------------------------------------------------------------
@@ -98,7 +97,7 @@ cmdTotList = cmdList <> cmdListImp
 cmdMapList :: CmdImp m => M.Map T.Text (m Func)
 cmdMapList = M.fromList $ cmdTotList >>= f
   where
-    f (cfn, aliasList) = (\x -> (x, cfn)) <$> aliasList
+    f (cfn, aliasList) = zip aliasList (repeat cfn)
 -- FUNCTIONS ----------------------------------------------------------------------------------
 
 -- only 1 space is allowed in a command at this point
@@ -314,7 +313,6 @@ respones = V.fromList ["It is certain"
                       ,"My reply is no"
                       ]
 
-
 -- Figures out where to send a response to
 msgDest :: Message -> T.Text
 msgDest msg
@@ -334,8 +332,8 @@ drpMsg bk = snd . T.breakOn bk . msgContent . message <$> ask
 --composeMsg :: Cmd m => T.Text -> T.Text -> m (Response (T.Text, T.Text))
 composeMsg :: Cmd m => T.Text -> T.Text -> m Func
 composeMsg method str = do
-  msg <- message <$> ask
-  return $ Response (method, msgDest msg <> str)
+  dest <- msgDest . message <$> ask
+  return $ Response (method, dest <> str)
 
 -- Used for /me commands
 actionMe :: T.Text -> T.Text

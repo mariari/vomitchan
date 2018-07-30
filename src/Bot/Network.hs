@@ -57,7 +57,6 @@ readNetworks file = do
     Left  err  -> putStrLn err >> return Nothing
     Right nets -> return $ Just nets
 
-
 -- save IRC networks to file
 saveNetworks :: FilePath -> [IRCNetwork] -> IO ()
 saveNetworks file nets = B.writeFile file (JSON.encode nets)
