@@ -76,7 +76,6 @@ joinNetwork net = do
     Left ex -> putStrLn (show ex) >> return Nothing
     Right con -> do
       passConnect con
-      waitForMOTD con
       traverse_ (write con) (zip (repeat "JOIN") (netChans net))
       return (Just con)
   where
@@ -92,9 +91,9 @@ joinNetwork net = do
     waitForSASL = waitForInfix "sasl"
     waitForPlus = waitForInfix "AUTHENTICATE +"
     waitForHost = waitForInfix ":*** Looking up your hostname..."
-    waitForMOTD = waitForInfix "End of"
-    waitForJoin nick = waitForInfix (TE.encodeUtf8 nick)
-    waitForCap nick  = waitForInfix " ACK" -- TODO: replace this with CAP nick ACK
+    waitForMOTD = waitForInfix "376"
+    waitForJoin = waitForInfix "90"
+    waitForCap  = waitForInfix " ACK" -- TODO: replace this with CAP nick ACK
 
     passConnect con
       | not (netSSL net) = do
@@ -102,18 +101,20 @@ joinNetwork net = do
           write con ("USER", netNick net <> " 0 * :connected")
           unless (netPass net == "")
                  (write con ("NICKSERV :IDENTIFY", netPass net) >> waitForAuth con)
+          waitForMOTD con
       | otherwise = do
           write con ("CAP", "LS 302")
           write con ("NICK", netNick net)
           write con ("USER", netNick net <> " 0 * :connected")
           waitForSASL con
           write con ("CAP", "REQ :sasl")
-          waitForCap (netNick net) con
+          waitForCap con
           write con ("AUTHENTICATE", "PLAIN")
           waitForPlus con
-          writeBS con ("AUTHENTICATE", (BS64.encode $ fold (TE.encodeUtf8 <$> [netNick net, " ", netNick net, " ", netPass net])))
-          waitForJoin (netNick net) con
+          writeBS con ("AUTHENTICATE", (encode $ fold [netNick net, "\0", netNick net, "\0", netPass net]))
+          waitForJoin con
           write con ("CAP", "END")
+    encode = BS64.encode . TE.encodeUtf8
 --- HELPER FUNCTIONS / UNUSED -----------------------------------------------------------------
 
 -- finds a network by name and maybe returns it
