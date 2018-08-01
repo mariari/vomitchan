@@ -16,5 +16,3 @@ type Func     = Response (T.Text, T.Text)
 
 toReaderImp :: (MonadIO m, MonadReader r m) => (r -> IO b) -> m b
 toReaderImp = (liftIO =<<) . reader
-
-

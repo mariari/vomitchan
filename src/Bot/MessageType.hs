@@ -22,7 +22,7 @@ module Bot.MessageType (
   toInfo
 ) where
 --- IMPORTS -----------------------------------------------------------------------------------
-import qualified Data.Text       as T
+import qualified Data.Text as T
 import           Text.Regex.TDFA
 import           Bot.StateType
 import           Data.Foldable

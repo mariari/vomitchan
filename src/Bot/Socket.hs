@@ -5,6 +5,7 @@
 --- MODULE DEFINITION -------------------------------------------------------------------------
 module Bot.Socket (
   write,
+  writeBS,
   listen
 ) where
 --- IMPORTS ------------------------------------------------------------------------------ ----
@@ -19,8 +20,8 @@ import qualified Network.Connection as C
 import           Control.Monad.IO.Class
 import           Control.Concurrent.STM
 import           Data.Foldable
-import qualified Data.Text.Encoding as TE
-
+import qualified Data.Text.Encoding    as TE
+import qualified Data.ByteString.Char8 as BS
 import           Bot.MessageType
 import           Bot.Message
 import           Bot.StateType
@@ -30,6 +31,9 @@ import           Bot.StateType
 write :: C.Connection -> (T.Text, T.Text) -> IO ()
 write h (act,args) = C.connectionPut h (TE.encodeUtf8 . fold $ [act, " ", args, "\r\n"])
                   >> T.print "{} {}\n" [act,args]
+
+writeBS h (act, args) = C.connectionPut h txt >> BS.putStrLn txt
+  where txt = fold [act, " ", args, "\r\n"]
 
 -- simply listens to a socket forever
 listen :: C.Connection -> T.Text -> GlobalState -> IO Quit

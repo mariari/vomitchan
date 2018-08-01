@@ -44,6 +44,7 @@ library
                      , containers
                      , stm-containers
                      , mtl
+                     , base64-bytestring
   default-language:    Haskell2010
 
 executable vomitchan-exe

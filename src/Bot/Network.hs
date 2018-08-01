@@ -23,6 +23,8 @@ import qualified Data.Text             as T
 import           GHC.Generics
 import qualified Network.Connection    as C
 import           Data.Monoid
+import qualified Data.ByteString.Base64 as BS64
+import qualified Data.Text.Encoding as TE
 
 import           Control.Exception (try,SomeException)
 import           Data.Foldable
@@ -74,19 +76,25 @@ joinNetwork net = do
     Left ex -> putStrLn (show ex) >> return Nothing
     Right con -> do
       passConnect con
+      waitForMOTD con
       traverse_ (write con) (zip (repeat "JOIN") (netChans net))
       return (Just con)
   where
-    waitForX str h = do
+    -- this entire section will be revamped once I introduce parser combinators
+    waitForF f str h = do
       line <- C.connectionGetLine 10240 h
       BC.putStrLn line
-      unless (str `BS.isInfixOf` line) (waitForX str h)
+      unless (str `f` line) (waitForF f str h)
 
-    waitForAuth = waitForX ":You are now identified"
-    waitForSASL = waitForX ":account-notify"
-    waitForPlus = waitForX "AUTHENTICATE +"
-    waitForJoin = waitForX "you have registered"
-    waitForHost = waitForX ":*** Looking up your hostname..."
+    waitForInfix = waitForF BS.isInfixOf
+
+    waitForAuth = waitForInfix ":You are now identified"
+    waitForSASL = waitForInfix "sasl"
+    waitForPlus = waitForInfix "AUTHENTICATE +"
+    waitForHost = waitForInfix ":*** Looking up your hostname..."
+    waitForMOTD = waitForInfix "End of"
+    waitForJoin nick = waitForInfix (TE.encodeUtf8 nick)
+    waitForCap nick  = waitForInfix " ACK" -- TODO: replace this with CAP nick ACK
 
     passConnect con
       | not (netSSL net) = do
@@ -96,14 +104,15 @@ joinNetwork net = do
                  (write con ("NICKSERV :IDENTIFY", netPass net) >> waitForAuth con)
       | otherwise = do
           write con ("CAP", "LS 302")
-          write con ("CAP REQ", "sasl")
           write con ("NICK", netNick net)
           write con ("USER", netNick net <> " 0 * :connected")
           waitForSASL con
+          write con ("CAP", "REQ :sasl")
+          waitForCap (netNick net) con
           write con ("AUTHENTICATE", "PLAIN")
           waitForPlus con
-          write con ("AUTHENTICATE", netPass net)
-          waitForJoin con
+          writeBS con ("AUTHENTICATE", (BS64.encode $ fold (TE.encodeUtf8 <$> [netNick net, " ", netNick net, " ", netPass net])))
+          waitForJoin (netNick net) con
           write con ("CAP", "END")
 --- HELPER FUNCTIONS / UNUSED -----------------------------------------------------------------
 
