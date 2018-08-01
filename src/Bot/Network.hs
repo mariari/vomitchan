@@ -80,20 +80,21 @@ joinNetwork net = do
       return (Just con)
   where
     -- this entire section will be revamped once I introduce parser combinators
-    waitForF f str h = do
+    waitForPing f str h = do
       line <- C.connectionGetLine 10240 h
       BC.putStrLn line
-      unless (str `f` line) (waitForF f str h)
+      when ("PING" `BS.isPrefixOf` line) (writeBS h ("PONG", BS.drop 5 line))
+      unless (str `f` line) (waitForPing f str h)
 
-    waitForInfix = waitForF BS.isInfixOf
+    waitForInfix = waitForPing BS.isInfixOf
 
     waitForAuth = waitForInfix ":You are now identified"
     waitForSASL = waitForInfix "sasl"
     waitForPlus = waitForInfix "AUTHENTICATE +"
     waitForHost = waitForInfix ":*** Looking up your hostname..."
-    waitForMOTD = waitForInfix "376"
     waitForJoin = waitForInfix "90"
     waitForCap  = waitForInfix " ACK" -- TODO: replace this with CAP nick ACK
+    waitForMOTD = waitForInfix "376"
 
     passConnect con
       | not (netSSL net) = do
