@@ -24,6 +24,11 @@ data Prefix = ServerName Server
             | PUser UserI
             deriving Show
 
+parseMessage :: BS.ByteString -> Either String Command
+parseMessage = parseOnly (maybePrefix >>= command)
+
+command prefix =  wordCommand prefix
+              <|> numberCommand prefix
 
 maybePrefix :: Parser (Maybe Prefix)
 maybePrefix = optionally prefix
@@ -32,16 +37,21 @@ prefix :: Parser Prefix
 prefix = word8 58 >> (parseUserI <|> parseServer) -- 58 = :
 
 
-commandW :: Maybe Prefix -> Parser Command
-commandW Nothing = do
+numberCommand prefix = do
+  code <- C.decimal
+  NUMBERS <$> numbers code prefix
+
+wordCommand prefix = do
   word <- C.takeWhile1 C.isAlpha_ascii
+  commandW word prefix
+
+commandW :: BS.ByteString -> Maybe Prefix -> Parser Command
+commandW word Nothing = do
   case word of
     "PING" -> ping
     _      -> OTHER (TE.decodeUtf8 word) . OtherNoInfo <$> takeText
 
-commandW (Just (PUser userI)) = do
-  C.space
-  word <- C.takeWhile1 C.isAlpha_ascii
+commandW word (Just (PUser userI)) = do
   case word of
     "PRIVMSG" -> privMsg userI
     "JOIN"    -> join userI
@@ -49,29 +59,23 @@ commandW (Just (PUser userI)) = do
     "QUIT"    -> quit userI
     _         -> OTHER (TE.decodeUtf8 word) . OtherUser userI <$> takeText
 
-commandW (Just (ServerName s)) = do
-  C.space
+commandW word (Just (ServerName s)) = do
   word <- C.takeWhile1 C.isAlpha_ascii
   case word of
     _ -> OTHER (TE.decodeUtf8 word) . OtherNoInfo <$> takeText
 
-numbers :: Maybe Prefix -> Parser Numbers
-numbers Nothing = do
-  code <- C.decimal
+numbers :: Int -> Maybe Prefix -> Parser Numbers
+numbers code Nothing = do
   case code of
     _ -> NOther code . OtherNoInfo <$> takeText
 
 
-numbers (Just (PUser userI)) = do
-  C.space
-  code <- C.decimal
+numbers code (Just (PUser userI)) = do
   case code of
     _ -> NOther code . OtherUser userI <$> takeText
 
 
-numbers (Just (ServerName s)) = do
-  C.space
-  code <- C.decimal
+numbers code (Just (ServerName s)) = do
   case code of
     354 -> N354 s <$> takeText
     904 -> N904 s <$> takeText
@@ -116,13 +120,17 @@ targetCmd f = do
 
 -- PREFIX-------------------------------------------------------------------------------------
 parseServer :: Parser Prefix
-parseServer = ServerName . TE.decodeUtf8 <$> parseHost
+parseServer = do
+  host <- parseHost
+  C.space
+  return (ServerName (TE.decodeUtf8 host))
 
 parseUserI :: Parser Prefix
 parseUserI = do
   nick <- parseNick
   user <- optionally (word8 33 >> parseUser) -- 33 = !
   host <- optionally (word8 64 >> parseHost) -- 64 = @
+  C.space
   return (PUser (UserI (TE.decodeUtf8 nick) (TE.decodeUtf8 <$> user) (TE.decodeUtf8 <$> host)))
 
 
@@ -155,3 +163,4 @@ takeText = TE.decodeUtf8 <$> takeByteString
 -- :loli!loli@net-cqi4sn.cl7c.pujq.i9lmq6.IP JOIN :#lainchan
 -- :ergo!4f67a633@net-cnc.itb.81eeq7.IP QUIT :Connection closed
 -- :irc.fuwafuwa.moe 376 vomitchan :End of /MOTD command.
+-- :drastikbot!drastik@drastik.org PRIVMSG #lainchan :Riot – Riot – open team collaboration
