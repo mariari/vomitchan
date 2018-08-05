@@ -138,8 +138,8 @@ cmdQuit = shouldQuit . message <$> ask
         words        = wordMsg msg
         allOrCurrnet = words !! 1
         response
-          | length words > 1 && T.toLower allOrCurrnet == "all" = Quit AllNetworks
-          | otherwise                                           = Quit CurrentNetwork
+          | isSnd words && T.toLower allOrCurrnet == "all" = Quit AllNetworks
+          | otherwise                                      = Quit CurrentNetwork
 
 cmdLewds :: CmdImp m => m Func
 cmdLewds = getChanStateM >>= f
@@ -234,15 +234,15 @@ cmdJoin :: Cmd m => m Func
 cmdJoin = join . message <$> ask
   where
     join msg
-      | isAdmin msg && length (wordMsg msg) > 1 = Response ("JOIN", wordMsg msg !! 1)
-      | otherwise                               = NoResponse
+      | isAdmin msg && isSnd (wordMsg msg) = Response ("JOIN", wordMsg msg !! 1)
+      | otherwise                          = NoResponse
 
 -- Leaves the first channel in the message if the user is an admin else do nothing
 cmdPart :: Cmd m => m Func
 cmdPart = part . message <$> ask
   where
     part msg
-      | isAdmin msg && length (wordMsg msg) > 1       = Response ("PART", wordMsg msg !! 1)
+      | isAdmin msg && isSnd (wordMsg msg)            = Response ("PART", wordMsg msg !! 1)
       | isAdmin msg && "#" `T.isPrefixOf` msgChan msg = Response ("PART", msgChan msg)
       | otherwise                                     = NoResponse
 
@@ -357,8 +357,12 @@ changeNick nick msg = msg {msgNick = nick}
 -- Changes the nick of the msg if the first argument specifies it
 changeNickFstArg :: Message -> Message
 changeNickFstArg msg
-  | length (wordMsg msg) > 1 = changeNick (wordMsg msg !! 1) msg
-  | otherwise                = msg
+  | isSnd (wordMsg msg) = changeNick (wordMsg msg !! 1) msg
+  | otherwise              = msg
+
+
+isSnd (x : y : _) = True
+isSnd _           = False
 
 -- converts a message into a list containing a list of the contents based on words
 wordMsg :: Message -> [T.Text]

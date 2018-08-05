@@ -36,8 +36,27 @@ type User   = T.Text
 type Host   = T.Text
 type Pass   = T.Text
 type Chan   = T.Text
-
+type Target = T.Text
+type Content = T.Text
 --- DATA STRUCTURES ---------------------------------------------------------------------------
+
+data Command = PrivMsg PrivMsg
+             | Join    Join
+             | Quit    Exit
+             | Numbers Numbers
+             | Other
+             | Error
+
+data PrivMsg = P UserI Target Content
+
+data Join = J UserI Target
+
+data Exit = Q UserI Content
+
+data UserI = UserI Nick (Maybe User) (Maybe Host)
+
+data Numbers = N354 Server Content
+             | NOther Int Server Content
 
 
 data Info = Info { message  :: Message
@@ -53,7 +72,6 @@ data Message = Message
              , msgChan    :: Chan
              , msgContent :: T.Text
              } deriving Show
-
 
 infoNick    = msgNick . message
 infoUser    = msgUser . message

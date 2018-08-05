@@ -55,10 +55,9 @@ listen h net state = do
     inout s net quit state = do
       res <- runReaderT (respond s) (toInfo s net state)
       case res of
-        Response x          -> write h x
-        Quit CurrentNetwork -> quitNetwork h >> C.putMVar quit CurrentNetwork
-        Quit AllNetworks    -> quitNetwork h >> C.putMVar quit AllNetworks
-        NoResponse          -> return ()
+        Quit x     -> quitNetwork h >> C.putMVar quit x
+        Response x -> write h x
+        NoResponse -> return ()
 
 
 quitNetwork h = write h ("QUIT", ":Exiting")
