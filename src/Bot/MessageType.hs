@@ -13,6 +13,15 @@ module Bot.MessageType (
   Chan,
   Info(..),
   Message(..),
+  Command(..),
+  PrivMsg(..),
+  Join(..),
+  CQuit(..),
+  UserI(..),
+  Ping(..),
+  Numbers(..),
+  Part(..),
+  Other(..),
   infoNick,
   infoUser,
   infoHost,
@@ -40,24 +49,39 @@ type Target = T.Text
 type Content = T.Text
 --- DATA STRUCTURES ---------------------------------------------------------------------------
 
-data Command = PrivMsg PrivMsg
-             | Join    Join
-             | Quit    Exit
-             | Numbers Numbers
-             | Other
-             | Error
+data Command = PRIVMSG PrivMsg
+             | JOIN    Join
+             | CQUIT   CQuit
+             | NUMBERS Numbers
+             | PART    Part
+             | PING    Ping
+             | OTHER   T.Text Other -- the T.Text is the unidentified command
+             | ERROR
+             deriving Show
 
-data PrivMsg = P UserI Target Content
+-- taking only user prefixes
+data PrivMsg = PrivMsg UserI Target Content deriving Show
+data Part    = Part    UserI Target Content deriving Show
+data Join    = Join    UserI Target         deriving Show
+data CQuit   = CQuit   UserI Content        deriving Show
 
-data Join = J UserI Target
+-- taking no prefixes
+data Ping    = Ping Content deriving Show
 
-data Exit = Q UserI Content
-
-data UserI = UserI Nick (Maybe User) (Maybe Host)
+data UserI = UserI Nick (Maybe User) (Maybe Host) deriving Show
 
 data Numbers = N354 Server Content
-             | NOther Int Server Content
+             | N904 Server Content
+             | N903 Server Content
+             | N376 Server Content
+             | NOther Int Other
+             deriving Show
 
+
+data Other = OtherUser   UserI Content
+           | OtherServer Server Content
+           | OtherNoInfo Content
+           deriving Show
 
 data Info = Info { message  :: Message
                  , server   :: T.Text
