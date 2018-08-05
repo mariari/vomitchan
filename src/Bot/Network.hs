@@ -29,6 +29,7 @@ import qualified Data.Text.Encoding as TE
 import           Control.Exception (try,SomeException)
 import           Data.Foldable
 import           Bot.MessageType
+import           Bot.MessageParser
 import           Bot.Socket
 import           Bot.StateType
 --- DATA STRUCTURES ---------------------------------------------------------------------------

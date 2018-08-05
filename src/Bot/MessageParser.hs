@@ -7,19 +7,16 @@ module Bot.MessageParser where
 
 import Bot.MessageType
 
-import qualified Data.Text as T
-
-import Prelude hiding (takeWhile)
-
-import Control.Applicative
-import Data.Attoparsec.ByteString
-import Data.Word
+import           Prelude hiding (takeWhile)
+import           Control.Applicative
+import           Data.Attoparsec.ByteString
+import           Data.Word
+import qualified Data.Text                        as T
 import qualified Data.ByteString                  as BS
 import qualified Data.Set                         as S
 import qualified Data.Attoparsec.ByteString.Char8 as C
 import qualified Data.Text.Encoding               as TE
 -- TYPES FOR PARSING---------------------------------------------------------------------------
-
 data Prefix = ServerName Server
             | PUser UserI
             deriving Show
@@ -46,42 +43,39 @@ wordCommand prefix = do
   commandW word prefix
 
 commandW :: BS.ByteString -> Maybe Prefix -> Parser Command
-commandW word Nothing = do
-  case word of
-    "PING" -> ping
-    _      -> OTHER (TE.decodeUtf8 word) . OtherNoInfo <$> takeText
+commandW word Nothing = f word
+  where
+    f "PING" = ping
+    f _      = OTHER (TE.decodeUtf8 word) . OtherNoInfo <$> takeText
 
-commandW word (Just (PUser userI)) = do
-  case word of
-    "PRIVMSG" -> privMsg userI
-    "JOIN"    -> join userI
-    "PART"    -> part userI
-    "QUIT"    -> quit userI
-    _         -> OTHER (TE.decodeUtf8 word) . OtherUser userI <$> takeText
+commandW word (Just (PUser userI)) = f word
+  where
+    f "PRIVMSG" = privMsg userI
+    f "JOIN"    = join    userI
+    f "QUIT"    = quit    userI
+    f "PART"    = quit    userI
+    f _         = OTHER (TE.decodeUtf8 word) . OtherUser userI <$> takeText
 
-commandW word (Just (ServerName s)) = do
-  word <- C.takeWhile1 C.isAlpha_ascii
-  case word of
-    _ -> OTHER (TE.decodeUtf8 word) . OtherNoInfo <$> takeText
+commandW word (Just (ServerName s)) = f word
+  where
+    f _ = OTHER (TE.decodeUtf8 word) . OtherNoInfo <$> takeText
 
 numbers :: Int -> Maybe Prefix -> Parser Numbers
-numbers code Nothing = do
-  case code of
-    _ -> NOther code . OtherNoInfo <$> takeText
+numbers code Nothing = f code
+  where
+    f _ = NOther code . OtherNoInfo <$> takeText
 
+numbers code (Just (PUser userI)) = f code
+  where
+    f _ = NOther code . OtherUser userI <$> takeText
 
-numbers code (Just (PUser userI)) = do
-  case code of
-    _ -> NOther code . OtherUser userI <$> takeText
-
-
-numbers code (Just (ServerName s)) = do
-  case code of
-    354 -> N354 s <$> takeText
-    904 -> N904 s <$> takeText
-    903 -> N903 s <$> takeText
-    376 -> N376 s <$> takeText
-    _ -> NOther code . OtherServer s <$> takeText
+numbers code (Just (ServerName s)) = f code
+  where
+    f 354 = N354 s <$> takeText
+    f 376 = N376 s <$> takeText
+    f 904 = N904 s <$> takeText
+    f 903 = N903 s <$> takeText
+    f _   = NOther code . OtherServer s <$> takeText
 
 -- COMMAND-------------------------------------------------------------------------------------
 
@@ -95,7 +89,7 @@ part userI = targetCmd f
     f target = PART . Part userI target
 
 ping :: Parser Command
-ping = PING . Ping <$> takeText
+ping = C.space >> PING . Ping <$> takeText
 
 join userI = takeColon (JOIN . Join userI)
 
@@ -157,7 +151,7 @@ optionally :: Alternative f => f a -> f (Maybe a)
 optionally p = option Nothing (Just <$> p)
 
 takeText :: Parser T.Text
-takeText = TE.decodeUtf8 <$> takeByteString
+takeText = TE.decodeUtf8 <$> takeTill C.isEndOfLine
 
 -- :loli!loli@net-cqi4sn.cl7c.pujq.i9lmq6.IP PART #lainchan :WeeChat 2.2
 -- :loli!loli@net-cqi4sn.cl7c.pujq.i9lmq6.IP JOIN :#lainchan

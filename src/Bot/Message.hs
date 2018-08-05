@@ -8,6 +8,7 @@ module Bot.Message (
 --- IMPORTS -----------------------------------------------------------------------------------
 import qualified Data.Text as T
 import           Control.Concurrent.STM
+import qualified Data.ByteString as BS
 import           Data.Foldable
 import           Control.Monad.Reader
 import qualified Data.Set as S
@@ -45,11 +46,13 @@ cmdAllS = S.fromList cmdAll
 --- FUNCTIONS ---------------------------------------------------------------------------------
 
 -- takes an IRC message and generates the correct response
-respond :: CmdImp m => T.Text -> m Func
-respond txt
-      | "PING"   `T.isPrefixOf` txt = return $ Response ("PONG", T.drop 5 txt)
-      | "PRIVMSG" `T.isInfixOf` txt = allLogsM >> runCmd
-      | otherwise                   = return NoResponse
+respond :: BS.ByteString -> Either String Command -> T.Text -> VomState -> IO Func
+respond s (Left err)   server state = appendError err s >> print err >> return NoResponse
+respond _ (Right priv) server state = f priv
+  where
+    f (PING (Ping s)) = return $ Response ("PONG", s)
+    f (PRIVMSG priv)  = runReaderT (allLogsM >> runCmd) (Info priv server state)
+    f _               = return NoResponse
 
 --- LOGGING -----------------------------------------------------------------------------------
 
@@ -57,23 +60,23 @@ allLogsM :: CmdImp m => m ()
 allLogsM = traverse_ (toReaderImp . (. message)) [cmdFldr, cmdLog, cmdLogFile]
 
 -- Logs any links posted and appends them to the users .log file
-cmdLog :: Message -> IO ()
+cmdLog :: PrivMsg -> IO ()
 cmdLog = traverse_ . appendLog <*> linLn
   where linLn = fmap (<> "\n") . allLinks
 
 
 -- Downloads any file and saves it to the user folder
-cmdLogFile :: Message -> IO ()
+cmdLogFile :: PrivMsg -> IO ()
 cmdLogFile = traverse_ . dwnUsrFile <*> allImg
   where allImg m = filter (isSuffix cmdAllS) (allLinks m)
 
-cmdFldr :: Message -> IO ()
+cmdFldr :: PrivMsg -> IO ()
 cmdFldr = createUsrFldr
 
 --- HELPER ------------------------------------------------------------------------------------
 
 -- creates a list of all links
-allLinks :: Message -> [T.Text]
+allLinks :: PrivMsg -> [T.Text]
 allLinks = (cmdWbPg >>=) . specWord
 
 

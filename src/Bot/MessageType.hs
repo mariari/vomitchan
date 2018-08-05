@@ -3,33 +3,7 @@
 
 
 --- MODULE DEFINITION -------------------------------------------------------------------------
-module Bot.MessageType (
-  Server,
-  Port,
-  Nick,
-  User,
-  Host,
-  Pass,
-  Chan,
-  Info(..),
-  Message(..),
-  Command(..),
-  PrivMsg(..),
-  Join(..),
-  CQuit(..),
-  UserI(..),
-  Ping(..),
-  Numbers(..),
-  Part(..),
-  Other(..),
-  infoNick,
-  infoUser,
-  infoHost,
-  infoChan,
-  infoContent,
-  toMessage,
-  toInfo
-) where
+module Bot.MessageType where
 --- IMPORTS -----------------------------------------------------------------------------------
 import qualified Data.Text as T
 import           Text.Regex.TDFA
@@ -59,8 +33,17 @@ data Command = PRIVMSG PrivMsg
              | ERROR
              deriving Show
 
+data InfoPriv = Info { message  :: PrivMsg
+                     , server   :: T.Text
+                     , vomState :: VomState
+                     } deriving Show
+
 -- taking only user prefixes
-data PrivMsg = PrivMsg UserI Target Content deriving Show
+data PrivMsg = PrivMsg {user       :: UserI
+                       ,msgChan    :: Target
+                       ,msgContent :: Content
+                       } deriving Show
+
 data Part    = Part    UserI Target Content deriving Show
 data Join    = Join    UserI Target         deriving Show
 data CQuit   = CQuit   UserI Content        deriving Show
@@ -68,7 +51,10 @@ data CQuit   = CQuit   UserI Content        deriving Show
 -- taking no prefixes
 data Ping    = Ping Content deriving Show
 
-data UserI = UserI Nick (Maybe User) (Maybe Host) deriving Show
+data UserI = UserI { usrNick :: Nick
+                   , usrUser :: Maybe User
+                   , usrHost :: Maybe Host
+                   } deriving Show
 
 data Numbers = N354 Server Content
              | N904 Server Content
@@ -83,19 +69,11 @@ data Other = OtherUser   UserI Content
            | OtherNoInfo Content
            deriving Show
 
-data Info = Info { message  :: Message
-                 , server   :: T.Text
-                 , vomState :: VomState
-                 } deriving Show
 
--- IRC message structure
-data Message = Message
-             { msgNick    :: Nick
-             , msgUser    :: User
-             , msgHost    :: Host
-             , msgChan    :: Chan
-             , msgContent :: T.Text
-             } deriving Show
+msgNick :: PrivMsg -> Nick
+msgNick = usrNick . user
+msgUser = usrUser . user
+msgHost = usrHost . user
 
 infoNick    = msgNick . message
 infoUser    = msgUser . message
@@ -103,20 +81,8 @@ infoHost    = msgHost . message
 infoChan    = msgChan . message
 infoContent = msgContent . message
 
---- FUNCTIONS ---------------------------------------------------------------------------------
-toInfo :: T.Text -> T.Text -> VomState -> Info
-toInfo str = Info (toMessage str)
+class GetUser f where
+  userI :: f -> UserI
 
--- converts a string to a Message
-toMessage :: T.Text -> Message
-toMessage str = Message nick user host chan content
-  where
-    nick    = T.tail            $ regex str  ":[^!]*"
-    user    = T.init            $ regex str  "[^!~]*@"
-    host    = T.tail            $ regex str  "@[^ ]*"
-    chan    = T.strip . T.init  $ regex str  "[^ ]* :"
-    content = T.tail  . T.strip $ regex str  " :.*$"
-
--- performs a regex on a T.Text
-regex :: T.Text -> String -> T.Text
-regex str pat = T.pack (T.unpack str =~ pat)
+instance GetUser (PrivMsg) where
+  userI (PrivMsg u _ _) = u

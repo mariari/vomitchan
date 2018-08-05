@@ -44,6 +44,9 @@ An IRC bot written in Haskell.  *cheek pinch*
   - vector
   - containers
   - stm-containers
+  - mtl
+  - base64-bytestring
+  - attoparsec
 
 ### Building on Linux
 - clone this repo using `git clone https://github.com/mariari/vomitchan.git`
@@ -62,7 +65,7 @@ This file should look like the following:
       , "netSSL"  : false
       , "netNick" : "vomitchan"
       , "netPass" : "PASS"
-      , "netChans" : ["#lainchan", "##loli", "##0chan", "#arisuchan", "#em.slashem.me"]
+      , "netChans" : ["#lainchan", "##0chan", "#arisuchan", "#em.slashem.me", "#Haskell"]
       , "netState" : [["#lainchan", {"dream"  : true,
                                      "mute"   : false,
                                      "fleecy" : false}]
@@ -71,12 +74,12 @@ This file should look like the following:
                                            "fleecy" : true}]]
     },
 
-    { "netServer" : "lainchan.org"
+    { "netServer" : "other"
       , "netPort" : 6697
       , "netSSL"  : false
       , "netNick" : "vomitchan"
       , "netPass" : ""
-      , "netChans" : ["#bots", "#lainchan"]
+      , "netChans" : ["#bots", "#programming"]
       , "netState" : []
     }
 ]
@@ -93,4 +96,3 @@ The bot can be started within ghci by running `stack ghci` in the project direct
 ## Planned Features
 - Versioning
 - Per-channel rate limiting, to prevent spam
-- Use parser combinators for handling messages

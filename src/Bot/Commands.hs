@@ -216,8 +216,8 @@ cmdVomit = do
         | "nsfw" `T.isSuffixOf` txt = T.pack $ action (show Reverse) (actionCol (action (show Bold) "nsfw") LBlue) <> " "
         | otherwise                 = ""
 
-      randMessage :: IO T.Text
-      randMessage = do
+      randPrivMsg :: IO T.Text
+      randPrivMsg = do
         x    <- randomRIO (8,23)
         y    <- randomIO
         z    <- randomIO
@@ -226,7 +226,7 @@ cmdVomit = do
              , randApply x y,                 return " "
              , randApplyLink (T.unpack link), return " "
              , randApply x z]
-  toWrite <- liftIO randMessage
+  toWrite <- liftIO randPrivMsg
   composeMsg "PRIVMSG" (" :" <> toWrite)
 
 -- Joins the first channel in the message if the user is an admin else do nothing
@@ -283,8 +283,10 @@ cmdBane = do
 --- HELPER FUNCTIONS --------------------------------------------------------------------------
 
 -- checks if the user is an admin
-isAdmin :: Message -> Bool
-isAdmin msg = msgUser msg `elem` admins
+isAdmin :: PrivMsg -> Bool
+isAdmin msg = f (msgUser msg)
+  where f (Just x) = x `elem` admins
+        f Nothing  = False
 
 -- generates the randomRange for the cmdVomit command
 randRange :: V.Vector Char
@@ -314,13 +316,13 @@ respones = V.fromList ["It is certain"
                       ]
 
 -- Figures out where to send a response to
-msgDest :: Message -> T.Text
+msgDest :: PrivMsg -> T.Text
 msgDest msg
   | "#" `T.isPrefixOf` msgChan msg = msgChan msg
   | otherwise                      = msgNick msg
 
 -- Generates a list of words that specify the search constraint
-specWord :: Message -> T.Text -> [T.Text]
+specWord :: PrivMsg -> T.Text -> [T.Text]
 specWord msg search = (isElemList . T.words . msgContent) msg
   where isElemList = filter (search `T.isPrefixOf`)
 
@@ -351,19 +353,18 @@ actionColN :: String -> Int -> String
 actionColN txt num = action (show Color) (show num <> txt)
 
 -- Changes the nick of the msg
-changeNick :: T.Text -> Message -> Message
-changeNick nick msg = msg {msgNick = nick}
+changeNick :: Nick -> PrivMsg -> PrivMsg
+changeNick nick (PrivMsg usr chan cont) = PrivMsg (usr {usrNick = nick}) chan cont
 
 -- Changes the nick of the msg if the first argument specifies it
-changeNickFstArg :: Message -> Message
+changeNickFstArg :: PrivMsg -> PrivMsg
 changeNickFstArg msg
   | isSnd (wordMsg msg) = changeNick (wordMsg msg !! 1) msg
-  | otherwise              = msg
-
+  | otherwise           = msg
 
 isSnd (x : y : _) = True
 isSnd _           = False
 
 -- converts a message into a list containing a list of the contents based on words
-wordMsg :: Message -> [T.Text]
+wordMsg :: PrivMsg -> [T.Text]
 wordMsg = T.words . msgContent
