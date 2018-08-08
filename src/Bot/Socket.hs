@@ -48,10 +48,11 @@ listen h net state = do
     resLoop quit = do
       s <- C.connectionGetLine 10240 h
 
+      forkIO (inout s net quit state)
+
       BS.putStrLn s
       print net
 
-      forkIO (inout s net quit state)
       C.tryTakeMVar quit
 
     inout s net quit state = do
