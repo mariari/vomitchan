@@ -28,8 +28,8 @@ command prefix =  wordCommand prefix
               <|> numberCommand prefix
 
 prefix :: Parser Prefix
-prefix =   (word8 58 >> parseUserI <|> parseServer) -- 58 = :
-       <|> return NoPrefix
+prefix = (word8 58 >> parseUserI <|> parseServer) -- 58 = :
+      <|> return NoPrefix
 
 numberCommand :: Prefix -> Parser Command
 numberCommand prefix = do
@@ -84,8 +84,7 @@ targetCmd :: (T.Text -> T.Text -> b) -> Parser b
 targetCmd f = do
   C.space
   target  <- takeTill isWhiteSpace
-  C.space
-  word8 58 -- 58 = :
+  optionally (C.space >> word8 58)  -- 58 = :
   content <- takeText
   return (f (TE.decodeUtf8 target) content)
 

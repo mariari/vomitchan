@@ -67,7 +67,7 @@ effectList = V.fromList (" " : fmap show [MonoSpace, Strikethrough, None]) <> ef
 -- list of admins allowed to use certain commands
 -- TODO: Load this from config file
 admins :: [T.Text]
-admins = ["loli"]
+admins = ["loli", "~loli"]
 
 
 -- list of all Pure functions

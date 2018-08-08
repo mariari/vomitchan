@@ -1,8 +1,6 @@
 {-# LANGUAGE DeriveGeneric     #-}
 {-# LANGUAGE Haskell2010       #-}
 {-# LANGUAGE OverloadedStrings #-}
-
-
 --- MODULE DEFINITION -------------------------------------------------------------------------
 module Bot.Network (
   IRCNetwork,
@@ -32,6 +30,7 @@ import           Bot.MessageType
 import           Bot.MessageParser
 import           Bot.Socket
 import           Bot.StateType
+import           Bot.FileOps
 --- DATA STRUCTURES ---------------------------------------------------------------------------
 
 -- IRC network table
@@ -80,42 +79,34 @@ joinNetwork net = do
       traverse_ (write con) (zip (repeat "JOIN") (netChans net))
       return (Just con)
   where
-    -- this entire section will be revamped once I introduce parser combinators
-    waitForPing f str h = do
+    passConnect con = do
+          if netSSL net
+            then writeBS con ("CAP", "LS 302")
+            else return ()
+          write con ("NICK", netNick net)
+          write con ("USER", netNick net <> " 0 * :connected")
+          unless (netPass net == "" && not (netSSL net))
+                 (write con ("NICKSERV :IDENTIFY", netPass net))
+          waitNext con
+
+    waitNext h = do
       line <- C.connectionGetLine 10240 h
+      let parsed = parseMessage line
       BC.putStrLn line
-      when ("PING" `BS.isPrefixOf` line) (writeBS h ("PONG", BS.drop 5 line))
-      unless (str `f` line) (waitForPing f str h)
+      print parsed
+      case parsed of
+        Left err  -> appendError err line >> print err
+        Right msg -> case msg of
+          PING (Ping s)          -> write h ("PONG", s) >> waitNext h
+          OTHER "AUTHENTICATE" _ -> writeBS h ("AUTHENTICATE", encode $ netNick net <> "\0" <> netNick net <> "\0" <> netPass net) >> waitNext h
+          NUMBERS (N904 _ _)     -> writeBS h ("CAP", "END") -- authentication failed
+          NUMBERS (N903 _ _)     -> writeBS h ("CAP", "END") -- authentication succeeded
+          NUMBERS (N376 _ _)     -> return ()                 -- if we don't sasl we wait until we see the MOTD
+          OTHER "CAP" (OtherServer _ content)
+            | " * LS" `T.isPrefixOf` content -> writeBS h ("CAP", "REQ :sasl") >> waitNext h
+            | otherwise                      -> writeBS h ("AUTHENTICATE", "PLAIN") >> waitNext h
+          _                     -> waitNext h
 
-    waitForInfix = waitForPing BS.isInfixOf
-
-    waitForAuth = waitForInfix ":You are now identified"
-    waitForSASL = waitForInfix "sasl"
-    waitForPlus = waitForInfix "AUTHENTICATE +"
-    waitForHost = waitForInfix ":*** Looking up your hostname..."
-    waitForJoin = waitForInfix "90"
-    waitForCap  = waitForInfix " ACK" -- TODO: replace this with CAP nick ACK
-    waitForMOTD = waitForInfix "376"
-
-    passConnect con
-      | not (netSSL net) = do
-          write con ("NICK", netNick net)
-          write con ("USER", netNick net <> " 0 * :connected")
-          unless (netPass net == "")
-                 (write con ("NICKSERV :IDENTIFY", netPass net) >> waitForAuth con)
-          waitForMOTD con
-      | otherwise = do
-          write con ("CAP", "LS 302")
-          write con ("NICK", netNick net)
-          write con ("USER", netNick net <> " 0 * :connected")
-          waitForSASL con
-          write con ("CAP", "REQ :sasl")
-          waitForCap con
-          write con ("AUTHENTICATE", "PLAIN")
-          waitForPlus con
-          writeBS con ("AUTHENTICATE", (encode $ fold [netNick net, "\0", netNick net, "\0", netPass net]))
-          waitForJoin con
-          write con ("CAP", "END")
     encode = BS64.encode . TE.encodeUtf8
 --- HELPER FUNCTIONS / UNUSED -----------------------------------------------------------------
 
