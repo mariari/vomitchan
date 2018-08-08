@@ -65,10 +65,10 @@ This file should look like the following:
       , "netSSL"  : false
       , "netNick" : "vomitchan"
       , "netPass" : "PASS"
-      , "netChans" : ["#lainchan", "##0chan", "#arisuchan", "#em.slashem.me", "#Haskell"]
-      , "netState" : [["#lainchan", {"dream"  : true,
-                                     "mute"   : false,
-                                     "fleecy" : false}]
+      , "netChans" : ["#hardfought", "#em.slashem.me", "#Haskell"]
+      , "netState" : [["#hardfought", {"dream"  : true,
+                                       "mute"   : false,
+                                       "fleecy" : false}]
                       ,["#em.slashem.me", {"dream"  : true,
                                            "mute"   : false,
                                            "fleecy" : true}]]
@@ -85,9 +85,6 @@ This file should look like the following:
 ]
 
 ```
-
-You can add multiple networks if you please.
-**NOTE: Some networks may not get the join messages if one does not wait for authentication**
 
 ## Running
 The bot can be started within ghci by running `stack ghci` in the project directory. Once at the prompt, run the `main` function.

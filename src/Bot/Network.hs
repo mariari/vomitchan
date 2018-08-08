@@ -91,23 +91,22 @@ joinNetwork net = do
 
     waitNext h = do
       line <- C.connectionGetLine 10240 h
-      let parsed = parseMessage line
       BC.putStrLn line
-      print parsed
-      case parsed of
+      case parseMessage line of
         Left err  -> appendError err line >> print err
         Right msg -> case msg of
           PING (Ping s)          -> write h ("PONG", s) >> waitNext h
-          OTHER "AUTHENTICATE" _ -> writeBS h ("AUTHENTICATE", encode $ netNick net <> "\0" <> netNick net <> "\0" <> netPass net) >> waitNext h
+          OTHER "AUTHENTICATE" _ -> writeBS h ("AUTHENTICATE", encode saslPass) >> waitNext h
           NUMBERS (N904 _ _)     -> writeBS h ("CAP", "END") -- authentication failed
           NUMBERS (N903 _ _)     -> writeBS h ("CAP", "END") -- authentication succeeded
-          NUMBERS (N376 _ _)     -> return ()                 -- if we don't sasl we wait until we see the MOTD
+          NUMBERS (N376 _ _)     -> return ()                -- if we don't sasl we wait until we see the MOTD
           OTHER "CAP" (OtherServer _ content)
             | " * LS" `T.isPrefixOf` content -> writeBS h ("CAP", "REQ :sasl") >> waitNext h
             | otherwise                      -> writeBS h ("AUTHENTICATE", "PLAIN") >> waitNext h
           _                     -> waitNext h
 
-    encode = BS64.encode . TE.encodeUtf8
+    encode   = BS64.encode . TE.encodeUtf8
+    saslPass = netNick net <> "\0" <> netNick net <> "\0" <> netPass net
 --- HELPER FUNCTIONS / UNUSED -----------------------------------------------------------------
 
 -- finds a network by name and maybe returns it
