@@ -1,7 +1,5 @@
 {-# LANGUAGE Haskell2010       #-}
 {-# LANGUAGE OverloadedStrings #-}
-
-
 --- MODULE DEFINITION -------------------------------------------------------------------------
 module Bot.MessageParser where
 
@@ -30,8 +28,8 @@ command prefix =  wordCommand prefix
               <|> numberCommand prefix
 
 prefix :: Parser Prefix
-prefix =  word8 58 >> (parseUserI <|> parseServer) -- 58 = :
-      <|> return NoPrefix
+prefix =   (word8 58 >> parseUserI <|> parseServer) -- 58 = :
+       <|> return NoPrefix
 
 numberCommand :: Prefix -> Parser Command
 numberCommand prefix = do
