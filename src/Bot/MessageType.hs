@@ -44,12 +44,12 @@ data PrivMsg = PrivMsg {user       :: UserI
                        ,msgContent :: Content
                        } deriving Show
 
-data Part    = Part    UserI Target Content deriving Show
-data Join    = Join    UserI Target         deriving Show
-data CQuit   = CQuit   UserI Content        deriving Show
+data Part  = Part  UserI Target Content deriving Show
+data Join  = Join  UserI Target         deriving Show
+data CQuit = CQuit UserI Content        deriving Show
 
 -- taking no prefixes
-data Ping    = Ping Content deriving Show
+data Ping = Ping Content deriving Show
 
 data UserI = UserI { usrNick :: Nick
                    , usrUser :: Maybe User

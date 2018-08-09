@@ -33,17 +33,17 @@ data Color = White | Black | Blue  | Green | Red  | Brown | Purple | Orange | Ye
            | Teal  | LCyan | LBlue | Pink  | Grey | LGrey
            deriving (Enum, Show)
 
-ansiColor :: V.Vector Color
-ansiColor = V.fromList [White .. LGrey]
+ansiColor :: V.Vector Effects
+ansiColor = V.fromList (Color <$> [White .. LGrey])
 
 numAnsiColor :: Int
 numAnsiColor = V.length ansiColor
 
 -- underline and strikeThrough are new
-data Effects = Bold      | Italics   | Color
+data Effects = Bold      | Italics   | Color Color
              | UnderLine | Reverse   | Hex
              | Reset     | MonoSpace | None
-             | Strikethrough
+             | Strikethrough | Txt String -- Space is a hack!
 
 instance Show Effects where
   show Bold          = "\x2"
@@ -51,17 +51,18 @@ instance Show Effects where
   show UnderLine     = "\x1F"
   show Strikethrough = "\x1E"
   show MonoSpace     = "\x11"
-  show Color         = "\x3"
+  show (Color _)     = "\x3"
   show Hex           = "\x4"
   show Reverse       = "\x16"
   show Reset         = "\xF"
+  show (Txt s)       = s
   show None          = ""
 
-effectListLink :: V.Vector String
-effectListLink = V.fromList $ fmap show [Bold, Italics, UnderLine, Reverse]
+effectListLink :: V.Vector Effects
+effectListLink = V.fromList $  [Bold, Italics, UnderLine, Reverse]
 
-effectList :: V.Vector String
-effectList = V.fromList (" " : fmap show [MonoSpace, Strikethrough, None]) <> effectListLink
+effectList :: V.Vector Effects
+effectList = V.fromList (Txt " " : [MonoSpace, Strikethrough, None]) <> effectListLink
 --- DATA --------------------------------------------------------------------------------------
 
 -- list of admins allowed to use certain commands
@@ -180,29 +181,32 @@ cmdVomit = do
 
       randLink :: IO T.Text
       randLink
-          | dream state = usrFldrNoLog newUsr >>= \y -> (y ^?) . element <$> randomRIO (0, length y -1) >>= fileCheck
-          | otherwise   = return ""
+        | dream state = do
+            files <- usrFldrNoLog newUsr
+            i     <- randomRIO (0, length files - 1)
+            fileCheck (files ^? ix i)
+        | otherwise = return ""
 
       -- checks if there is a file to upload!
       fileCheck :: Maybe String -> IO T.Text
-      fileCheck = maybe (return "") $ upUsrFile . (getUsrFldrT newUsr <>) . T.pack
+      fileCheck = maybe (return "") (upUsrFile . (getUsrFldrT newUsr <>) . T.pack)
 
-      randEff :: V.Vector String -> String -> Int -> String
+      randEff :: V.Vector Effects -> String -> Int -> String
       randEff effectList txt num
-          | dream state = f txt
-          | otherwise   = f (action (show Reverse) txt)
-          where f = action (effectList V.! randBetween 0 (length effectList - 1) num)
+        | dream state = f txt
+        | otherwise   = f (action Reverse txt)
+        where f = action (effectList V.! randBetween 0 (length effectList - 1) num)
 
       randCol :: Int -> String -> String
       randCol num txt
-          | dream state = actionCol txt (ansiColor V.! randBetween 0 (numAnsiColor - 1) num)
-          | otherwise   = actionCol txt Red
+        | dream state = action (ansiColor V.! randBetween 0 (numAnsiColor - 1) num) txt
+        | otherwise   = action (Color Red) txt
 
-      randColEff :: V.Vector String -> Char -> Int -> String
+      randColEff :: V.Vector Effects -> Char -> Int -> String
       randColEff eff txt = randCol <*> randEff eff [txt]
 
       -- consing to text is O(n), thus we deal with strings here
-      charApply :: V.Vector String -> Char -> IO String
+      charApply :: V.Vector Effects -> Char -> IO String
       charApply eff chr = randColEff eff chr <$> randomIO
 
       randApply :: Int -> Int -> IO T.Text
@@ -213,7 +217,7 @@ cmdVomit = do
 
       -- checks if the URL has been marked as nsfw, and if so make a string nsfw in light blue
       nsfwStr txt
-        | "nsfw" `T.isSuffixOf` txt = T.pack $ action (show Reverse) (actionCol (action (show Bold) "nsfw") LBlue) <> " "
+        | "nsfw" `T.isSuffixOf` txt = T.pack $ actions [Reverse, Color LBlue, Bold] "nsfw" <> " "
         | otherwise                 = ""
 
       randPrivMsg :: IO T.Text
@@ -271,8 +275,6 @@ cmdBane = do
                          <> "'s cloak of magic resistance disintegrates!")
 -- TODO's -------------------------------------------------------------------------------------
 --
--- TODO: add a *cheek pinch* function that puts the bot into reality mode
---
 -- TODO: make reality mode make vomitchan only speak in nods
 --
 -- TODO: Reality/*dame* that posts quotes of not moving on and staying locked up
@@ -284,9 +286,7 @@ cmdBane = do
 
 -- checks if the user is an admin
 isAdmin :: PrivMsg -> Bool
-isAdmin msg = f (msgUser msg)
-  where f (Just x) = x `elem` admins
-        f Nothing  = False
+isAdmin = maybe False (`elem` admins) . msgUser
 
 -- generates the randomRange for the cmdVomit command
 randRange :: V.Vector Char
@@ -331,7 +331,6 @@ drpMsg :: Cmd m => T.Text -> m T.Text
 drpMsg bk = snd . T.breakOn bk . msgContent . message <$> ask
 
 -- composes the format that the final send message will be
---composeMsg :: Cmd m => T.Text -> T.Text -> m (Response (T.Text, T.Text))
 composeMsg :: Cmd m => T.Text -> T.Text -> m Func
 composeMsg method str = do
   dest <- msgDest . message <$> ask
@@ -341,16 +340,19 @@ composeMsg method str = do
 actionMe :: T.Text -> T.Text
 actionMe txt = " :\0001ACTION " <> txt <> "\0001"
 
--- Used as a generic version for making bold, italic, underlined, and swap, for strings
-action :: Monoid m => m -> m -> m
-action cmd txt = cmd <> txt <> cmd
+-- Used as a generic version for making bold, italic, underlined, colors, and swap, for strings
+action :: Effects -> String -> String
+action eff txt = seff <> payload eff <> seff
+  where
+    seff              = show eff
+    payload (Color c) = show (fromEnum c) <> txt
+    payload _         = txt
+
+-- used to do multiple actions in a row
+actions :: Foldable t => t Effects -> String -> String
+actions effs txt = foldr action txt effs
 
 -- Used for color commnad... color can go all the way up to 15
-actionCol :: String -> Color -> String
-actionCol txt col = action (show Color) (show (fromEnum col) <> txt)
-
-actionColN :: String -> Int -> String
-actionColN txt num = action (show Color) (show num <> txt)
 
 -- Changes the nick of the msg
 changeNick :: Nick -> PrivMsg -> PrivMsg
