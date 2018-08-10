@@ -56,10 +56,10 @@ instance Show Effects where
   show None          = ""
 
 effectListLink :: V.Vector Effects
-effectListLink = V.fromList $  [Bold, Italics, UnderLine, Reverse]
+effectListLink = V.fromList [Bold, Italics, UnderLine, Reverse]
 
 effectList :: V.Vector Effects
-effectList = V.fromList (Txt " " : [MonoSpace, Strikethrough, None]) <> effectListLink
+effectList = V.fromList [Txt " ", MonoSpace, Strikethrough, None] <> effectListLink
 --- DATA --------------------------------------------------------------------------------------
 
 -- list of admins allowed to use certain commands
@@ -171,9 +171,7 @@ cmdVomit = do
         | fleecy state = replicate numT '♥'
         | otherwise    = take numT (randElems randRange numG)
 
-      newUsr       = changeNickFstArg msg
-      randElems xs = fmap (xs V.!)  . randomRs (0, V.length xs - 1) . mkStdGen
-      randElem xs  = head . randElems xs
+      newUsr = changeNickFstArg msg
 
       randLink
         | dream state = do
@@ -192,15 +190,15 @@ cmdVomit = do
         | otherwise   = actions [randElem effects seed1, Color Red, Reverse] txt
 
       -- consing to text is O(n), thus we deal with strings here
-      applyEffects :: V.Vector Effects -> String -> Int -> Int -> T.Text
-      applyEffects vs xs s = T.pack . join . zipWith3 (\x -> randEff vs [x]) xs (randGen s) . randGen
+      applyEffects :: V.Vector Effects -> String -> Int -> Int -> String
+      applyEffects vs xs s = join . zipWith3 (\x -> randEff vs [x]) xs (randGen s) . randGen
         where randGen = randoms . mkStdGen
 
       randApply numT = applyEffects effectList . randVom numT
       randApplyLink  = applyEffects effectListLink
 
       nsfwStr txt
-        | "nsfw" `T.isSuffixOf` txt = T.pack $ actions [Reverse, Color LBlue, Bold] "nsfw" <> " "
+        | "nsfw" `T.isSuffixOf` txt = actions [Reverse, Color LBlue, Bold] "nsfw"
         | otherwise                 = ""
 
       randPrivMsg :: IO T.Text
@@ -208,10 +206,10 @@ cmdVomit = do
         x                 <- randomRIO (8,23)
         y:z:g:h:i:l:m:n:_ <- randoms <$> newStdGen :: IO [Int]
         link              <- randLink
-        return $ fold [ nsfwStr link
-                      , randApply x y g l,                 " "
-                      , randApplyLink (T.unpack link) h m, " "
-                      , randApply x z i n]
+        return $ T.pack $  nsfwStr link                      <> " "
+                        <> randApply x y g l                 <> " "
+                        <> randApplyLink (T.unpack link) h m <> " "
+                        <> randApply x z i n
   toWrite <- liftIO randPrivMsg
   composeMsg "PRIVMSG" (" :" <> toWrite)
 
@@ -326,14 +324,12 @@ action :: Effects -> String -> String
 action eff txt = seff <> payload eff <> seff
   where
     seff              = show eff
-    payload (Color c) = show (fromEnum c) <> txt
+    payload (Color c) = showColor (fromEnum c) <> txt
     payload _         = txt
 
 -- used to do multiple actions in a row
 actions :: Foldable t => t Effects -> String -> String
 actions effs txt = foldr action txt effs
-
--- Used for color commnad... color can go all the way up to 15
 
 -- Changes the nick of the msg
 changeNick :: Nick -> PrivMsg -> PrivMsg
@@ -351,3 +347,17 @@ isSnd _           = False
 -- converts a message into a list containing a list of the contents based on words
 wordMsg :: PrivMsg -> [T.Text]
 wordMsg = T.words . msgContent
+
+-- in the IRC protocol if numbers don't have at least 2 digits, then changing the color before a
+-- number would invalidate it
+showColor :: (Ord a, Num a, Show a) => a -> String
+showColor x
+  | x < 10    = "0" <> show x
+  | otherwise = show x
+
+-- grabs an infinite list of random values inside some vector
+randElems :: V.Vector a -> Int -> [a]
+randElems xs = fmap (xs V.!)  . randomRs (0, V.length xs - 1) . mkStdGen
+
+randElem :: V.Vector a -> Int -> a
+randElem xs  = head . randElems xs
