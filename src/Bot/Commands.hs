@@ -36,9 +36,6 @@ data Color = White | Black | Blue  | Green | Red  | Brown | Purple | Orange | Ye
 ansiColor :: V.Vector Effects
 ansiColor = V.fromList (Color <$> [White .. LGrey])
 
-numAnsiColor :: Int
-numAnsiColor = V.length ansiColor
-
 -- underline and strikeThrough are new
 data Effects = Bold      | Italics   | Color Color
              | UnderLine | Reverse   | Hex
@@ -170,16 +167,14 @@ cmdVomit = do
   msg   <- message <$> ask
   state <- getChanStateM
   let
-     -- has to be string so foldrM doesn't get annoyed in randApply
-      randVom :: Int -> Int -> String
       randVom numT numG
         | fleecy state = replicate numT '♥'
-        | otherwise    = fmap (randRange V.!) . take numT . randomRs (0, length randRange - 1) . mkStdGen $ numG
+        | otherwise    = take numT (randElems randRange numG)
 
-      newUsr          = changeNickFstArg msg
-      randBetween x y = fst . randomR (x,y) . mkStdGen
+      newUsr       = changeNickFstArg msg
+      randElems xs = fmap (xs V.!)  . randomRs (0, V.length xs - 1) . mkStdGen
+      randElem xs  = head . randElems xs
 
-      randLink :: IO T.Text
       randLink
         | dream state = do
             files <- usrFldrNoLog newUsr
@@ -191,45 +186,32 @@ cmdVomit = do
       fileCheck :: Maybe String -> IO T.Text
       fileCheck = maybe (return "") (upUsrFile . (getUsrFldrT newUsr <>) . T.pack)
 
-      randEff :: V.Vector Effects -> String -> Int -> String
-      randEff effectList txt num
-        | dream state = f txt
-        | otherwise   = f (action Reverse txt)
-        where f = action (effectList V.! randBetween 0 (length effectList - 1) num)
-
-      randCol :: Int -> String -> String
-      randCol num txt
-        | dream state = action (ansiColor V.! randBetween 0 (numAnsiColor - 1) num) txt
-        | otherwise   = action (Color Red) txt
-
-      randColEff :: V.Vector Effects -> Char -> Int -> String
-      randColEff eff txt = randCol <*> randEff eff [txt]
+      randEff :: V.Vector Effects -> String -> Int -> Int -> String
+      randEff effects txt seed1 seed2
+        | dream state = actions [randElem effects seed1, randElem ansiColor seed2] txt
+        | otherwise   = actions [randElem effects seed1, Color Red, Reverse] txt
 
       -- consing to text is O(n), thus we deal with strings here
-      charApply :: V.Vector Effects -> Char -> IO String
-      charApply eff chr = randColEff eff chr <$> randomIO
+      applyEffects :: V.Vector Effects -> String -> Int -> Int -> T.Text
+      applyEffects vs xs s = T.pack . join . zipWith3 (\x -> randEff vs [x]) xs (randGen s) . randGen
+        where randGen = randoms . mkStdGen
 
-      randApply :: Int -> Int -> IO T.Text
-      randApply numT numR = T.pack <$> bindM (charApply effectList) (randVom numT numR)
+      randApply numT = applyEffects effectList . randVom numT
+      randApplyLink  = applyEffects effectListLink
 
-      randApplyLink :: String -> IO T.Text
-      randApplyLink str = T.pack <$> bindM (charApply effectListLink) str
-
-      -- checks if the URL has been marked as nsfw, and if so make a string nsfw in light blue
       nsfwStr txt
         | "nsfw" `T.isSuffixOf` txt = T.pack $ actions [Reverse, Color LBlue, Bold] "nsfw" <> " "
         | otherwise                 = ""
 
       randPrivMsg :: IO T.Text
       randPrivMsg = do
-        x    <- randomRIO (8,23)
-        y    <- randomIO
-        z    <- randomIO
-        link <- randLink
-        fold [ return (nsfwStr link)
-             , randApply x y,                 return " "
-             , randApplyLink (T.unpack link), return " "
-             , randApply x z]
+        x                 <- randomRIO (8,23)
+        y:z:g:h:i:l:m:n:_ <- randoms <$> newStdGen :: IO [Int]
+        link              <- randLink
+        return $ fold [ nsfwStr link
+                      , randApply x y g l,                 " "
+                      , randApplyLink (T.unpack link) h m, " "
+                      , randApply x z i n]
   toWrite <- liftIO randPrivMsg
   composeMsg "PRIVMSG" (" :" <> toWrite)
 
@@ -323,8 +305,7 @@ msgDest msg
 
 -- Generates a list of words that specify the search constraint
 specWord :: PrivMsg -> T.Text -> [T.Text]
-specWord msg search = (isElemList . T.words . msgContent) msg
-  where isElemList = filter (search `T.isPrefixOf`)
+specWord msg search = filter (search `T.isPrefixOf`) (wordMsg msg)
 
 -- Drops the command message [.lewd *vomits*]... send *command* messages via T.tail msg
 drpMsg :: Cmd m => T.Text -> m T.Text
