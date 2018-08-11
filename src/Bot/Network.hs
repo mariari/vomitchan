@@ -80,13 +80,12 @@ joinNetwork net = do
       return (Just con)
   where
     passConnect con = do
-      if netSSL net
-        then writeBS con ("CAP", "LS 302")
-        else return ()
+      when (netSSL net)
+           (writeBS con ("CAP", "LS 302"))
       write con ("NICK", netNick net)
       write con ("USER", netNick net <> " 0 * :connected")
-      unless (netPass net == "" && not (netSSL net))
-             (write con ("NICKSERV :IDENTIFY", netPass net))
+      when (netPass net /= "" && netSSL net)
+           (write con ("NICKSERV :IDENTIFY", netPass net))
       waitNext con
 
     waitNext h = do

@@ -130,14 +130,12 @@ cmdQuit :: Cmd m => m Func
 cmdQuit = shouldQuit . message <$> ask
   where
     shouldQuit msg
-      | isAdmin msg = response
-      | otherwise   = NoResponse
+      | not (isAdmin msg)                 = NoResponse
+      | isSnd words && allOrCurr == "all" = Quit AllNetworks
+      | otherwise                         = Quit CurrentNetwork
       where
-        words        = wordMsg msg
-        allOrCurrnet = words !! 1
-        response
-          | isSnd words && T.toLower allOrCurrnet == "all" = Quit AllNetworks
-          | otherwise                                      = Quit CurrentNetwork
+        words     = wordMsg msg
+        allOrCurr = words !! 1
 
 cmdLewds :: CmdImp m => m Func
 cmdLewds = getChanStateM >>= f
@@ -234,16 +232,15 @@ cmdPart = part . message <$> ask
 
 -- SLEX COMMANDS--------------------------------------------------------------------------------
 
+cmdEightBall :: CmdImp m => m Func
+cmdEightBall = do
+  res <- liftIO (randElem respones <$> randomIO)
+  composeMsg "PRIVMSG" (" :" <> res)
+
 cmdLotg :: Cmd m => m Func
 cmdLotg = do
   target <- T.tail <$> drpMsg " "
   composeMsg "PRIVMSG" (" :May the Luck of the Grasshopper be with you always, " <> target)
-
-
-cmdEightBall :: CmdImp m => m Func
-cmdEightBall = do
-  loc <- liftIO (randomRIO (0,length respones - 1))
-  composeMsg "PRIVMSG" (" :" <> respones V.! loc)
 
 cmdBane :: Cmd m => m Func
 cmdBane = do
@@ -357,7 +354,7 @@ showColor x
 
 -- grabs an infinite list of random values inside some vector
 randElems :: V.Vector a -> Int -> [a]
-randElems xs = fmap (xs V.!)  . randomRs (0, V.length xs - 1) . mkStdGen
+randElems xs = fmap (xs V.!)  . randomRs (0, length xs - 1) . mkStdGen
 
 randElem :: V.Vector a -> Int -> a
 randElem xs  = head . randElems xs
