@@ -71,21 +71,21 @@ admins = ["loli", "~loli"]
 -- list of all Pure functions
 cmdList :: Cmd m => [(m Func, [T.Text])]
 cmdList = [(cmdBots, [".bots", ".bot vomitchan"])
-          ,(cmdSrc,   [".source vomitchan"])
-          ,(cmdHelp,  [".help vomitchan"])
-          ,(cmdQuit,  [".quit"])
-          ,(cmdJoin,  [".join"])
-          ,(cmdPart,  [".leave", ".part"])
-          ,(cmdLotg,  [".lotg"])
-          ,(cmdBane,  [".amysbane"])]
+          ,(cmdSrc,  [".source vomitchan"])
+          ,(cmdHelp, [".help vomitchan"])
+          ,(cmdQuit, [".quit"])
+          ,(cmdJoin, [".join"])
+          ,(cmdPart, [".leave", ".part"])
+          ,(cmdLotg, [".lotg"])
+          ,(cmdBane, [".amysbane"])]
 
 -- List of all Impure functions
 cmdListImp :: CmdImp m => [(m Func, [T.Text])]
-cmdListImp = [(cmdVomit,    ["*vomits*"])
-             ,(cmdDream,    ["*cheek pinch*"])
-             ,(cmdFleecy,   ["*step*"])
-             ,(cmdLewds,    [".lewd"])
-             ,(cmdEightBall,[".8ball"])]
+cmdListImp = [(cmdVomit,     ["*vomits*"])
+             ,(cmdDream,     ["*cheek pinch*"])
+             ,(cmdFleecy,    ["*step*"])
+             ,(cmdLewds,     [".lewd"])
+             ,(cmdEightBall, [".8ball"])]
 
 -- The List of all functions pure <> impure
 cmdTotList :: CmdImp m => [(m Func, CmdAlias)]
