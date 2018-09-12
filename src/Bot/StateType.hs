@@ -36,9 +36,9 @@ instance JSON.ToJSON   StateConfig
 
 -- Stores the Hash Information per channel
 data HashStorage = HashStorage
-                 { dream  :: Bool
-                 , mute   :: Bool
-                 , fleecy :: Bool
+                 { dream  :: !Bool
+                 , mute   :: !Bool
+                 , fleecy :: !Bool
                  } deriving (Show, Generic)
 
 defaultChanState :: HashStorage
@@ -71,5 +71,5 @@ data Quit = AllNetworks
 -- Basically the Maybe Monad but with exit codes
 data Response a = Response a
                 | NoResponse
-                | Quit Quit
+                | Quit !Quit
                 deriving (Show, Functor)
