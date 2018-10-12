@@ -7,8 +7,6 @@ module Bot.Commands (
   specWord,
 ) where
 --- IMPORTS -----------------------------------------------------------------------------------
-import           Data.Monoid
-import qualified Data.Text       as T
 
 import           Bot.FileOps
 import           Bot.MessageType
@@ -16,6 +14,10 @@ import           Bot.State
 import           Bot.StateType
 import           Bot.Misc
 import           Bot.EffType
+import           Bot.NetworkType
+
+import           Data.Monoid
+import qualified Data.Text       as T
 import           System.Random
 import           Data.Char
 import           Data.Foldable

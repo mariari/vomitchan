@@ -1,26 +1,22 @@
 {-# LANGUAGE Haskell2010       #-}
 {-# LANGUAGE OverloadedStrings #-}
-
+{-# LANGUAGE TemplateHaskell #-}
 
 --- MODULE DEFINITION -------------------------------------------------------------------------
 module Bot.MessageType where
 --- IMPORTS -----------------------------------------------------------------------------------
-import qualified Data.Text as T
+import qualified Data.Text          as T
+import qualified Data.Map.Strict    as M
+import           Control.Concurrent.MVar
+import           Control.Concurrent.STM.TVar
 import           Text.Regex.TDFA
 import           Bot.StateType
 import           Data.Foldable
+import           Control.Lens
+
+import Bot.NetworkType
 --- TYPES -------------------------------------------------------------------------------------
 
--- types for IRC data
-type Server = T.Text
-type Port   = Integer
-type Nick   = T.Text
-type User   = T.Text
-type Host   = T.Text
-type Pass   = T.Text
-type Chan   = T.Text
-type Target = T.Text
-type Content = T.Text
 --- DATA STRUCTURES ---------------------------------------------------------------------------
 
 data Command = PRIVMSG PrivMsg
@@ -33,16 +29,31 @@ data Command = PRIVMSG PrivMsg
              | ERROR
              deriving Show
 
-data InfoPriv = Info { message  :: !PrivMsg
-                     , server   :: !T.Text
-                     , vomState :: VomState
-                     } deriving Show
+data InfoPriv = Info
+  { message  :: !PrivMsg
+  , server   :: !T.Text
+  , vomState :: VomState
+  , _servers :: AllServers
+  }
+
+data AllServers = S
+  { _servToNumConn    :: TVar (M.Map Server Int)
+  , _servToNumDisconn :: TVar (M.Map Server Int)
+  , _numToConnect     :: TVar (M.Map Int ConnectionInfo)
+  , _numToDisconnect  :: TVar (M.Map Int IRCNetwork)
+  }
+
+data ConnectionInfo = C
+  { _connection  :: MVar Quit -- the quit var for the thread each listen tries to take
+  , _networkInfo :: IRCNetwork
+  }
 
 -- taking only user prefixes
-data PrivMsg = PrivMsg {user       :: !UserI
-                       ,msgChan    :: !Target
-                       ,msgContent :: !Content
+data PrivMsg = PrivMsg { user       :: !UserI
+                       , msgChan    :: !Target
+                       , msgContent :: !Content
                        } deriving Show
+
 
 data Part  = Part  !UserI !Target !Content deriving Show
 data Join  = Join  !UserI !Target         deriving Show
@@ -86,3 +97,7 @@ class GetUser f where
 
 instance GetUser (PrivMsg) where
   userI (PrivMsg u _ _) = u
+
+makeLenses ''InfoPriv
+makeLenses ''AllServers
+makeLenses ''ConnectionInfo
