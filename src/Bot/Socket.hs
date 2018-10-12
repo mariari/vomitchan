@@ -38,9 +38,8 @@ writeBS h (act, args) = C.connectionPut h txt >> BS.putStrLn txt
   where txt = fold [act, " ", args, "\r\n"]
 
 -- simply listens to a socket forever
-listen :: C.Connection -> T.Text -> GlobalState -> IO Quit
-listen h net state = do
-  quit      <- C.newEmptyMVar
+listen :: (C.Connection, MVar Quit) -> AllServers -> T.Text -> GlobalState -> IO Quit
+listen (h, quit) allServs net state = do
   Just exit <- iterateUntil (not . (== Nothing)) (resLoop quit)
   C.connectionClose h
   return exit
@@ -56,7 +55,7 @@ listen h net state = do
       C.tryTakeMVar quit
 
     inout s net quit state = do
-      res <- respond s (parseMessage s) net state
+      res <- respond s allServs (parseMessage s) net state
       case res of
         Quit x     -> quitNetwork h >> C.putMVar quit x
         Response x -> write h x

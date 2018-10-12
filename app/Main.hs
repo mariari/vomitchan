@@ -16,10 +16,13 @@ import           Control.Monad.IO.Class
 import           Control.Concurrent.STM
 import           Control.Lens
 import           Control.Monad
+import           Data.Maybe
+import           Control.Monad (zipWithM)
 
 import           Bot.Network
 import           Bot.Socket
 import           Bot.StateType
+import           Bot.MessageType
 import GHC.Conc (numCapabilities)
 --- FUNCTIONS ---------------------------------------------------------------------------------
 
@@ -57,18 +60,18 @@ main = do
        Nothing       -> putStrLn "ERROR loading servers from JSON"
        Just networks -> do
          initHash networks (hash state)
+         servMap <- initAllServer
          tids    <- C.newMVar []
-         handles <- traverse (forkWithKill tids . connect state) networks
+         handles <- do
+           mConnVar    <- traverse (startNetwork servMap) networks
+           let connVar = catMaybes mConnVar
+           zipWithM (\x n -> forkWithKill tids
+                           $ listen x servMap (netServer n) state) connVar networks
          traverse_ C.takeMVar handles
-
-  where connect s n = do
-         x <- joinNetwork n
-         case x of
-           Nothing -> return CurrentNetwork
-           Just cx -> listen cx (netServer n) s
-        initHash :: [IRCNetwork] -> M.Map T.Text HashStorage -> IO ()
-        initHash net ht = atomically . sequence_ $ do
-          x             <- net
-          (chan, modes) <- fromStateConfig (netState x)
-          let serv      = netServer x
-          return $ M.insert modes (serv <> chan) ht
+  where
+    initHash :: [IRCNetwork] -> M.Map T.Text HashStorage -> IO ()
+    initHash net ht = atomically . sequence_ $ do
+      x             <- net
+      (chan, modes) <- fromStateConfig (netState x)
+      let serv      = netServer x
+      return $ M.insert modes (serv <> chan) ht

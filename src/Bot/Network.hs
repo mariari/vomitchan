@@ -7,6 +7,7 @@ module Bot.Network (
   readNetworks,
   saveNetworks,
   joinNetwork,
+  startNetwork,
   findNetwork,
   netServer,
   netState
@@ -27,6 +28,7 @@ import           Control.Exception (try,SomeException)
 import           Data.Foldable
 import           Control.Concurrent.MVar
 import           Control.Concurrent.STM.TVar
+import           Control.Concurrent.STM
 
 import           Bot.MessageType
 import           Bot.MessageParser
@@ -92,12 +94,22 @@ joinNetwork net = do
     saslPass = netNick net <> "\0" <> netNick net <> "\0" <> netPass net
 
 startNetwork :: AllServers -> IRCNetwork -> IO (Maybe (C.Connection, MVar Quit))
-startNetwork = undefined
+startNetwork allS network = do
+  mjoined <- joinNetwork network
+  case mjoined of
+    Just x -> do
+      mvar <- newEmptyMVar
+      atomically (addConnected allS mvar network)
+      return (Just (x, mvar))
+    Nothing -> do
+      atomically (addDisconnected allS network)
+      return Nothing
 
 --- HELPER FUNCTIONS / UNUSED -----------------------------------------------------------------
 
 -- finds a network by name and maybe returns it
 findNetwork :: [IRCNetwork] -> Server -> Maybe IRCNetwork
+findNetwork []       _ = Nothing
 findNetwork (nt:nts) sv
   | netServer nt == sv = Just nt
   | null nts           = Nothing

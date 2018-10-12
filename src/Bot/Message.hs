@@ -19,6 +19,7 @@ import Bot.MessageType
 import Bot.FileOps
 import Bot.StateType
 import Bot.EffType
+import Bot.NetworkType
 --- DATA --------------------------------------------------------------------------------------
 
 -- Lists the type of webpages that are logged
@@ -46,12 +47,12 @@ cmdAllS = S.fromList cmdAll
 --- FUNCTIONS ---------------------------------------------------------------------------------
 
 -- takes an IRC message and generates the correct response
-respond :: BS.ByteString -> Either String Command -> T.Text -> VomState -> IO Func
-respond s (Left err)   server state = appendError err s >> print err >> return NoResponse
-respond _ (Right priv) server state = f priv
+respond :: BS.ByteString -> AllServers -> Either String Command -> Server -> VomState -> IO Func
+respond s _    (Left err)   server state = appendError err s >> print err >> return NoResponse
+respond _ allS (Right priv) server state = f priv
   where
     f (PING (Ping s)) = return $ Response ("PONG", s)
-    f (PRIVMSG priv)  = runReaderT (allLogsM >> runCmd) (Info priv server state)
+    f (PRIVMSG priv)  = runReaderT (allLogsM >> runCmd) (Info priv server state allS)
     f _               = return NoResponse
 
 --- LOGGING -----------------------------------------------------------------------------------
