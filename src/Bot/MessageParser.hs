@@ -4,6 +4,7 @@
 module Bot.MessageParser where
 
 import Bot.MessageType
+import Bot.NetworkType
 
 import           Prelude hiding (takeWhile)
 import           Control.Applicative

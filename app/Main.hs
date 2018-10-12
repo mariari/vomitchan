@@ -25,7 +25,7 @@ import GHC.Conc (numCapabilities)
 
 -- creates a thread and adds its thread ID to an MVar list, kills all
 -- listed threads when finished
-forkWithKill :: C.MVar[C.ThreadId] -> IO Quit -> IO (C.MVar ())
+forkWithKill :: C.MVar [C.ThreadId] -> IO Quit -> IO (C.MVar ())
 forkWithKill tids act = do
   handle <- C.newEmptyMVar
   let f (Right AllNetworks)    = kill >> C.putMVar handle ()

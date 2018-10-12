@@ -12,44 +12,28 @@ module Bot.Network (
   netState
 ) where
 --- IMPORTS -----------------------------------------------------------------------------------
-import           Control.Monad
-import qualified Data.Aeson            as JSON
-import qualified Data.ByteString.Lazy  as B
-import qualified Data.ByteString       as BS
-import qualified Data.ByteString.Char8 as BC (putStrLn)
-import qualified Data.Text             as T
-import           GHC.Generics
-import qualified Network.Connection    as C
-import           Data.Monoid
+import qualified Data.Aeson             as JSON
+import qualified Data.ByteString.Lazy   as B
+import qualified Data.ByteString        as BS
+import qualified Data.ByteString.Char8  as BC (putStrLn)
+import qualified Data.Text              as T
+import qualified Network.Connection     as C
 import qualified Data.ByteString.Base64 as BS64
-import qualified Data.Text.Encoding as TE
-
+import qualified Data.Text.Encoding     as TE
+import           GHC.Generics
+import           Control.Monad
+import           Data.Monoid
 import           Control.Exception (try,SomeException)
 import           Data.Foldable
+import           Control.Concurrent.MVar
+import           Control.Concurrent.STM.TVar
+
 import           Bot.MessageType
 import           Bot.MessageParser
 import           Bot.Socket
 import           Bot.StateType
 import           Bot.FileOps
---- DATA STRUCTURES ---------------------------------------------------------------------------
-
--- IRC network table
-data IRCNetwork = IRCNetwork
-             { netServer :: Server
-             , netPort   :: Port
-             , netSSL    :: Bool
-             , netNick   :: Nick
-             , netPass   :: Pass
-             , netChans  :: [Chan]
-             , netState  :: StateConfig
-             } deriving (Show,Generic)
-
--- allow encoding to/from JSON
-instance JSON.FromJSON IRCNetwork
-instance JSON.ToJSON IRCNetwork
-
-
---- FUNCTIONS ---------------------------------------------------------------------------------
+import           Bot.NetworkType
 
 -- read IRC networks from file
 readNetworks :: FilePath -> IO (Maybe [IRCNetwork])
@@ -106,6 +90,10 @@ joinNetwork net = do
 
     encode   = BS64.encode . TE.encodeUtf8
     saslPass = netNick net <> "\0" <> netNick net <> "\0" <> netPass net
+
+startNetwork :: AllServers -> IRCNetwork -> IO (Maybe (C.Connection, MVar Quit))
+startNetwork = undefined
+
 --- HELPER FUNCTIONS / UNUSED -----------------------------------------------------------------
 
 -- finds a network by name and maybe returns it
