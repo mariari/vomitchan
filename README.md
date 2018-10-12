@@ -3,7 +3,7 @@ An IRC bot written in Haskell.  *cheek pinch*
 
 ---
 
-![vomitchan running in IRC](https://puu.sh/xfN35/2f9ee0615a.png)
+![vomitchan running in IRC](https://puu.sh/BJHkI/08007ee669.png)
 
 ## Commands
 - `.bots [vomitchan]` - prints bot info
