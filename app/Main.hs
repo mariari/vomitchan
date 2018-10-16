@@ -19,10 +19,10 @@ import           Control.Monad
 import           Data.Maybe
 import           Control.Monad (zipWithM)
 
-import           Bot.Network
-import           Bot.Socket
-import           Bot.StateType
-import           Bot.MessageType
+import Bot.Network
+import Bot.Socket
+import Bot.StateType
+import Bot.Servers
 import GHC.Conc (numCapabilities)
 --- FUNCTIONS ---------------------------------------------------------------------------------
 

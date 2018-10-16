@@ -7,7 +7,6 @@ module Bot.Commands (
   specWord,
 ) where
 --- IMPORTS -----------------------------------------------------------------------------------
-
 import           Bot.FileOps
 import           Bot.MessageType
 import           Bot.State
@@ -68,7 +67,6 @@ effectList = V.fromList [Txt " ", MonoSpace, Strikethrough, None] <> effectListL
 -- TODO: Load this from config file
 admins :: [T.Text]
 admins = ["loli", "~loli"]
-
 
 -- list of all Pure functions
 cmdList :: Cmd m => [(m Func, [T.Text])]
@@ -151,7 +149,6 @@ cmdLewd = do
   target <- T.tail <$> drpMsg " "
   composeMsg "PRIVMSG" $ actionMe ("lewds " <> target)
 
-
 -- Causes Vomitchan to sleep ∨ awaken
 cmdDream :: CmdImp m => m Func
 cmdDream = modifyDreamState >> composeMsg "PRIVMSG" " :dame"
@@ -159,7 +156,6 @@ cmdDream = modifyDreamState >> composeMsg "PRIVMSG" " :dame"
 -- Causes vomit to go into fleecy mode (at the moment just prints <3's instead of actual text in cmdVomit)
 cmdFleecy :: CmdImp m => m Func
 cmdFleecy = modifyFleecyState >> composeMsg "PRIVMSG" " :dame"
-
 
 -- Vomits up a colorful rainbow if vomitchan is asleep else it just vomits up red with no link
 cmdVomit :: CmdImp m => m Func
@@ -229,8 +225,6 @@ cmdPart = part . message <$> ask
       | isAdmin msg && isSnd (wordMsg msg)            = Response ("PART", wordMsg msg !! 1)
       | isAdmin msg && "#" `T.isPrefixOf` msgChan msg = Response ("PART", msgChan msg)
       | otherwise                                     = NoResponse
-
-
 
 -- SLEX COMMANDS--------------------------------------------------------------------------------
 

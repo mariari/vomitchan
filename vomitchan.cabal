@@ -27,6 +27,7 @@ library
                      , Bot.EffType
                      , Bot.MessageParser
                      , Bot.NetworkType
+                     , Bot.Servers
   build-depends:       aeson
                      , base >= 4.9 && < 5
                      , bytestring

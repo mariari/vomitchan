@@ -30,12 +30,13 @@ import           Control.Concurrent.MVar
 import           Control.Concurrent.STM.TVar
 import           Control.Concurrent.STM
 
-import           Bot.MessageType
-import           Bot.MessageParser
-import           Bot.Socket
-import           Bot.StateType
-import           Bot.FileOps
-import           Bot.NetworkType
+import Bot.MessageType
+import Bot.MessageParser
+import Bot.Socket
+import Bot.StateType
+import Bot.FileOps
+import Bot.NetworkType
+import Bot.Servers
 
 -- read IRC networks from file
 readNetworks :: FilePath -> IO (Maybe [IRCNetwork])
