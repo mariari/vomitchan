@@ -1,5 +1,3 @@
-{-# LANGUAGE Haskell2010       #-}
-{-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE FlexibleContexts #-}
 module Bot.State (
   getChanState,
@@ -12,11 +10,9 @@ module Bot.State (
 
 --- IMPORTS -----------------------------------------------------------------------------------
 import qualified Data.Text         as T
-import           Control.Concurrent.STM
-import           Data.Monoid
-import           Data.Maybe
-import           Control.Monad.Reader
 import qualified STMContainers.Map as M
+import           Control.Concurrent.STM (atomically)
+import           Data.Maybe             (fromMaybe)
 
 import Bot.StateType
 import Bot.MessageType

@@ -1,9 +1,3 @@
-{-# LANGUAGE DeriveGeneric #-}
-{-# LANGUAGE Haskell2010 #-}
-{-# LANGUAGE OverloadedStrings #-}
-{-# LANGUAGE DeriveFunctor #-}
-
---- MODULE DEFINITION -------------------------------------------------------------------------
 module Bot.StateType (
   StateConfig(..),
   GlobalState(..),
@@ -21,7 +15,6 @@ import qualified Data.Text         as T
 import qualified Data.Aeson        as JSON
 import qualified STMContainers.Map as M
 import           GHC.Generics
-import           Control.Concurrent.STM
 --- TYPES -------------------------------------------------------------------------------------
 type Chan = T.Text
 --- DATA STRUCTURES ---------------------------------------------------------------------------

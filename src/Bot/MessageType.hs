@@ -1,5 +1,3 @@
-{-# LANGUAGE Haskell2010       #-}
-{-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE TemplateHaskell #-}
 
 --- MODULE DEFINITION -------------------------------------------------------------------------
@@ -9,11 +7,9 @@ import qualified Data.Text          as T
 import qualified Data.Map.Strict    as M
 import           Control.Concurrent.MVar
 import           Control.Concurrent.STM.TVar
-import           Text.Regex.TDFA
-import           Bot.StateType
-import           Data.Foldable
 import           Control.Lens
 
+import Bot.StateType
 import Bot.NetworkType
 --- TYPES -------------------------------------------------------------------------------------
 

@@ -1,18 +1,16 @@
-{-# LANGUAGE Haskell2010       #-}
-{-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE FlexibleContexts #-}
 --- MODULE DEFINITION -------------------------------------------------------------------------
 module Bot.Message (
   respond
 ) where
 --- IMPORTS -----------------------------------------------------------------------------------
-import qualified Data.Text as T
 import           Control.Concurrent.STM
-import qualified Data.ByteString as BS
 import           Data.Foldable
 import           Control.Monad.Reader
-import qualified Data.Set as S
-import           Turtle hiding (fold)
+import           Turtle          hiding (fold)
+import qualified Data.Text       as T
+import qualified Data.ByteString as BS
+import qualified Data.Set        as S
 
 import Bot.Commands
 import Bot.MessageType

@@ -1,7 +1,3 @@
-{-# LANGUAGE Haskell2010       #-}
-{-# LANGUAGE OverloadedStrings #-}
-
---- MODULE DEFINITION -------------------------------------------------------------------------
 module Bot.FileOps (
   createUsrFldr,
   appendLog,
@@ -17,7 +13,6 @@ import qualified Data.Text          as T
 import qualified Data.Text.IO       as T
 import qualified Data.ByteString    as BS
 import qualified Data.Text.Encoding as TE
-import           Data.Monoid
 import           Data.Foldable     (fold)
 
 import           System.Directory

@@ -1,6 +1,3 @@
-{-# LANGUAGE Haskell2010       #-}
-{-# LANGUAGE OverloadedStrings #-}
---- MODULE DEFINITION -------------------------------------------------------------------------
 module Bot.MessageParser where
 
 import Bot.MessageType

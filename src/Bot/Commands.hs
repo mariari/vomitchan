@@ -1,5 +1,3 @@
-{-# LANGUAGE Haskell2010       #-}
-{-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE FlexibleContexts #-}
 --- MODULE DEFINITION -------------------------------------------------------------------------
 module Bot.Commands (
@@ -15,14 +13,13 @@ import           Bot.Misc
 import           Bot.EffType
 import           Bot.NetworkType
 
-import           Data.Monoid
-import qualified Data.Text       as T
+import Data.Char (chr)
+import Control.Applicative ((<|>))
+import Data.Maybe (fromMaybe)
+
+import qualified Data.Text as T
 import           System.Random
-import           Data.Char
-import           Data.Foldable
 import           Control.Lens
-import           Control.Applicative
-import           Data.Maybe
 import           Control.Monad.Reader
 import qualified Data.Map    as M
 import qualified Data.Vector as V

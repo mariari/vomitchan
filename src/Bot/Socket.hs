@@ -1,46 +1,39 @@
-{-# LANGUAGE Haskell2010       #-}
-{-# LANGUAGE OverloadedStrings #-}
-
-
---- MODULE DEFINITION -------------------------------------------------------------------------
 module Bot.Socket (
   write,
   writeBS,
   listen
 ) where
---- IMPORTS ------------------------------------------------------------------------------ ----
-import           Control.Monad
-import           Control.Monad.Loops
-import           Control.Monad.Reader
-import           Control.Concurrent as C
-import qualified Data.Text          as T
-import qualified Data.Text.Format   as T
-import qualified Data.Text.IO       as T
-import qualified Network.Connection as C
-import           Control.Monad.IO.Class
-import           Control.Concurrent.STM
-import           Data.Foldable
-import qualified Data.Text.Encoding    as TE
+--- IMPORTS -----------------------------------------------------------------------------------
+import Control.Monad.Loops (iterateUntil)
+import Data.Foldable       (fold)
+import Data.Text.Encoding  (encodeUtf8)
+import Control.Concurrent  (tryTakeMVar, forkIO, MVar, putMVar)
+
+import qualified Data.Text             as T
+import qualified Data.Text.IO          as T
+import qualified Network.Connection    as C
 import qualified Data.ByteString.Char8 as BS
 
-import           Bot.MessageParser
-import           Bot.MessageType
-import           Bot.Message
-import           Bot.StateType
---- FUNCTIONS ------------------------------------------------------------------------------ --
+import Bot.MessageParser
+import Bot.MessageType
+import Bot.Message
+import Bot.StateType
+--- FUNCTIONS ---------------------------------------------------------------------------------
 
 -- takes a Handle and an (Action, Args) tuple and sends to socket
 write :: C.Connection -> (T.Text, T.Text) -> IO ()
-write h (act,args) = C.connectionPut h (TE.encodeUtf8 . fold $ [act, " ", args, "\r\n"])
-                  >> T.print "{} {}\n" [act,args]
+write h (act,args) = C.connectionPut h (encodeUtf8 txt) >> T.putStr txt
+  where
+    txt = fold [act, " ", args, "\n"]
 
 writeBS h (act, args) = C.connectionPut h txt >> BS.putStrLn txt
-  where txt = fold [act, " ", args, "\r\n"]
+  where
+    txt = fold [act, " ", args, "\r\n"]
 
 -- simply listens to a socket forever
 listen :: (C.Connection, MVar Quit) -> AllServers -> T.Text -> GlobalState -> IO Quit
 listen (h, quit) allServs net state = do
-  Just exit <- iterateUntil (not . (== Nothing)) (resLoop quit)
+  Just exit <- iterateUntil (/= Nothing) (resLoop quit)
   C.connectionClose h
   return exit
   where
@@ -52,14 +45,13 @@ listen (h, quit) allServs net state = do
       BS.putStrLn s
       print net
 
-      C.tryTakeMVar quit
+      tryTakeMVar quit
 
     inout s net quit state = do
       res <- respond s allServs (parseMessage s) net state
       case res of
-        Quit x     -> quitNetwork h >> C.putMVar quit x
+        Quit x     -> quitNetwork h >> putMVar quit x
         Response x -> write h x
         NoResponse -> return ()
-
 
 quitNetwork h = write h ("QUIT", ":Exiting")

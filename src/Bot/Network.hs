@@ -1,7 +1,3 @@
-{-# LANGUAGE DeriveGeneric     #-}
-{-# LANGUAGE Haskell2010       #-}
-{-# LANGUAGE OverloadedStrings #-}
---- MODULE DEFINITION -------------------------------------------------------------------------
 module Bot.Network (
   IRCNetwork,
   readNetworks,
@@ -14,21 +10,17 @@ module Bot.Network (
 ) where
 --- IMPORTS -----------------------------------------------------------------------------------
 import qualified Data.Aeson             as JSON
-import qualified Data.ByteString.Lazy   as B
-import qualified Data.ByteString        as BS
+import qualified Data.ByteString.Lazy   as BL
 import qualified Data.ByteString.Char8  as BC (putStrLn)
 import qualified Data.Text              as T
 import qualified Network.Connection     as C
 import qualified Data.ByteString.Base64 as BS64
-import qualified Data.Text.Encoding     as TE
-import           GHC.Generics
-import           Control.Monad
-import           Data.Monoid
-import           Control.Exception (try,SomeException)
-import           Data.Foldable
+import           Data.Text.Encoding     (encodeUtf8)
+import           Control.Monad          (when)
+import           Control.Exception      (try, SomeException)
+import           Data.Foldable          (traverse_)
+import           Control.Concurrent.STM (atomically)
 import           Control.Concurrent.MVar
-import           Control.Concurrent.STM.TVar
-import           Control.Concurrent.STM
 
 import Bot.MessageType
 import Bot.MessageParser
@@ -41,24 +33,26 @@ import Bot.Servers
 -- read IRC networks from file
 readNetworks :: FilePath -> IO (Maybe [IRCNetwork])
 readNetworks file = do
-  jsonData <- JSON.eitherDecode <$> B.readFile file :: IO (Either String [IRCNetwork])
+  jsonData <- JSON.eitherDecodeFileStrict' file
   case jsonData of
     Left  err  -> putStrLn err >> return Nothing
     Right nets -> return $ Just nets
 
 -- save IRC networks to file
 saveNetworks :: FilePath -> [IRCNetwork] -> IO ()
-saveNetworks file nets = B.writeFile file (JSON.encode nets)
+saveNetworks file nets = BL.writeFile file (JSON.encode nets)
 
 -- joins a network and returns a handle
 joinNetwork :: IRCNetwork -> IO (Maybe C.Connection)
 joinNetwork net = do
   ctx <- C.initConnectionContext
-  con <- try $ C.connectTo ctx C.ConnectionParams { C.connectionHostname  = T.unpack $ netServer net
-                                                  , C.connectionPort      = fromIntegral $ netPort net
-                                                  , C.connectionUseSecure = Just $ C.TLSSettingsSimple False False True
-                                                  , C.connectionUseSocks  = Nothing
-                                                  } :: IO (Either SomeException C.Connection)
+  con <- try
+       . C.connectTo ctx
+       $ C.ConnectionParams { C.connectionHostname  = T.unpack $ netServer net
+                            , C.connectionPort      = fromIntegral $ netPort net
+                            , C.connectionUseSecure = Just $ C.TLSSettingsSimple False False True
+                            , C.connectionUseSocks  = Nothing
+                            } :: IO (Either SomeException C.Connection)
   case con of
     Left ex -> putStrLn (show ex) >> return Nothing
     Right con -> do
@@ -91,7 +85,7 @@ joinNetwork net = do
             | otherwise                      -> writeBS h ("AUTHENTICATE", "PLAIN") >> waitNext h
           _                     -> waitNext h
 
-    encode   = BS64.encode . TE.encodeUtf8
+    encode   = BS64.encode . encodeUtf8
     saslPass = netNick net <> "\0" <> netNick net <> "\0" <> netPass net
 
 startNetwork :: AllServers -> IRCNetwork -> IO (Maybe (C.Connection, MVar Quit))

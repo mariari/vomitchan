@@ -35,12 +35,9 @@ library
                      , directory >= 1.2.5
                      , lens
                      , monad-loops
-                     , network
                      , random
-                     , regex-tdfa
                      , stm
                      , text
-                     , text-format
                      , turtle
                      , utf8-string
                      , vector
@@ -50,6 +47,10 @@ library
                      , base64-bytestring
                      , attoparsec
   default-language:    Haskell2010
+  default-extensions:
+                      OverloadedStrings
+                    , DeriveGeneric
+                    , DeriveFunctor
 
 executable vomitchan-exe
   hs-source-dirs:      app
@@ -65,7 +66,10 @@ executable vomitchan-exe
                      , vomitchan
                      , stm-containers
   default-language:    Haskell2010
-
+  default-extensions:
+                      OverloadedStrings
+                    , DeriveGeneric
+                    , DeriveFunctor
 source-repository head
   type:     git
   location: git@gitla.in:nymphet/vomitchan.git

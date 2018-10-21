@@ -1,23 +1,13 @@
-{-# LANGUAGE Haskell2010       #-}
-{-# LANGUAGE OverloadedStrings #-}
-
-
---- MODULE DEFINITION -------------------------------------------------------------------------
 module Main where
 --- IMPORTS -----------------------------------------------------------------------------------
 import qualified Control.Concurrent      as C
 import qualified STMContainers.Map       as M
 import qualified Data.List               as L
-
-import           Data.Monoid
 import qualified Data.Text               as T
-import           Data.Foldable
-import           Control.Monad.IO.Class
-import           Control.Concurrent.STM
-import           Control.Lens
-import           Control.Monad
-import           Data.Maybe
+import           Data.Foldable (traverse_)
+import           Data.Maybe    (catMaybes)
 import           Control.Monad (zipWithM)
+import           Control.Concurrent.STM (atomically)
 
 import Bot.Network
 import Bot.Socket
