@@ -35,10 +35,8 @@ An IRC bot written in Haskell.  *cheek pinch*
   - monad-loops
   - network
   - random
-  - regex-tdfa
   - stm
   - text
-  - text-format
   - turtle
   - utf8-string
   - vector
@@ -47,6 +45,7 @@ An IRC bot written in Haskell.  *cheek pinch*
   - mtl
   - base64-bytestring
   - attoparsec
+
 
 ### Building on Linux
 - clone this repo using `git clone https://github.com/mariari/vomitchan.git`
