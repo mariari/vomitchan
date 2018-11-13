@@ -4,6 +4,7 @@ import qualified Control.Concurrent      as C
 import qualified STMContainers.Map       as M
 import qualified Data.List               as L
 import qualified Data.Text               as T
+import           Network.Connection(initConnectionContext)
 import           Data.Foldable (traverse_)
 import           Data.Maybe    (catMaybes)
 import           Control.Monad (zipWithM)
@@ -52,8 +53,9 @@ main = do
          initHash networks (hash state)
          servMap <- initAllServer
          tids    <- C.newMVar []
+         ctx     <- initConnectionContext
          handles <- do
-           mConnVar    <- traverse (startNetwork servMap) networks
+           mConnVar    <- traverse (startNetwork servMap ctx) networks
            let connVar = catMaybes mConnVar
            zipWithM (\x n -> forkWithKill tids
                            $ listen x servMap (netServer n) state) connVar networks

@@ -43,9 +43,8 @@ saveNetworks :: FilePath -> [IRCNetwork] -> IO ()
 saveNetworks file nets = BL.writeFile file (JSON.encode nets)
 
 -- joins a network and returns a handle
-joinNetwork :: IRCNetwork -> IO (Maybe C.Connection)
-joinNetwork net = do
-  ctx <- C.initConnectionContext
+joinNetwork :: C.ConnectionContext -> IRCNetwork -> IO (Maybe C.Connection)
+joinNetwork ctx net = do
   con <- try
        . C.connectTo ctx
        $ C.ConnectionParams { C.connectionHostname  = T.unpack $ netServer net
@@ -88,9 +87,9 @@ joinNetwork net = do
     encode   = BS64.encode . encodeUtf8
     saslPass = netNick net <> "\0" <> netNick net <> "\0" <> netPass net
 
-startNetwork :: AllServers -> IRCNetwork -> IO (Maybe (C.Connection, MVar Quit))
-startNetwork allS network = do
-  mjoined <- joinNetwork network
+startNetwork :: AllServers -> C.ConnectionContext -> IRCNetwork -> IO (Maybe (C.Connection, MVar Quit))
+startNetwork allS ctx network = do
+  mjoined <- joinNetwork ctx network
   case mjoined of
     Just x -> do
       mvar <- newEmptyMVar
