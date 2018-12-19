@@ -42,6 +42,7 @@ library
                      , utf8-string
                      , vector
                      , containers
+                     , unordered-containers
                      , stm-containers
                      , mtl
                      , base64-bytestring

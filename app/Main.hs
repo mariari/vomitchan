@@ -4,7 +4,8 @@ import qualified Control.Concurrent      as C
 import qualified STMContainers.Map       as M
 import qualified Data.List               as L
 import qualified Data.Text               as T
-import           Network.Connection(initConnectionContext)
+import           Network.Connection(initConnectionContext, Connection(..))
+import           Control.Exception (try, SomeException)
 import           Data.Foldable (traverse_)
 import           Data.Maybe    (catMaybes)
 import           Control.Monad (zipWithM)
@@ -54,11 +55,17 @@ main = do
          servMap <- initAllServer
          tids    <- C.newMVar []
          ctx     <- initConnectionContext
+         let listenTry :: (Connection, C.MVar Quit) -> IRCNetwork -> IO (Either SomeException Quit)
+             listenTry x n = try (listen x servMap (netServer n) state)
+             listenRetry network (Right x) = return x
+             listenRetry network (Left e) = do
+               x <- reconnectNetwork servMap ctx network
+               listenTry x network >>= listenRetry network
          handles <- do
            mConnVar    <- traverse (startNetwork servMap ctx) networks
            let connVar = catMaybes mConnVar
            zipWithM (\x n -> forkWithKill tids
-                           $ listen x servMap (netServer n) state) connVar networks
+                             $ listenTry x n >>= listenRetry n) connVar networks
          traverse_ C.takeMVar handles
   where
     initHash :: [IRCNetwork] -> M.Map T.Text HashStorage -> IO ()

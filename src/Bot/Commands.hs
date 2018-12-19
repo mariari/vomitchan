@@ -21,7 +21,7 @@ import qualified Data.Text as T
 import           System.Random
 import           Control.Lens
 import           Control.Monad.Reader
-import qualified Data.Map    as M
+import qualified Data.HashMap.Strict as M
 import qualified Data.Vector as V
 --- TYPES -------------------------------------------------------------------------------------
 
@@ -89,7 +89,7 @@ cmdTotList :: CmdImp m => [(m Func, CmdAlias)]
 cmdTotList = cmdList <> cmdListImp
 
 -- the Map of all functions that are pure and impure
-cmdMapList :: CmdImp m => M.Map T.Text (m Func)
+cmdMapList :: CmdImp m => M.HashMap T.Text (m Func)
 cmdMapList = M.fromList $ cmdTotList >>= f
   where
     f (cfn, aliasList) = zip aliasList (repeat cfn)
@@ -104,7 +104,7 @@ runCmd = do
   where
     split  msg         = T.split (== ' ') (msgContent msg)
     lookup (x : y : _) = lookup [x] <|> lookup [x <> " " <> y]
-    lookup [x]         = cmdMapList M.!? x
+    lookup [x]         = M.lookup x cmdMapList
     lookup []          = Nothing
 
 --- COMMAND FUNCTIONS -------------------------------------------------------------------------

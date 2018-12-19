@@ -4,6 +4,7 @@ module Bot.Network (
   saveNetworks,
   joinNetwork,
   startNetwork,
+  reconnectNetwork,
   findNetwork,
   netServer,
   netState
@@ -16,11 +17,12 @@ import qualified Data.Text              as T
 import qualified Network.Connection     as C
 import qualified Data.ByteString.Base64 as BS64
 import           Data.Text.Encoding     (encodeUtf8)
+import           Data.Foldable          (traverse_)
 import           Control.Monad          (when)
 import           Control.Exception      (try, SomeException)
-import           Data.Foldable          (traverse_)
 import           Control.Concurrent.STM (atomically)
 import           Control.Concurrent.MVar
+import           Control.Concurrent(threadDelay)
 
 import Bot.MessageType
 import Bot.MessageParser
@@ -98,6 +100,23 @@ startNetwork allS ctx network = do
     Nothing -> do
       atomically (addDisconnected allS network)
       return Nothing
+
+reconnectNetwork :: AllServers -> C.ConnectionContext -> IRCNetwork -> IO (C.Connection, MVar Quit)
+reconnectNetwork allS ctx network = recurse 1000
+  where
+    recurse i = do
+      mjoined <- joinNetwork ctx network
+      case mjoined of
+        Nothing -> do
+          threadDelay 1000
+          recurse (i * 2)
+        Just x -> do
+          mmvar <- atomically (previousMvar allS network)
+          case mmvar of
+            Nothing -> do
+              mvar <- newEmptyMVar
+              return (x,mvar)
+            Just mvar -> return (x,mvar)
 
 --- HELPER FUNCTIONS / UNUSED -----------------------------------------------------------------
 
