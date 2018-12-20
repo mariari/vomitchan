@@ -108,7 +108,7 @@ reconnectNetwork allS ctx network = recurse 1000
       mjoined <- joinNetwork ctx network
       case mjoined of
         Nothing -> do
-          threadDelay 1000
+          threadDelay i
           recurse (i * 2)
         Just x -> do
           mmvar <- atomically (previousMvar allS network)

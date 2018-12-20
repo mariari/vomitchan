@@ -53,18 +53,14 @@ disconnectServer all@(S { _numToConnect     = tNum
   let disconnect =  do
         writeTVar tCon (M.delete (netServer network) conMap)
         addDisconnected all network
-
-  case M.lookupMax numMap of
-    Just (iMax,net) -> do
-      case M.lookup (netServer network) conMap of
-        Just iNet
-          | iNet == iMax -> do
-              writeTVar tNum (M.delete iNet numMap)
-              disconnect
-          | otherwise -> do
-              let newMap = M.insert iNet net $ M.delete iMax numMap
-              writeTVar tNum newMap
-              disconnect
-              modifyTVar' tCon (M.insert (netServer (_networkInfo net)) iNet)
-        Nothing -> disconnect
-    Nothing     -> disconnect
+  case (,) <$> M.lookupMax numMap <*> M.lookup (netServer network) conMap of
+    Just ((iMax,net), iNet)
+      | iNet == iMax -> do
+          writeTVar tNum (M.delete iNet numMap)
+          disconnect
+      | otherwise -> do
+          let newMap = M.insert iNet net $ M.delete iMax numMap
+          writeTVar tNum newMap
+          disconnect
+          modifyTVar' tCon (M.insert (netServer (_networkInfo net)) iNet)
+    Nothing -> disconnect

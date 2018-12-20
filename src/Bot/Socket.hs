@@ -5,9 +5,12 @@ module Bot.Socket (
 ) where
 --- IMPORTS -----------------------------------------------------------------------------------
 import Control.Monad.Loops (iterateUntil)
+import Control.Monad       (unless)
 import Data.Foldable       (fold)
 import Data.Text.Encoding  (encodeUtf8)
 import Control.Concurrent  (tryTakeMVar, forkIO, MVar, putMVar)
+import Control.Exception.Base
+import Data.Typeable
 
 import qualified Data.Text             as T
 import qualified Data.Text.IO          as T
@@ -38,6 +41,8 @@ listen (h, quit) allServs net state = do
   return exit
   where
     resLoop quit = do
+      isConnected <- C.connectionWaitForInput h 180000 -- see if we hear anything in 3 mins
+      unless isConnected (throw (C.HostNotResolved (show net))) -- if not then we are dcd
       s <- C.connectionGetLine 10240 h
 
       forkIO (inout s net quit state)

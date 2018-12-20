@@ -1,11 +1,13 @@
+{-# LANGUAGE ScopedTypeVariables #-}
 module Main where
 --- IMPORTS -----------------------------------------------------------------------------------
 import qualified Control.Concurrent      as C
 import qualified STMContainers.Map       as M
 import qualified Data.List               as L
 import qualified Data.Text               as T
-import           Network.Connection(initConnectionContext, Connection(..))
-import           Control.Exception (try, SomeException)
+import           Network.Connection(initConnectionContext, Connection(..), HostNotResolved)
+import           Control.Exception
+import           Control.Exception.Base(AsyncException(..))
 import           Data.Foldable (traverse_)
 import           Data.Maybe    (catMaybes)
 import           Control.Monad (zipWithM)
@@ -24,8 +26,8 @@ forkWithKill :: C.MVar [C.ThreadId] -> IO Quit -> IO (C.MVar ())
 forkWithKill tids act = do
   handle <- C.newEmptyMVar
   let f (Right AllNetworks)    = kill >> C.putMVar handle ()
-      f (Right CurrentNetwork) = C.putMVar handle ()
-      f (Left e)               = C.putMVar handle () >> print (show e <> " in forkWithKill")
+      f (Right CurrentNetwork) = print "quitting current network " >> C.putMVar handle ()
+      f (Left e)               = print (show e <> " in forkWithKill") >> C.putMVar handle ()
   C.forkFinally spawn f
   return handle
   where
@@ -55,17 +57,22 @@ main = do
          servMap <- initAllServer
          tids    <- C.newMVar []
          ctx     <- initConnectionContext
-         let listenTry :: (Connection, C.MVar Quit) -> IRCNetwork -> IO (Either SomeException Quit)
-             listenTry x n = try (listen x servMap (netServer n) state)
-             listenRetry network (Right x) = return x
-             listenRetry network (Left e) = do
+         let listenTry x n =
+               listen x servMap (netServer n) state
+               `catches`
+               [ Handler (\ (e :: SomeAsyncException) ->
+                             print ("AsyncException: " <> show e) >> return CurrentNetwork)
+               , Handler (\ (e :: HostNotResolved) ->
+                             print "retrying connection" >> listenRetry n)
+               , Handler (\ (e :: SomeException) ->
+                            print ("Unknown Exception" <> show e) >> return CurrentNetwork)]
+             listenRetry network = do
                x <- reconnectNetwork servMap ctx network
-               listenTry x network >>= listenRetry network
+               listenTry x network
          handles <- do
            mConnVar    <- traverse (startNetwork servMap ctx) networks
            let connVar = catMaybes mConnVar
-           zipWithM (\x n -> forkWithKill tids
-                             $ listenTry x n >>= listenRetry n) connVar networks
+           zipWithM (\x -> forkWithKill tids . listenTry x) connVar networks
          traverse_ C.takeMVar handles
   where
     initHash :: [IRCNetwork] -> M.Map T.Text HashStorage -> IO ()
