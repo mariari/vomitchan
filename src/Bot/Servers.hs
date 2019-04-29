@@ -15,23 +15,27 @@ initAllServer = S <$> newTVarIO mempty
                   <*> newTVarIO mempty
                   <*> newTVarIO mempty
 
-addConnected :: AllServers -> MVar Quit -> IRCNetwork -> STM ()
-addConnected (S {_numToConnect = tNum, _servToNumConn = tCon}) mvar network = do
+addGen :: (Ord a1, Num a1)
+       => TVar (M.Map a1 a2)
+       -> TVar (M.Map Server a1)
+       -> IRCNetwork
+       -> a2
+       -> STM ()
+addGen tNum tCon network tNumNetwork = do
   numMap <- readTVar tNum
   let i = case M.lookupMax numMap of
             Just (n,_) -> n + 1
             Nothing    -> 1
-  writeTVar   tNum (M.insert i (C mvar network) numMap)
+  writeTVar   tNum (M.insert i tNumNetwork numMap)
   modifyTVar' tCon (M.insert (netServer network) i)
 
+addConnected :: AllServers -> MVar Quit -> IRCNetwork -> STM ()
+addConnected (S {_numToConnect = tNum, _servToNumConn = tCon}) mvar network =
+  addGen tNum tCon network (C mvar network)
+
 addDisconnected :: AllServers -> IRCNetwork -> STM ()
-addDisconnected (S {_numToDisconnect = tNum, _servToNumDisconn = tCon}) network = do
-  numMap <- readTVar tNum
-  let i = case M.lookupMax numMap of
-            Just (n,_) -> n + 1
-            Nothing    -> 1
-  writeTVar   tNum (M.insert i network numMap)
-  modifyTVar' tCon (M.insert (netServer network) i)
+addDisconnected (S {_numToDisconnect = tNum, _servToNumDisconn = tCon}) network =
+  addGen tNum tCon network network
 
 
 previousMvar :: AllServers -> IRCNetwork -> STM (Maybe (MVar Quit))
@@ -50,7 +54,7 @@ disconnectServer all@(S { _numToConnect     = tNum
                         }) network = do
   numMap <- readTVar tNum
   conMap <- readTVar tCon
-  let disconnect =  do
+  let disconnect = do
         writeTVar tCon (M.delete (netServer network) conMap)
         addDisconnected all network
   case (,) <$> M.lookupMax numMap <*> M.lookup (netServer network) conMap of

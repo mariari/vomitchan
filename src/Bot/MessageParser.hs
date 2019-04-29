@@ -1,3 +1,4 @@
+{-# LANGUAGE ApplicativeDo #-}
 module Bot.MessageParser where
 
 import Bot.MessageType
@@ -21,18 +22,19 @@ data Prefix = ServerName Server
 parseMessage :: BS.ByteString -> Either String Command
 parseMessage = parseOnly (prefix >>= command)
 
-command ::  Prefix -> Parser Command
+command :: Prefix -> Parser Command
 command prefix =  wordCommand prefix
               <|> numberCommand prefix
 
 prefix :: Parser Prefix
-prefix = (word8 58 >> parseUserI <|> parseServer) -- 58 = :
+prefix = (word8 58 *> parseUserI <|> parseServer) -- 58 = :
       <|> return NoPrefix
 
 numberCommand :: Prefix -> Parser Command
 numberCommand prefix = do
   code <- C.decimal
-  NUMBERS <$> numbers code prefix
+  text <- takeText
+  return $ NUMBERS (numbers code prefix text)
 
 wordCommand :: Prefix -> Parser Command
 wordCommand prefix = do
@@ -47,11 +49,11 @@ commandW "QUIT"    (PUser userI) = quit userI
 commandW "PART"    (PUser userI) = part userI
 commandW word      prefix        = handleOther word prefix
 
-numbers :: Int -> Prefix -> Parser Numbers
-numbers 354 (ServerName s) = N354 s <$> takeText
-numbers 376 (ServerName s) = N376 s <$> takeText
-numbers 903 (ServerName s) = N903 s <$> takeText
-numbers 904 (ServerName s) = N904 s <$> takeText
+numbers :: Int -> Prefix -> T.Text -> Numbers
+numbers 354 (ServerName s) = N354 s
+numbers 376 (ServerName s) = N376 s
+numbers 903 (ServerName s) = N903 s
+numbers 904 (ServerName s) = N904 s
 numbers cod prefix         = handleNOther cod prefix
 -- COMMAND-------------------------------------------------------------------------------------
 
@@ -66,7 +68,7 @@ part userI = targetCmd f
     f target = PART . Part userI target
 
 ping :: Parser Command
-ping = C.space >> PING . Ping <$> takeText
+ping = C.space *> (PING . Ping <$> takeText)
 
 join userI = takeColon (JOIN . Join userI)
 quit userI = takeColon (CQUIT . CQuit userI)
@@ -82,7 +84,7 @@ targetCmd :: (T.Text -> T.Text -> b) -> Parser b
 targetCmd f = do
   C.space
   target  <- takeTill isWhiteSpace
-  optionally (C.space >> word8 58)  -- 58 = :
+  optionally (C.space *> word8 58)  -- 58 = :
   content <- takeText
   return (f (TE.decodeUtf8 target) content)
 
@@ -96,8 +98,8 @@ parseServer = do
 parseUserI :: Parser Prefix
 parseUserI = do
   nick <- parseNick
-  user <- optionally (word8 33 >> parseUser) -- 33 = !
-  host <- optionally (word8 64 >> parseHost) -- 64 = @
+  user <- optionally (word8 33 *> parseUser) -- 33 = !
+  host <- optionally (word8 64 *> parseHost) -- 64 = @
   C.space
   return (PUser (UserI (TE.decodeUtf8 nick) (TE.decodeUtf8 <$> user) (TE.decodeUtf8 <$> host)))
 
@@ -131,8 +133,8 @@ prefixToOther (ServerName s) = OtherServer s
 prefixToOther (PUser s)      = OtherUser s
 prefixToOther NoPrefix       = OtherNoInfo
 
-handleNOther :: Int -> Prefix -> Parser Numbers
-handleNOther code prefix = NOther code . prefixToOther prefix <$> takeText
+handleNOther :: Int -> Prefix -> T.Text -> Numbers
+handleNOther code prefix = NOther code . prefixToOther prefix
 
 handleOther :: BS.ByteString -> Prefix -> Parser Command
 handleOther word prefix = OTHER (TE.decodeUtf8 word) . prefixToOther prefix <$> takeText

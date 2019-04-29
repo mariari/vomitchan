@@ -67,12 +67,8 @@ main = do
          servMap <- initAllServer
          tids    <- C.newMVar []
          ctx     <- initConnectionContext
-         let listenTry x n =
-               handleSelf (listen x servMap (netServer n) state) (listenRetry n)
-             listenRetry n = do
-               handleSelf (do x <- reconnectNetwork servMap ctx n
-                              listen x servMap (netServer n) state)
-                          (listenRetry n)
+         let listenTry x n = handleSelf (listen x servMap (netServer n) state) (listenRetry n)
+             listenRetry n = reconnectNetwork servMap ctx n >>= flip listenTry n
          handles <- do
            mConnVar    <- traverse (startNetwork servMap ctx) networks
            let connVar = catMaybes mConnVar
