@@ -13,7 +13,7 @@ module Bot.StateType (
 --- IMPORTS -----------------------------------------------------------------------------------
 import qualified Data.Text         as T
 import qualified Data.Aeson        as JSON
-import qualified STMContainers.Map as M
+import qualified StmContainers.Map as M
 import           GHC.Generics
 --- TYPES -------------------------------------------------------------------------------------
 type Chan = T.Text

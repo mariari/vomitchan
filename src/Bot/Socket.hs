@@ -9,8 +9,7 @@ import Control.Monad       (unless)
 import Data.Foldable       (fold)
 import Data.Text.Encoding  (encodeUtf8)
 import Control.Concurrent  (tryTakeMVar, forkIO, MVar, putMVar)
-import Control.Exception.Base
-import Data.Typeable
+import Control.Exception.Base (throw)
 
 import qualified Data.Text             as T
 import qualified Data.Text.IO          as T
@@ -41,8 +40,11 @@ listen (h, quit) allServs net state = do
   return exit
   where
     resLoop quit = do
-      isConnected <- C.connectionWaitForInput h 180000 -- see if we hear anything in 3 mins
-      unless isConnected (throw (C.HostNotResolved (show net))) -- if not then we are dcd
+      isConnected <- C.connectionWaitForInput h 251000 -- see if we hear anything in 4 mins
+
+      unless isConnected                               -- if not then we are dcd
+             (throw (C.HostNotResolved (show net)))    -- bubble an exception up to reconnect
+
       s <- C.connectionGetLine 10240 h
 
       forkIO (inout s net quit state)

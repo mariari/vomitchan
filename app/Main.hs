@@ -2,7 +2,7 @@
 module Main where
 --- IMPORTS -----------------------------------------------------------------------------------
 import qualified Control.Concurrent      as C
-import qualified STMContainers.Map       as M
+import qualified StmContainers.Map       as M
 import qualified Data.List               as L
 import qualified Data.Text               as T
 import           Network.Connection(initConnectionContext, Connection(..), HostNotResolved)
@@ -43,6 +43,16 @@ withThread act tids = do
   modifyVar (:) tid *> act <* modifyVar L.delete tid
   where
     modifyVar f tid = C.modifyMVar_ tids (return . f tid)
+
+handleSelf :: IO Quit -> IO Quit -> IO Quit
+handleSelf f g =
+  f `catches` [ Handler (\ (e :: SomeAsyncException) ->
+                           print ("AsyncException: " <> show e) >> return CurrentNetwork)
+              , Handler (\ (e :: HostNotResolved) ->
+                           print "retrying connection" >> g)
+              , Handler (\ (e :: SomeException) ->
+                           print ("Unknown Exception" <> show e) >> g)]
+
  --- ENTRY POINT ------------------------------------------------------------------------------
 
 main :: IO ()
@@ -58,17 +68,11 @@ main = do
          tids    <- C.newMVar []
          ctx     <- initConnectionContext
          let listenTry x n =
-               listen x servMap (netServer n) state
-               `catches`
-               [ Handler (\ (e :: SomeAsyncException) ->
-                             print ("AsyncException: " <> show e) >> return CurrentNetwork)
-               , Handler (\ (e :: HostNotResolved) ->
-                             print "retrying connection" >> listenRetry n)
-               , Handler (\ (e :: SomeException) ->
-                            print ("Unknown Exception" <> show e) >> return CurrentNetwork)]
-             listenRetry network = do
-               x <- reconnectNetwork servMap ctx network
-               listenTry x network
+               handleSelf (listen x servMap (netServer n) state) (listenRetry n)
+             listenRetry n = do
+               handleSelf (do x <- reconnectNetwork servMap ctx n
+                              listen x servMap (netServer n) state)
+                          (listenRetry n)
          handles <- do
            mConnVar    <- traverse (startNetwork servMap ctx) networks
            let connVar = catMaybes mConnVar
@@ -79,5 +83,4 @@ main = do
     initHash net ht = atomically . sequence_ $ do
       x             <- net
       (chan, modes) <- fromStateConfig (netState x)
-      let serv      = netServer x
-      return $ M.insert modes (serv <> chan) ht
+      return $ M.insert modes (netServer x <> chan) ht

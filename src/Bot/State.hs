@@ -10,7 +10,7 @@ module Bot.State (
 
 --- IMPORTS -----------------------------------------------------------------------------------
 import qualified Data.Text         as T
-import qualified STMContainers.Map as M
+import qualified StmContainers.Map as M
 import           Control.Concurrent.STM (atomically)
 import           Data.Maybe             (fromMaybe)
 
