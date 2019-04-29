@@ -42,7 +42,7 @@ previousMvar :: AllServers -> IRCNetwork -> STM (Maybe (MVar Quit))
 previousMvar (S {_servToNumConn = tCon, _numToConnect = tNum}) network = do
   numMap <- readTVar tNum
   conMap <- readTVar tCon
-  return $ M.lookup (netServer network) conMap >>= (M.!?) numMap >>= return . _connection
+  return $ M.lookup (netServer network) conMap >>= flip M.lookup numMap >>= return . _connection
 
 -- | currently unused, however it removes the network from the maps,
 -- and keeps the maps without a hole in the number

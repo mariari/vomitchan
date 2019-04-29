@@ -27,7 +27,7 @@ command prefix =  wordCommand prefix
               <|> numberCommand prefix
 
 prefix :: Parser Prefix
-prefix = (word8 58 *> parseUserI <|> parseServer) -- 58 = :
+prefix = (word8 58 *> (parseUserI <|> parseServer)) -- 58 = :
       <|> return NoPrefix
 
 numberCommand :: Prefix -> Parser Command

@@ -58,7 +58,7 @@ joinNetwork ctx net = do
     Left ex -> putStrLn (show ex) >> return Nothing
     Right con -> do
       passConnect con
-      traverse_ (write con) (zip (repeat "JOIN") (netChans net))
+      traverse_ (write con . (,) "JOIN") (netChans net)
       return (Just con)
   where
     passConnect con = do
@@ -82,7 +82,7 @@ joinNetwork ctx net = do
           NUMBERS (N903 _ _)     -> writeBS h ("CAP", "END") -- authentication succeeded
           NUMBERS (N376 _ _)     -> return ()                -- if we don't sasl we wait until we see the MOTD
           OTHER "CAP" (OtherServer _ content)
-            | " * LS" `T.isPrefixOf` content -> writeBS h ("CAP", "REQ :sasl") >> waitNext h
+            | " * LS" `T.isPrefixOf` content -> writeBS h ("CAP", "REQ :sasl")      >> waitNext h
             | otherwise                      -> writeBS h ("AUTHENTICATE", "PLAIN") >> waitNext h
           _                     -> waitNext h
 

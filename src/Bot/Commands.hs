@@ -179,8 +179,8 @@ cmdVomit = do
 
       randEff :: V.Vector Effects -> String -> Int -> Int -> String
       randEff effects txt seed1 seed2
-        | dream state = actions [randElem effects seed1, randElem ansiColor seed2] txt
-        | otherwise   = actions [randElem effects seed1, Color Red, Reverse] txt
+        | dream state = txt `with` [randElem effects seed1, randElem ansiColor seed2]
+        | otherwise   = txt `with` [randElem effects seed1, Color Red, Reverse]
 
       -- consing to text is O(n), thus we deal with strings here
       applyEffects :: V.Vector Effects -> String -> Int -> Int -> String
@@ -191,7 +191,7 @@ cmdVomit = do
       randApplyLink  = applyEffects effectListLink
 
       nsfwStr txt
-        | "nsfw" `T.isSuffixOf` txt = actions [Reverse, Color LBlue, Bold] "nsfw"
+        | "nsfw" `T.isSuffixOf` txt = "nsfw" `with` [Reverse, Color LBlue, Bold]
         | otherwise                 = ""
 
       randPrivMsg :: IO T.Text
@@ -318,8 +318,8 @@ action eff txt = seff <> payload eff <> seff
     payload _         = txt
 
 -- used to do multiple actions in a row
-actions :: Foldable t => t Effects -> String -> String
-actions effs txt = foldr action txt effs
+with :: Foldable t => String -> t Effects -> String
+with = foldr action
 
 -- Changes the nick of the msg
 changeNick :: Nick -> PrivMsg -> PrivMsg

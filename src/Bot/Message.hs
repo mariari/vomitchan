@@ -25,16 +25,17 @@ cmdWbPg :: [T.Text]
 cmdWbPg = ["http", "ftp"]
 
 cmdPic :: [T.Text]
-cmdPic = ["jpg", "png", "jpeg", "gif", "jpg:large", "png:large", "jpeg:large"]
+cmdPic = ["jpg", "png", "jpeg", "gif", "jpg:large", "png:large",
+          "jpeg:large", "jpg#nsfw", "png#nsfw", "jpeg#nsfw"]
 
 cmdVid :: [T.Text]
-cmdVid = ["webm", "mp4", "flv", "ogv", "wmv", "gifv"]
+cmdVid = ["webm", "mp4", "flv", "ogv", "wmv", "gifv", "webm#nsfw"]
 
 cmdMus :: [T.Text]
 cmdMus = ["flac", "mp3", "tta", "ogg", "wma"]
 
 cmdMisc :: [T.Text]
-cmdMisc = ["pdf", "epub", "djvu", "txt", "hs", "lisp", "cpp", "c", "java", "rs"]
+cmdMisc = ["pdf", "epub", "djvu", "txt", "hs", "ml", "lisp", "cpp", "c", "java", "rs"]
 
 cmdAll :: [T.Text]
 cmdAll = fold [cmdPic, cmdVid, cmdMus, cmdMisc]
@@ -67,7 +68,7 @@ cmdLog = traverse_ . appendLog <*> linLn
 -- Downloads any file and saves it to the user folder
 cmdLogFile :: PrivMsg -> IO ()
 cmdLogFile = traverse_ . dwnUsrFile <*> allImg
-  where allImg m = filter (isSuffix cmdAllS) (allLinks m)
+  where allImg = filter (isSuffix cmdAllS) . allLinks
 
 cmdFldr :: PrivMsg -> IO ()
 cmdFldr = createUsrFldr
