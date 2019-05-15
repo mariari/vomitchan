@@ -4,6 +4,7 @@ import qualified Data.Map.Strict as M
 import           Control.Concurrent.MVar
 import           Control.Concurrent.STM.TVar
 import           Control.Concurrent.STM
+import           Control.Lens
 
 import Bot.MessageType
 import Bot.NetworkType
@@ -30,34 +31,36 @@ addGen tNum tCon network tNumNetwork = do
   modifyTVar' tCon (M.insert (netServer network) i)
 
 addConnected :: AllServers -> MVar Quit -> IRCNetwork -> STM ()
-addConnected (S {_numToConnect = tNum, _servToNumConn = tCon}) mvar network =
+addConnected S {_numToConnect = tNum, _servToNumConn = tCon} mvar network =
   addGen tNum tCon network (C mvar network)
 
 addDisconnected :: AllServers -> IRCNetwork -> STM ()
-addDisconnected (S {_numToDisconnect = tNum, _servToNumDisconn = tCon}) network =
+addDisconnected S {_numToDisconnect = tNum, _servToNumDisconn = tCon} network =
   addGen tNum tCon network network
 
 
 previousMvar :: AllServers -> IRCNetwork -> STM (Maybe (MVar Quit))
-previousMvar (S {_servToNumConn = tCon, _numToConnect = tNum}) network = do
+previousMvar S          {_servToNumConn = tCon, _numToConnect = tNum}
+             IRCNetwork {netServer = serv} = do
   numMap <- readTVar tNum
   conMap <- readTVar tCon
-  return $ M.lookup (netServer network) conMap >>= flip M.lookup numMap >>= return . _connection
+  pure $ conMap^.at serv >>= \m -> numMap^?ix m.connection
 
 -- | currently unused, however it removes the network from the maps,
 -- and keeps the maps without a hole in the number
 disconnectServer :: AllServers -> IRCNetwork -> STM ()
-disconnectServer all@(S { _numToConnect     = tNum
-                        , _servToNumConn    = tCon
-                        , _numToDisconnect  = tNumD
-                        , _servToNumDisconn = tConD
-                        }) network = do
+disconnectServer all@S { _numToConnect     = tNum
+                       , _servToNumConn    = tCon
+                       , _numToDisconnect  = tNumD
+                       , _servToNumDisconn = tConD
+                       }
+                 net@IRCNetwork {netServer = serv} = do
   numMap <- readTVar tNum
   conMap <- readTVar tCon
   let disconnect = do
-        writeTVar tCon (M.delete (netServer network) conMap)
-        addDisconnected all network
-  case (,) <$> M.lookupMax numMap <*> M.lookup (netServer network) conMap of
+        writeTVar tCon (M.delete serv conMap)
+        addDisconnected all net
+  case (,) <$> M.lookupMax numMap <*> conMap^.at serv of
     Just ((iMax,net), iNet)
       | iNet == iMax -> do
           writeTVar tNum (M.delete iNet numMap)
