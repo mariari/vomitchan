@@ -89,7 +89,7 @@ joinNetwork ctx net = do
     encode   = BS64.encode . encodeUtf8
     saslPass = netNick net <> "\0" <> netNick net <> "\0" <> netPass net
 
-startnetwork :: AllServers -> C.ConnectionContext -> IRCNetwork -> IO (Maybe (C.Connection, MVar Quit))
+startNetwork :: AllServers -> C.ConnectionContext -> IRCNetwork -> IO (Maybe (C.Connection, MVar Quit))
 startNetwork allS ctx network = do
   mjoined <- joinNetwork ctx network
   case mjoined of
