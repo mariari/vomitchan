@@ -79,7 +79,6 @@ cmdFldr = createUsrFldr
 allLinks :: PrivMsg -> [T.Text]
 allLinks = (cmdWbPg >>=) . specWord
 
-
 isSuffix :: S.Set Text -> Text -> Bool
 isSuffix legalExtensions txt = extension `S.member` legalExtensions
   where

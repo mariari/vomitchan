@@ -67,12 +67,14 @@ main = do
          servMap <- initAllServer
          tids    <- C.newMVar []
          ctx     <- initConnectionContext
-         let listenTry x n = handleSelf (listen x servMap (netServer n) state) (listenRetry n)
-             listenRetry n = reconnectNetwork servMap ctx n >>= flip listenTry n
-         handles <- do
-           mConnVar    <- traverse (startNetwork servMap ctx) networks
-           let connVar = catMaybes mConnVar
-           zipWithM (\x -> forkWithKill tids . listenTry x) connVar networks
+         handles <-
+           let listenTry n x = handleSelf (listen x servMap (netServer n) state) (listenRetry n)
+               listenRetry n = reconnectNetwork servMap ctx n >>= listenTry n
+               listenMTry n  = fmap (listenTry n)
+               listened      = catMaybes . zipWith listenMTry networks
+           in do
+             mConnVar <- traverse (startNetwork servMap ctx) networks
+             traverse (forkWithKill tids) (listened mConnVar)
          traverse_ C.takeMVar handles
   where
     initHash :: [IRCNetwork] -> M.Map T.Text HashStorage -> IO ()

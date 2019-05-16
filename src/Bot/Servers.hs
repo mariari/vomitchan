@@ -39,6 +39,7 @@ addDisconnected S {_numToDisconnect = tNum, _servToNumDisconn = tCon} network =
   addGen tNum tCon network network
 
 
+-- | Looks up the mvar associated with a specific network
 previousMvar :: AllServers -> IRCNetwork -> STM (Maybe (MVar Quit))
 previousMvar S          {_servToNumConn = tCon, _numToConnect = tNum}
              IRCNetwork {netServer = serv} = do

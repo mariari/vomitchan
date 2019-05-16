@@ -89,7 +89,7 @@ joinNetwork ctx net = do
     encode   = BS64.encode . encodeUtf8
     saslPass = netNick net <> "\0" <> netNick net <> "\0" <> netPass net
 
-startNetwork :: AllServers -> C.ConnectionContext -> IRCNetwork -> IO (Maybe (C.Connection, MVar Quit))
+startnetwork :: AllServers -> C.ConnectionContext -> IRCNetwork -> IO (Maybe (C.Connection, MVar Quit))
 startNetwork allS ctx network = do
   mjoined <- joinNetwork ctx network
   case mjoined of
@@ -115,6 +115,7 @@ reconnectNetwork allS ctx network = recurse 1000
           case mmvar of
             Nothing -> do
               mvar <- newEmptyMVar
+              atomically (addConnected allS mvar network)
               return (x,mvar)
             Just mvar -> return (x,mvar)
 
