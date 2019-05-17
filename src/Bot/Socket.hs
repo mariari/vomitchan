@@ -1,7 +1,8 @@
 module Bot.Socket (
   write,
   writeBS,
-  listen
+  listen,
+  quitNetwork
 ) where
 --- IMPORTS -----------------------------------------------------------------------------------
 import Control.Monad.Loops (iterateUntil)
