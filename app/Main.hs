@@ -8,6 +8,7 @@ import qualified Data.List          as L
 import qualified Data.Text          as T
 import qualified Data.Hashable      as Hashable
 import qualified ListT
+import qualified System.IO.Error    as Error
 
 import           Network.Connection(initConnectionContext, Connection(..), HostNotResolved)
 import           Control.Exception
@@ -26,8 +27,9 @@ import GHC.Conc (numCapabilities)
 
 -- creates a thread and adds its thread ID to an MVar list, kills all
 -- listed threads when finished
-forkWithKill :: C.MVar [C.ThreadId] -> S.Set ConnectionEq -> IO Quit -> IO (C.MVar ())
-forkWithKill tids connections act = do
+-- Int is the identifier for the current process
+forkWithKill :: C.MVar [C.ThreadId] -> S.Set ConnectionEq -> (IO Quit, Int) -> IO (C.MVar ())
+forkWithKill tids connections (act,identifier) = do
   handle <- C.newEmptyMVar
   let f (Right AllNetworks)    = kill >> C.putMVar handle ()
       f (Right CurrentNetwork) = print "quitting current network " >> C.putMVar handle ()
@@ -39,7 +41,9 @@ forkWithKill tids connections act = do
     kill  = do
       -- peacefully quit from the network!
       conns <- atomically $ ListT.toList $ S.listT connections
-      traverse (\(ConnectionEq con _) -> quitNetwork con) conns
+      -- filter out the current network, to prevent an error from an empty socket
+      let connectionsNotCurrent = filter (\(ConnectionEq _ i) -> i /= identifier) conns
+      traverse (\(ConnectionEq con _) -> quitNetwork con) connectionsNotCurrent
       threads <- C.readMVar tids
       mytid   <- C.myThreadId
       traverse_ C.killThread (filter (/= mytid) threads)
@@ -55,6 +59,13 @@ handleSelf :: IO Quit -> IO Quit -> IO Quit
 handleSelf f g =
   f `catches` [ Handler (\ (e :: SomeAsyncException) ->
                            print ("AsyncException: " <> show e) >> return CurrentNetwork)
+              -- Triggered by the other thread telling the network to quit
+              , Handler (\ (e :: IOException) ->
+                           if Error.isEOFError e
+                           then
+                             print ("EOF: " <> show e) >> return CurrentNetwork
+                           else
+                             print ("Unknown Exception" <> show e) >> g)
               , Handler (\ (e :: HostNotResolved) ->
                            print "retrying connection" >> g)
               , Handler (\ (e :: SomeException) ->
@@ -84,8 +95,9 @@ main = do
                listenRetry n ident = do
                  x <- reconnectNetwork servMap ctx n
                  listenTry n ident x
-               listenMTry n ident x = fmap (listenTry n ident) x
-               listened             = catMaybes . zipWith3 listenMTry networks [1..]
+               -- save the ident so we can send it into forkWithKill, to filter out current process
+               listenMTry n ident = fmap (\x -> (listenTry n ident x, ident))
+               listened           = catMaybes . zipWith3 listenMTry networks [1..]
            in do
              mConnVar <- traverse (startNetwork servMap ctx) networks
              traverse (forkWithKill tids connections) (listened mConnVar)
