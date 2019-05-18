@@ -1,3 +1,4 @@
+{-# LANGUAGE TemplateHaskell #-}
 module Bot.StateType (
   StateConfig(..),
   GlobalState(..),
@@ -8,12 +9,14 @@ module Bot.StateType (
   toHashStorage,
   toGlobalState,
   fromStateConfig,
-  defaultChanState
+  defaultChanState,
+  dream, fleecy, yuki, mute
 ) where
 --- IMPORTS -----------------------------------------------------------------------------------
 import qualified Data.Text         as T
 import qualified Data.Aeson        as JSON
 import qualified StmContainers.Map as M
+import           Control.Lens
 import           GHC.Generics
 --- TYPES -------------------------------------------------------------------------------------
 type Chan = T.Text
@@ -29,19 +32,29 @@ instance JSON.ToJSON   StateConfig
 
 -- Stores the Hash Information per channel
 data HashStorage = HashStorage
-                 { dream  :: !Bool
-                 , mute   :: !Bool
-                 , fleecy :: !Bool
+                 { _dream  :: !Bool
+                 , _mute   :: !Bool
+                 , _fleecy :: !Bool
+                 , _yuki   :: !Bool
                  } deriving (Show, Generic)
-
-defaultChanState :: HashStorage
-defaultChanState = toHashStorage True False False
-
-instance JSON.FromJSON HashStorage
-instance JSON.ToJSON   HashStorage
 
 -- Generates HashStorage
 toHashStorage = HashStorage
+
+defaultChanState :: HashStorage
+defaultChanState = toHashStorage True False False False
+
+makeLenses ''HashStorage
+
+-- used to generate default aeson instance with lens in tact
+-- wish we had ocaml package open here!
+instance JSON.ToJSON HashStorage where
+  toJSON = JSON.genericToJSON JSON.defaultOptions
+           { JSON.fieldLabelModifier = drop 1 }
+
+instance JSON.FromJSON HashStorage where
+  parseJSON = JSON.genericParseJSON JSON.defaultOptions
+              { JSON.fieldLabelModifier = drop 1 }
 
 --  All the Global Variables that make up State
 newtype GlobalState = GlobalState {hash :: M.Map T.Text HashStorage}

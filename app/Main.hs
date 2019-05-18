@@ -82,10 +82,10 @@ main = do
        Nothing       -> putStrLn "ERROR loading servers from JSON"
        Just networks -> do
          initHash networks (hash state)
-         servMap <- initAllServer
-         tids    <- C.newMVar []
+         servMap     <- initAllServer
+         tids        <- C.newMVar []
          connections <- S.newIO
-         ctx     <- initConnectionContext
+         ctx         <- initConnectionContext
          handles <-
            let listenTry net identifier x@(con,_) = do
                  let conEq = ConnectionEq con identifier

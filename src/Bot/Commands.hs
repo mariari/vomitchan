@@ -72,17 +72,18 @@ cmdList = [(cmdBots, [".bots", ".bot vomitchan"])
           ,(cmdHelp, [".help vomitchan"])
           ,(cmdQuit, [".quit"])
           ,(cmdJoin, [".join"])
-          ,(cmdPart, [".leave", ".part"])
-          ,(cmdLotg, [".lotg"])
-          ,(cmdBane, [".amysbane"])]
+          ,(cmdPart, [".leave", ".part"])]
 
 -- List of all Impure functions
 cmdListImp :: CmdImp m => [(m Func, [T.Text])]
 cmdListImp = [(cmdVomit,     ["*vomits*"])
              ,(cmdDream,     ["*cheek pinch*"])
              ,(cmdFleecy,    ["*step*"])
+             ,(cmdYuki,      ["*yuki*"])
              ,(cmdLewds,     [".lewd"])
-             ,(cmdEightBall, [".8ball"])]
+             ,(cmdEightBall, [".8ball"])
+             ,(cmdLotg,      [".lotg"])
+             ,(cmdBane,      [".amysbane"])]
 
 -- The List of all functions pure <> impure
 cmdTotList :: CmdImp m => [(m Func, CmdAlias)]
@@ -137,37 +138,45 @@ cmdQuit = shouldQuit . message <$> ask
 cmdLewds :: CmdImp m => m Func
 cmdLewds = getChanStateM >>= f
   where f state
-          | dream state = cmdLewd
-          | otherwise   = cmdVomit
+          | _dream state = cmdLewd
+          | otherwise    = cmdVomit
 
 -- lewd someone (rip halpybot)
-cmdLewd :: Cmd m => m Func
+cmdLewd :: CmdImp m => m Func
 cmdLewd = do
   target <- T.tail <$> drpMsg " "
-  composeMsg "PRIVMSG" $ actionMe ("lewds " <> target)
+  state  <- getChanStateM
+  txt    <- (effectText ("lewds " <> target))
+  composeMsg "PRIVMSG" $ actionMe txt
 
--- Causes Vomitchan to sleep ∨ awaken
+-- | Causes Vomitchan to sleep ∨ awaken
 cmdDream :: CmdImp m => m Func
 cmdDream = modifyDreamState >> composeMsg "PRIVMSG" " :dame"
 
--- Causes vomit to go into fleecy mode (at the moment just prints <3's instead of actual text in cmdVomit)
+-- | Causes vomit to go into fleecy mode
+-- (at the moment just prints <3's instead of actual text in cmdVomit)
 cmdFleecy :: CmdImp m => m Func
 cmdFleecy = modifyFleecyState >> composeMsg "PRIVMSG" " :dame"
 
--- Vomits up a colorful rainbow if vomitchan is asleep else it just vomits up red with no link
+-- | Causes vomit to go into Yuki ona mode
+cmdYuki :: CmdImp m => m Func
+cmdYuki = modifyYukiState
+       >> formattedEffectText ("dame" `withT` [Color Blue]) >>= composeMsg "PRIVMSG"
+
+-- | Vomits up a colorful rainbow if vomitchan is asleep else it just vomits up red with no link
 cmdVomit :: CmdImp m => m Func
 cmdVomit = do
   msg   <- message <$> ask
   state <- getChanStateM
   let
       randVom numT numG
-        | fleecy state = replicate numT '♥'
-        | otherwise    = take numT (randElems randRange numG)
+        | _fleecy state = replicate numT '♥'
+        | otherwise     = take numT (randElems randRange numG)
 
       newUsr = changeNickFstArg msg
 
       randLink
-        | dream state = do
+        | _dream state = do
             files <- usrFldrNoLog newUsr
             i     <- randomRIO (0, length files - 1)
             fileCheck (files ^? ix i)
@@ -179,8 +188,9 @@ cmdVomit = do
 
       randEff :: V.Vector Effects -> String -> Int -> Int -> String
       randEff effects txt seed1 seed2
-        | dream state = txt `with` [randElem effects seed1, randElem ansiColor seed2]
-        | otherwise   = txt `with` [randElem effects seed1, Color Red, Reverse]
+        | state^.dream && state^.yuki = txt `with` [randElem effects seed1, Color Blue]
+        | state^.dream = txt `with` [randElem effects seed1, randElem ansiColor seed2]
+        | otherwise    = txt `with` [randElem effects seed1, Color Red, Reverse]
 
       -- consing to text is O(n), thus we deal with strings here
       applyEffects :: V.Vector Effects -> String -> Int -> Int -> String
@@ -228,21 +238,24 @@ cmdPart = part . message <$> ask
 cmdEightBall :: CmdImp m => m Func
 cmdEightBall = do
   res <- liftIO (randElem respones <$> randomIO)
-  composeMsg "PRIVMSG" (" :" <> res)
+  txt <- formattedEffectText res
+  composeMsg "PRIVMSG" txt
 
-cmdLotg :: Cmd m => m Func
+cmdLotg :: CmdImp m => m Func
 cmdLotg = do
   target <- T.tail <$> drpMsg " "
-  composeMsg "PRIVMSG" (" :May the Luck of the Grasshopper be with you always, " <> target)
+  txt    <- formattedEffectText ("May the Luck of the Grasshopper be with you always, " <> target)
+  composeMsg "PRIVMSG" txt
 
-cmdBane :: Cmd m => m Func
+cmdBane :: CmdImp m => m Func
 cmdBane = do
   target <- T.tail <$> drpMsg " "
-  composeMsg "PRIVMSG" (" :The elder priest tentacles to tentacle "
-                         <> target
-                         <> "! "
-                         <> target
-                         <> "'s cloak of magic resistance disintegrates!")
+  txt <- formattedEffectText ("The elder priest tentacles to tentacle "
+                           <> target
+                           <> "! "
+                           <> target
+                           <> "'s cloak of magic resistance disintegrates!")
+  composeMsg "PRIVMSG" txt
 -- TODO's -------------------------------------------------------------------------------------
 --
 -- TODO: make reality mode make vomitchan only speak in nods
@@ -252,9 +265,29 @@ cmdBane = do
 --
 -- TODO: add a *zzz* function that causes the bot go into slumber mode
 --
+
+-- Effects ------------------------------------------------------------------------------------
+
+-- | runs the continuations for all the effects
+effectText :: CmdImp m => T.Text -> m T.Text
+effectText text =
+  ($ text) <$> yukiMode id
+
+-- | like effectText, but formats it properly for compose message
+formattedEffectText :: CmdImp m => T.Text -> m T.Text
+formattedEffectText text = (" :" <>) <$> effectText text
+
+-- | the continuation for the yukimode effect
+yukiMode cont = do
+  state <- getChanStateM
+  if state^.yuki then
+    return $ cont . (`withT` [Color Blue])
+  else
+    return cont
+
 --- HELPER FUNCTIONS --------------------------------------------------------------------------
 
--- checks if the user is an admin
+-- | checks if the user is an admin
 isAdmin :: PrivMsg -> Bool
 isAdmin = maybe False (`elem` admins) . msgUser
 
@@ -309,7 +342,7 @@ composeMsg method str = do
 actionMe :: T.Text -> T.Text
 actionMe txt = " :\0001ACTION " <> txt <> "\0001"
 
--- Used as a generic version for making bold, italic, underlined, colors, and swap, for strings
+-- | Used as a generic version for making bold, italic, underlined, colors, and swap, for strings
 action :: Effects -> String -> String
 action eff txt = seff <> payload eff <> seff
   where
@@ -317,9 +350,20 @@ action eff txt = seff <> payload eff <> seff
     payload (Color c) = showColor (fromEnum c) <> txt
     payload _         = txt
 
--- used to do multiple actions in a row
+-- | same as action, but takes text instead
+actionT :: Effects -> T.Text -> T.Text
+actionT eff txt = seff <> payload eff <> seff
+  where
+    seff              = T.pack $ show eff
+    payload (Color c) = T.pack (showColor (fromEnum c)) <> txt
+    payload _         = txt
+
+-- | used to do multiple actions in a row
 with :: Foldable t => String -> t Effects -> String
 with = foldr action
+
+withT ::  Foldable t => T.Text -> t Effects -> T.Text
+withT = foldr actionT
 
 -- Changes the nick of the msg
 changeNick :: Nick -> PrivMsg -> PrivMsg

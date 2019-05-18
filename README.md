@@ -12,6 +12,7 @@ An IRC bot written in Haskell.  *cheek pinch*
 - `*vomits* <someone>` - 'vomits' a link posted by you, or optionally someone else
 - `*cheek pinch*` - turns off and on dreammode for a channel
 - `*step*` - turns off and on fleecyMode for a channel
+- `*yuki*` - turns off and on yukiMode for a channel
 - `.lotg <someone>` - gives the luck of the grasshopper to a user
 - `.8ball <question>` - acts like an eight ball!
 
@@ -55,7 +56,7 @@ An IRC bot written in Haskell.  *cheek pinch*
 vomitchan requires `data/networks.json` to store information about IRC networks to connect to.
 This file should look like the following:
 
-**NOTE: one can forego writing T F F for "dreammode", "mutemode", and "fleecyMode" because they default to T F F**
+**NOTE: one can forego writing T F F F for "dreammode", "mutemode", "fleecyMode", and YukiMode because they default to T F F F**
 
 ```json
 [
@@ -67,10 +68,12 @@ This file should look like the following:
       , "netChans" : ["#hardfought", "#em.slashem.me", "#Haskell"]
       , "netState" : [["#hardfought", {"dream"  : true,
                                        "mute"   : false,
-                                       "fleecy" : false}]
+                                       "fleecy" : false,
+                                       "yuki"   : false}]
                       ,["#em.slashem.me", {"dream"  : true,
                                            "mute"   : false,
-                                           "fleecy" : true}]]
+                                           "fleecy" : true,
+                                           "yuki"   : false}]]
     },
 
     { "netServer" : "other"
