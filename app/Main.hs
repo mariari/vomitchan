@@ -83,9 +83,10 @@ main = do
          handles <-
            let listenTry net identifier x@(con,_) = do
                  let conEq = ConnectionEq con identifier
+                 let leave = atomically (S.delete conEq connections)
                  atomically (S.insert conEq connections)
-                 handleSelf (listen x servMap (netServer net) state)
-                            (atomically (S.delete conEq connections) >> listenRetry net identifier)
+                 handleSelf (listen x servMap (netServer net) state <* leave)
+                            (leave >> listenRetry net identifier)
                listenRetry n ident = do
                  x <- reconnectNetwork servMap ctx n
                  listenTry n ident x
