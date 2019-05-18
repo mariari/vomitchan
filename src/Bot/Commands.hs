@@ -161,7 +161,7 @@ cmdFleecy = modifyFleecyState >> composeMsg "PRIVMSG" " :dame"
 -- | Causes vomit to go into Yuki ona mode
 cmdYuki :: CmdImp m => m Func
 cmdYuki = modifyYukiState
-       >> formattedEffectText ("dame" `withT` [Color Blue]) >>= composeMsg "PRIVMSG"
+       >> formattedEffectText "dame" >>= composeMsg "PRIVMSG"
 
 -- | Vomits up a colorful rainbow if vomitchan is asleep else it just vomits up red with no link
 cmdVomit :: CmdImp m => m Func
@@ -283,12 +283,10 @@ formattedEffectText :: CmdImp m => T.Text -> m T.Text
 formattedEffectText text = (" :" <>) <$> effectText text
 
 -- | the continuation for the yukimode effect
-yukiMode cont = do
-  state <- getChanStateM
-  if state^.yuki then
-    return $ cont . (`withT` [Color Blue])
-  else
-    return cont
+yukiMode cont = f <$> getChanStateM
+  where
+    f state | state^.yuki = cont . (`withT` [Color Blue])
+            | otherwise   = cont
 
 --- HELPER FUNCTIONS --------------------------------------------------------------------------
 
