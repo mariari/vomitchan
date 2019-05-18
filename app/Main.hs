@@ -57,15 +57,9 @@ withThread act tids = do
 
 handleSelf :: IO Quit -> IO Quit -> IO Quit
 handleSelf f g =
+              -- Triggered by the other thread telling the network to quit
   f `catches` [ Handler (\ (e :: SomeAsyncException) ->
                            print ("AsyncException: " <> show e) >> return CurrentNetwork)
-              -- Triggered by the other thread telling the network to quit
-              , Handler (\ (e :: IOException) ->
-                           if Error.isEOFError e
-                           then
-                             print ("EOF: " <> show e) >> return CurrentNetwork
-                           else
-                             print ("Unknown Exception" <> show e) >> g)
               , Handler (\ (e :: HostNotResolved) ->
                            print "retrying connection" >> g)
               , Handler (\ (e :: SomeException) ->

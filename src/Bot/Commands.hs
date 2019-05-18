@@ -249,13 +249,17 @@ cmdLotg = do
 
 cmdBane :: CmdImp m => m Func
 cmdBane = do
-  target <- T.tail <$> drpMsg " "
-  txt <- formattedEffectText ("The elder priest tentacles to tentacle "
+  target <- drpMsg " "
+  if mempty == target then
+    return NoResponse
+  else do
+   let target = T.tail target
+   txt <- formattedEffectText ("The elder priest tentacles to tentacle "
                            <> target
                            <> "! "
                            <> target
                            <> "'s cloak of magic resistance disintegrates!")
-  composeMsg "PRIVMSG" txt
+   composeMsg "PRIVMSG" txt
 -- TODO's -------------------------------------------------------------------------------------
 --
 -- TODO: make reality mode make vomitchan only speak in nods
