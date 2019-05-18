@@ -241,25 +241,26 @@ cmdEightBall = do
   txt <- formattedEffectText res
   composeMsg "PRIVMSG" txt
 
+cmdTarget f = do
+  target' <- drpMsg " "
+  if mempty == target' then
+      return NoResponse
+    else do
+      let target = T.tail target'
+      txt <- formattedEffectText (f target)
+      composeMsg "PRIVMSG" txt
+
 cmdLotg :: CmdImp m => m Func
-cmdLotg = do
-  target <- T.tail <$> drpMsg " "
-  txt    <- formattedEffectText ("May the Luck of the Grasshopper be with you always, " <> target)
-  composeMsg "PRIVMSG" txt
+cmdLotg =
+  cmdTarget (\target -> "May the Luck of the Grasshopper be with you always, " <> target)
 
 cmdBane :: CmdImp m => m Func
 cmdBane = do
-  target <- drpMsg " "
-  if mempty == target then
-    return NoResponse
-  else do
-   let target = T.tail target
-   txt <- formattedEffectText ("The elder priest tentacles to tentacle "
-                           <> target
-                           <> "! "
-                           <> target
-                           <> "'s cloak of magic resistance disintegrates!")
-   composeMsg "PRIVMSG" txt
+  cmdTarget (\target -> "The elder priest tentacles to tentacle "
+                     <> target
+                     <> "! "
+                     <> target
+                     <> "'s cloak of magic resistance disintegrates!")
 -- TODO's -------------------------------------------------------------------------------------
 --
 -- TODO: make reality mode make vomitchan only speak in nods
