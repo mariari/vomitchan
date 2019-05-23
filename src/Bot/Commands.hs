@@ -66,7 +66,7 @@ admins :: [T.Text]
 admins = ["loli", "~loli"]
 
 -- list of all Pure functions
-cmdList :: (CmdImp m') => [(m' (Effect m' -> m' Func), [T.Text], Effect m')]
+cmdList :: (Cmd m, CmdImp m') => [(ContFuncPure m m', [T.Text], Effect m')]
 cmdList = [(cmdBots, [".bots", ".bot vomitchan"], effectText)
           ,(cmdSrc,  [".source vomitchan"]      , effectText)
           ,(cmdHelp, [".help vomitchan"]        , effectText)
@@ -111,20 +111,20 @@ runCmd = do
 --- COMMAND FUNCTIONS -------------------------------------------------------------------------
 
 -- print bot info
-cmdBots :: Cmd m => ContFunc m
+cmdBots :: (Cmd m, Monad m') => ContFuncPure m m'
 cmdBots = composeMsg "NOTICE" "I am a queasy bot written in Haskell by MrDetonia and loli"
 
 -- print source link
-cmdSrc :: Cmd m => ContFunc m
+cmdSrc :: (Cmd m, Monad m') => ContFuncPure m m'
 cmdSrc = composeMsg "NOTICE" "[Haskell] https://github.com/mariari/vomitchan"
 
 -- prints help information
 -- TODO: Store command info in cmdList and generate this text on the fly
-cmdHelp :: Cmd m => ContFunc m
+cmdHelp :: (Cmd m, Monad m') => ContFuncPure m m'
 cmdHelp = composeMsg "NOTICE" "Commands: (.lewd <someone>), (*vomits* [nick]), (*cheek pinch*)"
 
 -- quit
-cmdQuit :: Cmd m => ContFunc m
+cmdQuit :: (Cmd m, Monad m') => ContFuncPure m m'
 cmdQuit = shouldQuit . message <$> ask
   where
     shouldQuit msg
@@ -216,7 +216,7 @@ cmdVomit = do
   composeMsg "PRIVMSG" toWrite
 
 -- Joins the first channel in the message if the user is an admin else do nothing
-cmdJoin :: Cmd m => ContFunc m
+cmdJoin :: (Cmd m, Monad m') => ContFuncPure m m'
 cmdJoin = join . message <$> ask
   where
     join msg
@@ -224,7 +224,7 @@ cmdJoin = join . message <$> ask
       | otherwise                          = noResponse
 
 -- Leaves the first channel in the message if the user is an admin else do nothing
-cmdPart :: Cmd m => ContFunc m
+cmdPart :: (Cmd m, Monad m') => ContFuncPure m m'
 cmdPart = part . message <$> ask
   where
     part msg
@@ -248,11 +248,11 @@ cmdTarget f = do
       let target = T.tail target'
       composeMsg "PRIVMSG" (f target)
 
-cmdLotg :: Cmd m => ContFunc m
+cmdLotg :: (Cmd m, Monad m') => ContFuncPure m m'
 cmdLotg =
   cmdTarget (\target -> "May the Luck of the Grasshopper be with you always, " <> target)
 
-cmdBane :: Cmd m => ContFunc m
+cmdBane :: (Cmd m, Monad m') => ContFuncPure m m'
 cmdBane = do
   cmdTarget (\target -> "The elder priest tentacles to tentacle "
                      <> target
@@ -330,7 +330,8 @@ drpMsg :: Cmd m => T.Text -> m T.Text
 drpMsg bk = snd . T.breakOn bk . msgContent . message <$> ask
 
 -- composes the format that the final send message will be
---composeMsg :: Cmd m => T.Text -> T.Text -> Effect m -> m Func
+composeMsg :: (MonadReader InfoPriv m1, Monad m2) =>
+             a -> t -> m1 ((t -> m2 T.Text) -> m2 (Response (a, T.Text)))
 composeMsg method str = do
   dest <- msgDest . message <$> ask
   pure $ \eff -> do

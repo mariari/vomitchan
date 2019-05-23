@@ -20,5 +20,7 @@ type Effect m = T.Text -> m T.Text
 -- | Continuation type for Func that encodes sending an effect in
 type ContFunc m = m (Effect m -> m Func)
 
+type ContFuncPure m m' = m (Effect m' -> m' Func)
+
 toReaderImp :: (MonadIO m, MonadReader r m) => (r -> IO b) -> m b
 toReaderImp = liftIO <=< reader
