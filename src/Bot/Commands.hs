@@ -31,16 +31,16 @@ data Color = White | Black | Blue  | Green | Red  | Brown | Purple | Orange | Ye
            | Teal  | LCyan | LBlue | Pink  | Grey | LGrey
            deriving (Enum, Show)
 
-ansiColor :: V.Vector Effects
+ansiColor :: V.Vector TextEffects
 ansiColor = V.fromList (Color <$> [White .. LGrey])
 
 -- underline and strikeThrough are new
-data Effects = Bold      | Italics   | Color Color
-             | UnderLine | Reverse   | Hex
-             | Reset     | MonoSpace | None
-             | Strikethrough | Txt String -- Space is a hack!
+data TextEffects = Bold      | Italics   | Color Color
+                 | UnderLine | Reverse   | Hex
+                 | Reset     | MonoSpace | None
+                 | Strikethrough | Txt String -- Space is a hack!
 
-instance Show Effects where
+instance Show TextEffects where
   show Bold          = "\x2"
   show Italics       = "\x1D"
   show UnderLine     = "\x1F"
@@ -53,10 +53,10 @@ instance Show Effects where
   show (Txt s)       = s
   show None          = ""
 
-effectListLink :: V.Vector Effects
+effectListLink :: V.Vector TextEffects
 effectListLink = V.fromList [Bold, Italics, UnderLine, Reverse]
 
-effectList :: V.Vector Effects
+effectList :: V.Vector TextEffects
 effectList = V.fromList [Txt " ", MonoSpace, Strikethrough, None] <> effectListLink
 --- DATA --------------------------------------------------------------------------------------
 
@@ -66,34 +66,34 @@ admins :: [T.Text]
 admins = ["loli", "~loli"]
 
 -- list of all Pure functions
-cmdList :: Cmd m => [(m Func, [T.Text])]
-cmdList = [(cmdBots, [".bots", ".bot vomitchan"])
-          ,(cmdSrc,  [".source vomitchan"])
-          ,(cmdHelp, [".help vomitchan"])
-          ,(cmdQuit, [".quit"])
-          ,(cmdJoin, [".join"])
-          ,(cmdPart, [".leave", ".part"])]
+cmdList :: (CmdImp m') => [(m' (Effect m' -> m' Func), [T.Text], Effect m')]
+cmdList = [(cmdBots, [".bots", ".bot vomitchan"], effectText)
+          ,(cmdSrc,  [".source vomitchan"]      , effectText)
+          ,(cmdHelp, [".help vomitchan"]        , effectText)
+          ,(cmdQuit, [".quit"]                  , pure)
+          ,(cmdJoin, [".join"]                  , pure)
+          ,(cmdPart, [".leave", ".part"]        , pure)
+          ,(cmdLotg, [".lotg"]                  , effectText)
+          ,(cmdBane, [".amysbane"]              , effectText)]
 
 -- List of all Impure functions
-cmdListImp :: CmdImp m => [(m Func, [T.Text])]
-cmdListImp = [(cmdVomit,     ["*vomits*"])
-             ,(cmdDream,     ["*cheek pinch*"])
-             ,(cmdFleecy,    ["*step*"])
-             ,(cmdYuki,      ["*yuki*"])
-             ,(cmdLewds,     [".lewd"])
-             ,(cmdEightBall, [".8ball"])
-             ,(cmdLotg,      [".lotg"])
-             ,(cmdBane,      [".amysbane"])]
+cmdListImp :: CmdImp m => [(ContFunc m, [T.Text], Effect m)]
+cmdListImp = [(cmdVomit,     ["*vomits*"]       , pure)
+             ,(cmdDream,     ["*cheek pinch*"]  , effectText)
+             ,(cmdFleecy,    ["*step*"]         , effectText)
+             ,(cmdYuki,      ["*yuki*"]         , effectText)
+             ,(cmdLewds,     [".lewd"]          , effectText)
+             ,(cmdEightBall, [".8ball"]         , effectText)]
 
 -- The List of all functions pure <> impure
-cmdTotList :: CmdImp m => [(m Func, CmdAlias)]
+cmdTotList :: CmdImp m => [(m (Effect m -> m Func), [T.Text], Effect m)]
 cmdTotList = cmdList <> cmdListImp
 
 -- the Map of all functions that are pure and impure
 cmdMapList :: CmdImp m => M.HashMap T.Text (m Func)
 cmdMapList = M.fromList $ cmdTotList >>= f
   where
-    f (cfn, aliasList) = zip aliasList (repeat cfn)
+    f (cfn, aliasList, eff) = zip aliasList (repeat (cfn >>= ($ eff)))
 -- FUNCTIONS ----------------------------------------------------------------------------------
 
 -- only 1 space is allowed in a command at this point
@@ -111,60 +111,59 @@ runCmd = do
 --- COMMAND FUNCTIONS -------------------------------------------------------------------------
 
 -- print bot info
-cmdBots :: Cmd m => m Func
-cmdBots = composeMsg "NOTICE" " :I am a queasy bot written in Haskell by MrDetonia and loli"
+cmdBots :: Cmd m => ContFunc m
+cmdBots = composeMsg "NOTICE" "I am a queasy bot written in Haskell by MrDetonia and loli"
 
 -- print source link
-cmdSrc :: Cmd m => m Func
-cmdSrc = composeMsg "NOTICE" " :[Haskell] https://github.com/mariari/vomitchan"
+cmdSrc :: Cmd m => ContFunc m
+cmdSrc = composeMsg "NOTICE" "[Haskell] https://github.com/mariari/vomitchan"
 
 -- prints help information
 -- TODO: Store command info in cmdList and generate this text on the fly
-cmdHelp :: Cmd m => m Func
-cmdHelp = composeMsg "NOTICE" " :Commands: (.lewd <someone>), (*vomits* [nick]), (*cheek pinch*)"
+cmdHelp :: Cmd m => ContFunc m
+cmdHelp = composeMsg "NOTICE" "Commands: (.lewd <someone>), (*vomits* [nick]), (*cheek pinch*)"
 
 -- quit
-cmdQuit :: Cmd m => m Func
+cmdQuit :: Cmd m => ContFunc m
 cmdQuit = shouldQuit . message <$> ask
   where
     shouldQuit msg
-      | not (isAdmin msg)                 = NoResponse
-      | isSnd words && allOrCurr == "all" = Quit AllNetworks
-      | otherwise                         = Quit CurrentNetwork
+      | not (isAdmin msg)                 = noResponse
+      | isSnd words && allOrCurr == "all" = quit AllNetworks
+      | otherwise                         = quit CurrentNetwork
       where
         words     = wordMsg msg
         allOrCurr = words !! 1
 
-cmdLewds :: CmdImp m => m Func
+cmdLewds :: CmdImp m => ContFunc m
 cmdLewds = getChanStateM >>= f
   where f state
           | _dream state = cmdLewd
           | otherwise    = cmdVomit
 
 -- lewd someone (rip halpybot)
-cmdLewd :: CmdImp m => m Func
+cmdLewd :: CmdImp m => ContFunc m
 cmdLewd = do
   target <- T.tail <$> drpMsg " "
   state  <- getChanStateM
-  txt    <- (effectText ("lewds " <> target))
+  txt    <- effectText ("lewds " <> target)
   composeMsg "PRIVMSG" $ actionMe txt
 
 -- | Causes Vomitchan to sleep ∨ awaken
-cmdDream :: CmdImp m => m Func
-cmdDream = modifyDreamState >> composeMsg "PRIVMSG" " :dame"
+cmdDream :: CmdImp m => ContFunc m
+cmdDream = modifyDreamState >> composeMsg "PRIVMSG" "dame"
 
 -- | Causes vomit to go into fleecy mode
 -- (at the moment just prints <3's instead of actual text in cmdVomit)
-cmdFleecy :: CmdImp m => m Func
-cmdFleecy = modifyFleecyState >> composeMsg "PRIVMSG" " :dame"
+cmdFleecy :: CmdImp m => ContFunc m
+cmdFleecy = modifyFleecyState >> composeMsg "PRIVMSG" "dame"
 
 -- | Causes vomit to go into Yuki ona mode
-cmdYuki :: CmdImp m => m Func
-cmdYuki = modifyYukiState
-       >> formattedEffectText "dame" >>= composeMsg "PRIVMSG"
+cmdYuki :: CmdImp m => ContFunc m
+cmdYuki = modifyYukiState >> composeMsg "PRIVMSG" "dame"
 
 -- | Vomits up a colorful rainbow if vomitchan is asleep else it just vomits up red with no link
-cmdVomit :: CmdImp m => m Func
+cmdVomit :: CmdImp m => ContFunc m
 cmdVomit = do
   msg   <- message <$> ask
   state <- getChanStateM
@@ -186,19 +185,19 @@ cmdVomit = do
       fileCheck :: Maybe String -> IO T.Text
       fileCheck = maybe (return "") (upUsrFile . (getUsrFldrT newUsr <>) . T.pack)
 
-      randEff :: V.Vector Effects -> String -> Int -> Int -> String
+      randEff :: V.Vector TextEffects -> String -> Int -> Int -> String
       randEff effects txt seed1 seed2
         | state^.dream && state^.yuki = txt `with` [randElem effects seed1, Color Blue]
         | state^.dream = txt `with` [randElem effects seed1, randElem ansiColor seed2]
         | otherwise    = txt `with` [randElem effects seed1, Color Red, Reverse]
 
       -- consing to text is O(n), thus we deal with strings here
-      applyEffects :: V.Vector Effects -> String -> Int -> Int -> String
-      applyEffects vs xs s = join . zipWith3 (\x -> randEff vs [x]) xs (randGen s) . randGen
+      applyTextEffects :: V.Vector TextEffects -> String -> Int -> Int -> String
+      applyTextEffects vs xs s = join . zipWith3 (\x -> randEff vs [x]) xs (randGen s) . randGen
         where randGen = randoms . mkStdGen
 
-      randApply numT = applyEffects effectList . randVom numT
-      randApplyLink  = applyEffects effectListLink
+      randApply numT = applyTextEffects effectList . randVom numT
+      randApplyLink  = applyTextEffects effectListLink
 
       nsfwStr txt
         | "nsfw" `T.isSuffixOf` txt = "nsfw" `with` [Reverse, Color LBlue, Bold]
@@ -214,47 +213,46 @@ cmdVomit = do
                         <> randApplyLink (T.unpack link) h m <> " "
                         <> randApply x z i n
   toWrite <- liftIO randPrivMsg
-  composeMsg "PRIVMSG" (" :" <> toWrite)
+  composeMsg "PRIVMSG" toWrite
 
 -- Joins the first channel in the message if the user is an admin else do nothing
-cmdJoin :: Cmd m => m Func
+cmdJoin :: Cmd m => ContFunc m
 cmdJoin = join . message <$> ask
   where
     join msg
-      | isAdmin msg && isSnd (wordMsg msg) = Response ("JOIN", wordMsg msg !! 1)
-      | otherwise                          = NoResponse
+      | isAdmin msg && isSnd (wordMsg msg) = response ("JOIN", wordMsg msg !! 1)
+      | otherwise                          = noResponse
 
 -- Leaves the first channel in the message if the user is an admin else do nothing
-cmdPart :: Cmd m => m Func
+cmdPart :: Cmd m => ContFunc m
 cmdPart = part . message <$> ask
   where
     part msg
-      | isAdmin msg && isSnd (wordMsg msg)            = Response ("PART", wordMsg msg !! 1)
-      | isAdmin msg && "#" `T.isPrefixOf` msgChan msg = Response ("PART", msgChan msg)
-      | otherwise                                     = NoResponse
+      | isAdmin msg && isSnd (wordMsg msg)            = response ("PART", wordMsg msg !! 1)
+      | isAdmin msg && "#" `T.isPrefixOf` msgChan msg = response ("PART", msgChan msg)
+      | otherwise                                     = noResponse
 
 -- SLEX COMMANDS--------------------------------------------------------------------------------
 
-cmdEightBall :: CmdImp m => m Func
+cmdEightBall :: CmdImp m => ContFunc m
 cmdEightBall = do
   res <- liftIO (randElem respones <$> randomIO)
-  txt <- formattedEffectText res
+  txt <- effectText res
   composeMsg "PRIVMSG" txt
 
 cmdTarget f = do
   target' <- drpMsg " "
   if mempty == target' then
-      return NoResponse
+      return noResponse
     else do
       let target = T.tail target'
-      txt <- formattedEffectText (f target)
-      composeMsg "PRIVMSG" txt
+      composeMsg "PRIVMSG" (f target)
 
-cmdLotg :: CmdImp m => m Func
+cmdLotg :: Cmd m => ContFunc m
 cmdLotg =
   cmdTarget (\target -> "May the Luck of the Grasshopper be with you always, " <> target)
 
-cmdBane :: CmdImp m => m Func
+cmdBane :: Cmd m => ContFunc m
 cmdBane = do
   cmdTarget (\target -> "The elder priest tentacles to tentacle "
                      <> target
@@ -271,16 +269,12 @@ cmdBane = do
 -- TODO: add a *zzz* function that causes the bot go into slumber mode
 --
 
--- Effects ------------------------------------------------------------------------------------
+-- TextEffects ------------------------------------------------------------------------------------
 
 -- | runs the continuations for all the effects
 effectText :: CmdImp m => T.Text -> m T.Text
 effectText text =
   ($ text) <$> yukiMode id
-
--- | like effectText, but formats it properly for compose message
-formattedEffectText :: CmdImp m => T.Text -> m T.Text
-formattedEffectText text = (" :" <>) <$> effectText text
 
 -- | the continuation for the yukimode effect
 yukiMode cont = f <$> getChanStateM
@@ -336,17 +330,19 @@ drpMsg :: Cmd m => T.Text -> m T.Text
 drpMsg bk = snd . T.breakOn bk . msgContent . message <$> ask
 
 -- composes the format that the final send message will be
-composeMsg :: Cmd m => T.Text -> T.Text -> m Func
+--composeMsg :: Cmd m => T.Text -> T.Text -> Effect m -> m Func
 composeMsg method str = do
   dest <- msgDest . message <$> ask
-  return $ Response (method, dest <> str)
+  pure $ \eff -> do
+    sentBack <- eff str
+    return $ Response (method, T.concat [dest, " :", sentBack])
 
 -- Used for /me commands
 actionMe :: T.Text -> T.Text
-actionMe txt = " :\0001ACTION " <> txt <> "\0001"
+actionMe txt = "\0001ACTION " <> txt <> "\0001"
 
 -- | Used as a generic version for making bold, italic, underlined, colors, and swap, for strings
-action :: Effects -> String -> String
+action :: TextEffects -> String -> String
 action eff txt = seff <> payload eff <> seff
   where
     seff              = show eff
@@ -354,7 +350,7 @@ action eff txt = seff <> payload eff <> seff
     payload _         = txt
 
 -- | same as action, but takes text instead
-actionT :: Effects -> T.Text -> T.Text
+actionT :: TextEffects -> T.Text -> T.Text
 actionT eff txt = seff <> payload eff <> seff
   where
     seff              = T.pack $ show eff
@@ -362,10 +358,10 @@ actionT eff txt = seff <> payload eff <> seff
     payload _         = txt
 
 -- | used to do multiple actions in a row
-with :: Foldable t => String -> t Effects -> String
+with :: Foldable t => String -> t TextEffects -> String
 with = foldr action
 
-withT ::  Foldable t => T.Text -> t Effects -> T.Text
+withT ::  Foldable t => T.Text -> t TextEffects -> T.Text
 withT = foldr actionT
 
 -- Changes the nick of the msg
