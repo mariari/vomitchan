@@ -146,8 +146,7 @@ cmdLewd :: CmdImp m => ContFunc m
 cmdLewd = do
   target <- T.tail <$> drpMsg " "
   state  <- getChanStateM
-  txt    <- effectText ("lewds " <> target)
-  composeMsg "PRIVMSG" $ actionMe txt
+  composeMsg "PRIVMSG" $ actionMe ("lewds " <> target)
 
 -- | Causes Vomitchan to sleep ∨ awaken
 cmdDream :: CmdImp m => ContFunc m
@@ -237,8 +236,7 @@ cmdPart = part . message <$> ask
 cmdEightBall :: CmdImp m => ContFunc m
 cmdEightBall = do
   res <- liftIO (randElem respones <$> randomIO)
-  txt <- effectText res
-  composeMsg "PRIVMSG" txt
+  composeMsg "PRIVMSG" res
 
 cmdTarget f = do
   target' <- drpMsg " "
