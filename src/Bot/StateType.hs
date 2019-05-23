@@ -6,6 +6,9 @@ module Bot.StateType (
   VomState,
   Quit(..),
   Response(..),
+  response,
+  noResponse,
+  quit,
   toHashStorage,
   toGlobalState,
   fromStateConfig,
@@ -79,3 +82,14 @@ data Response a = Response a
                 | NoResponse
                 | Quit !Quit
                 deriving (Show, Functor)
+
+-- LIFTING CONSTRUCTORS------------------------------------------------------------
+
+noResponse :: Applicative a => b -> a (Response c)
+noResponse = const $ pure NoResponse
+
+quit :: Applicative a => Quit -> b -> a (Response c)
+quit = const . pure . Quit
+
+response :: Applicative a => c -> b -> a (Response c)
+response = const . pure . Response
