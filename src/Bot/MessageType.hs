@@ -65,9 +65,10 @@ data UserI = UserI { usrNick :: !Nick
                    } deriving Show
 
 data Numbers = N354 !Server !Content
-             | N904 !Server !Content
-             | N903 !Server !Content
-             | N376 !Server !Content
+             | N904 !Server !Content -- Authentication Failed
+             | N903 !Server !Content -- Authentication Successful
+             | N376 !Server !Content -- MOTD
+             | N422 !Server !Content -- Missing MOTD
              | NOther !Int Other
              deriving Show
 

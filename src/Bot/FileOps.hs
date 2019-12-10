@@ -44,7 +44,7 @@ dwnUsrFile msg url = shell ("cd " <> getUsrFldrT msg <>
                             " && curl --max-filesize 104857600 --range 0-104857600 -O " <> url) empty
 
 upUsrFile :: MonadIO m => T.Text -> m T.Text
-upUsrFile file = check <$> procStrict "curl" ["-F", "file=@" <> file, "https://0x0.st"] empty
+upUsrFile file = check <$> procStrict "curl" ["-F", "upload=@" <> file, "https://w1r3.net"] empty
   where check (_,n)
           | T.isPrefixOf "http" n = T.init n
           | otherwise             = ""

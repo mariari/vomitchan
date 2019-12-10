@@ -81,6 +81,7 @@ joinNetwork ctx net = do
           NUMBERS (N904 _ _)     -> writeBS h ("CAP", "END") -- authentication failed
           NUMBERS (N903 _ _)     -> writeBS h ("CAP", "END") -- authentication succeeded
           NUMBERS (N376 _ _)     -> return ()                -- if we don't sasl we wait until we see the MOTD
+          NUMBERS (N422 _ _)     -> return ()                -- if we don't sasl we wait until we see the MOTD
           OTHER "CAP" (OtherServer _ content)
             | " * LS" `T.isPrefixOf` content -> writeBS h ("CAP", "REQ :sasl")      >> waitNext h
             | otherwise                      -> writeBS h ("AUTHENTICATE", "PLAIN") >> waitNext h

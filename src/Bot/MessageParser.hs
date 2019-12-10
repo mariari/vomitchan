@@ -52,6 +52,7 @@ commandW word      prefix        = handleOther word prefix
 numbers :: Int -> Prefix -> T.Text -> Numbers
 numbers 354 (ServerName s) = N354 s
 numbers 376 (ServerName s) = N376 s
+numbers 422 (ServerName s) = N422 s
 numbers 903 (ServerName s) = N903 s
 numbers 904 (ServerName s) = N904 s
 numbers cod prefix         = handleNOther cod prefix
