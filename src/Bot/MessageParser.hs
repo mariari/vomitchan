@@ -114,7 +114,7 @@ parseHost :: Parser BS.ByteString
 parseHost = takeTill isWhiteSpace
 
 specialNick :: S.Set Char
-specialNick = S.fromList "-[]`{}^_"
+specialNick = S.fromList "-[]`{}^_|"
 
 whiteSpace :: S.Set Word8
 whiteSpace = S.fromList [0xd, 0x0, 0xa]
