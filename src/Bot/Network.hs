@@ -88,7 +88,7 @@ joinNetwork ctx net = do
           _                     -> waitNext h
 
     encode   = BS64.encode . encodeUtf8
-    saslPass = netNick net <> "\0" <> netNick net <> "\0" <> netPass net
+    saslPass = "\0" <> netNick net <> "\0" <> netPass net
 
 startNetwork :: AllServers -> C.ConnectionContext -> IRCNetwork -> IO (Maybe (C.Connection, MVar Quit))
 startNetwork allS ctx network = do
