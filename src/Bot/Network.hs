@@ -83,8 +83,13 @@ joinNetwork ctx net = do
           NUMBERS (N376 _ _)     -> return ()                -- if we don't sasl we wait until we see the MOTD
           NUMBERS (N422 _ _)     -> return ()                -- if we don't sasl we wait until we see the MOTD
           OTHER "CAP" (OtherServer _ content)
-            | " * LS" `T.isPrefixOf` content -> writeBS h ("CAP", "REQ :sasl")      >> waitNext h
-            | otherwise                      -> writeBS h ("AUTHENTICATE", "PLAIN") >> waitNext h
+            | " * LS" `T.isPrefixOf` content ->
+              writeBS h ("CAP", "REQ :sasl") >> waitNext h
+            | otherwise -> do
+                writeBS h ("CAP", "REQ :sasl")
+                writeBS h ("AUTHENTICATE", "PLAIN")
+                writeBS h ("AUTHENTICATE", encode saslPass)
+                waitNext h
           _                     -> waitNext h
 
     encode   = BS64.encode . encodeUtf8
