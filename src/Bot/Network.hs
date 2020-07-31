@@ -55,7 +55,7 @@ joinNetwork ctx net = do
                             , C.connectionUseSocks  = Nothing
                             } :: IO (Either SomeException C.Connection)
   case con of
-    Left ex -> putStrLn (show ex) >> return Nothing
+    Left ex -> print ex >> return Nothing
     Right con -> do
       passConnect con
       traverse_ (write con . (,) "JOIN") (netChans net)
@@ -66,8 +66,9 @@ joinNetwork ctx net = do
            (writeBS con ("CAP", "LS 302"))
       write con ("NICK", netNick net)
       write con ("USER", netNick net <> " 0 * :connected")
-      when (netPass net /= "" && netSSL net)
-           (write con ("NICKSERV :IDENTIFY", netPass net))
+      -- This seems rather bad, as it sends the plain text password
+      -- when (netPass net /= "" && netSSL net)
+      --      (write con ("NICKSERV :IDENTIFY", netPass net))
       waitNext con
 
     waitNext h = do
