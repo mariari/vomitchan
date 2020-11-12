@@ -1,0 +1,63 @@
+name:                vomitchan
+version:             0.0.1.0
+synopsis:            IRC bot written in Haskell
+description:         Please see README.md
+homepage:            https://gitla.in/nymphet/vomitchan
+license:             BSD3
+license-file:        LICENSE
+author:              MrDetonia & mariari
+maintainer:          nymphet@protonmail.com
+copyright:           2016 MrDetonia & mariari
+category:            Web
+
+dependencies:
+  - base >= 4.11 && < 5
+  - bytestring
+  - connection
+  - directory >= 1.2.5
+  - lens
+  - monad-loops
+  - random
+  - stm
+  - text
+  - turtle
+  - utf8-string
+  - vector
+  - containers
+  - unordered-containers
+  - stm-containers
+  - list-t
+  - mtl
+  - base64-bytestring
+  - hashable
+  - attoparsec
+  - aeson
+
+default-extensions:
+  - OverloadedStrings
+  - DeriveGeneric
+  - DeriveFunctor
+
+library:
+  source-dirs: src
+
+executables:
+  vomitchan-exe:
+    source-dirs:      app
+    main:             Main.hs
+    ghc-options:
+      - -threaded
+      - -rtsopts
+      - -with-rtsopts=-N
+      - -fwarn-incomplete-patterns
+    dependencies:
+      - connection
+      - lens
+      - stm
+      - text
+      - utf8-string
+      - vector
+      - vomitchan
+      - stm-containers
+      - list-t
+      - hashable
