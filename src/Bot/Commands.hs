@@ -25,8 +25,6 @@ import qualified Data.HashMap.Strict as M
 import qualified Data.Vector as V
 --- TYPES -------------------------------------------------------------------------------------
 
-type CmdAlias = [T.Text]
-
 data Color = White | Black | Blue  | Green | Red  | Brown | Purple | Orange | Yellow | LGreen
            | Teal  | LCyan | LBlue | Pink  | Grey | LGrey
            deriving (Enum, Show)
@@ -39,6 +37,8 @@ data TextEffects = Bold      | Italics   | Color Color
                  | UnderLine | Reverse   | Hex
                  | Reset     | MonoSpace | None
                  | Strikethrough | Txt String -- Space is a hack!
+
+data Message = Action T.Text | Message T.Text
 
 instance Show TextEffects where
   show Bold          = "\x2"
@@ -112,16 +112,16 @@ runCmd = do
 
 -- print bot info
 cmdBots :: (Cmd m, Monad m') => ContFuncPure m m'
-cmdBots = composeMsg "NOTICE" "I am a queasy bot written in Haskell by MrDetonia and loli"
+cmdBots = noticeMsg "I am a queasy bot written in Haskell by MrDetonia and loli"
 
 -- print source link
 cmdSrc :: (Cmd m, Monad m') => ContFuncPure m m'
-cmdSrc = composeMsg "NOTICE" "[Haskell] https://github.com/mariari/vomitchan"
+cmdSrc = noticeMsg "[Haskell] https://github.com/mariari/vomitchan"
 
 -- prints help information
 -- TODO: Store command info in cmdList and generate this text on the fly
 cmdHelp :: (Cmd m, Monad m') => ContFuncPure m m'
-cmdHelp = composeMsg "NOTICE" "Commands: (.lewd <someone>), (*vomits* [nick]), (*cheek pinch*)"
+cmdHelp = noticeMsg "Commands: (.lewd <someone>), (*vomits* [nick]), (*cheek pinch*)"
 
 -- quit
 cmdQuit :: (Cmd m, Monad m') => ContFuncPure m m'
@@ -145,21 +145,20 @@ cmdLewds = getChanStateM >>= f
 cmdLewd :: CmdImp m => ContFunc m
 cmdLewd = do
   target <- T.tail <$> drpMsg " "
-  state  <- getChanStateM
-  composeMsg "PRIVMSG" $ actionMe ("lewds " <> target)
+  actionMsg ("lewds " <> target)
 
 -- | Causes Vomitchan to sleep ∨ awaken
 cmdDream :: CmdImp m => ContFunc m
-cmdDream = modifyDreamState >> composeMsg "PRIVMSG" "dame"
+cmdDream = modifyDreamState >> privMsg "dame"
 
 -- | Causes vomit to go into fleecy mode
 -- (at the moment just prints <3's instead of actual text in cmdVomit)
 cmdFleecy :: CmdImp m => ContFunc m
-cmdFleecy = modifyFleecyState >> composeMsg "PRIVMSG" "dame"
+cmdFleecy = modifyFleecyState >> privMsg "dame"
 
 -- | Causes vomit to go into Yuki ona mode
 cmdYuki :: CmdImp m => ContFunc m
-cmdYuki = modifyYukiState >> composeMsg "PRIVMSG" "dame"
+cmdYuki = modifyYukiState >> privMsg "dame"
 
 -- | Vomits up a colorful rainbow if vomitchan is asleep else it just vomits up red with no link
 cmdVomit :: CmdImp m => ContFunc m
@@ -212,7 +211,7 @@ cmdVomit = do
                         <> randApplyLink (T.unpack link) h m <> " "
                         <> randApply x z i n
   toWrite <- liftIO randPrivMsg
-  composeMsg "PRIVMSG" toWrite
+  privMsg toWrite
 
 -- Joins the first channel in the message if the user is an admin else do nothing
 cmdJoin :: (Cmd m, Monad m') => ContFuncPure m m'
@@ -236,7 +235,7 @@ cmdPart = part . message <$> ask
 cmdEightBall :: CmdImp m => ContFunc m
 cmdEightBall = do
   res <- liftIO (randElem respones <$> randomIO)
-  composeMsg "PRIVMSG" res
+  privMsg res
 
 cmdTarget f = do
   target' <- drpMsg " "
@@ -244,7 +243,7 @@ cmdTarget f = do
       return noResponse
     else do
       let target = T.tail target'
-      composeMsg "PRIVMSG" (f target)
+      privMsg (f target)
 
 cmdLotg :: (Cmd m, Monad m') => ContFuncPure m m'
 cmdLotg =
@@ -329,12 +328,35 @@ drpMsg bk = snd . T.breakOn bk . msgContent . message <$> ask
 
 -- composes the format that the final send message will be
 composeMsg :: (MonadReader InfoPriv m1, Monad m2) =>
-             a -> t -> m1 ((t -> m2 T.Text) -> m2 (Response (a, T.Text)))
+             a -> Message -> m1 ((T.Text -> m2 T.Text) -> m2 (Response (a, T.Text)))
 composeMsg method str = do
   dest <- msgDest . message <$> ask
   pure $ \eff -> do
-    sentBack <- eff str
-    return $ Response (method, T.concat [dest, " :", sentBack])
+    -- if we have a message append nothing to it
+    -- actions need to append to the text to properly work
+    let appendAction =
+          case str of
+            Message _ -> id
+            Action  _ -> actionMe
+    sentBack <- eff (unboxMessage str)
+    return $ Response (method, T.concat [dest, " :", appendAction sentBack])
+
+unboxMessage :: Message -> T.Text
+unboxMessage (Action  t) = t
+unboxMessage (Message t) = t
+
+-- Some aliases for composeMsg
+
+privMsg, actionMsg, noticeMsg
+  :: (MonadReader InfoPriv m1, Monad m2)
+  => T.Text
+  -> m1 ((T.Text -> m2 T.Text) -> m2 (Response (T.Text, T.Text)))
+privMsg = composeMsg "PRIVMSG" . Message
+
+actionMsg = composeMsg "PRIVMSG" . Action
+
+noticeMsg = composeMsg "NOTICE" . Message
+
 
 -- Used for /me commands
 actionMe :: T.Text -> T.Text
@@ -373,7 +395,7 @@ changeNickFstArg msg
   | isSnd (wordMsg msg) = changeNick (wordMsg msg !! 1) msg
   | otherwise           = msg
 
-isSnd (x : y : _) = True
+isSnd (_ : _ : _) = True
 isSnd _           = False
 
 -- converts a message into a list containing a list of the contents based on words
