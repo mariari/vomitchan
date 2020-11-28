@@ -36,7 +36,7 @@ appendLog msg = T.appendFile (getUsrFldr msg <> "Links.log")
 
 -- appends an error log file for whatever command tripped it
 appendError :: String -> BS.ByteString -> IO ()
-appendError err txt = T.appendFile ("./data/errors.txt") (T.pack err <> " \n" <> TE.decodeUtf8 txt)
+appendError err txt = T.appendFile "./data/errors.txt" (T.pack err <> " \n" <> TE.decodeUtf8 txt)
 
 -- Downloads the requested file to the users path
 dwnUsrFile :: MonadIO io => PrivMsg -> Text -> io ExitCode
@@ -44,10 +44,32 @@ dwnUsrFile msg url = shell ("cd " <> getUsrFldrT msg <>
                             " && curl --max-filesize 104857600 --range 0-104857600 -O " <> url) empty
 
 upUsrFile :: MonadIO m => T.Text -> m T.Text
-upUsrFile file = check <$> procStrict "curl" ["-F", "upload=@" <> file, "https://w1r3.net"] empty
+upUsrFile = lainUpload
+
+
+lainUpload :: MonadIO m => T.Text -> m T.Text
+lainUpload file =
+  filesToF . check
+    <$> shellStrict
+         (fold ["curl"
+               , " -F "
+               , "files[]=@"
+               , file
+               , " https://pomf.lain.la/upload.php"
+               , "|  jq -c -r \".files[].url\""
+               ])
+         empty
   where check (_,n)
           | T.isPrefixOf "http" n = T.init n
           | otherwise             = ""
+        filesToF = T.replace "/files/" "/f/"
+
+_w1r3Upload :: MonadIO m => T.Text -> m T.Text
+_w1r3Upload file = check <$> procStrict "curl" ["-F", "upload=@" <> file, "https://w1r3.net"] empty
+  where check (_,n)
+          | T.isPrefixOf "http" n = T.init n
+          | otherwise             = ""
+
 
 -- HELPER FUNCTIONS ---------------------------------------------------------------------------
 
