@@ -125,7 +125,7 @@ cmdHelp = noticeMsg "Commands: (.lewd <someone>), (*vomits* [nick]), (*cheek pin
 
 -- quit
 cmdQuit :: (Cmd m, Monad m') => ContFuncPure m m'
-cmdQuit = shouldQuit . message <$> ask
+cmdQuit = asks (shouldQuit . message)
   where
     shouldQuit msg
       | not (isAdmin msg)                 = noResponse
@@ -163,7 +163,7 @@ cmdYuki = modifyYukiState >> privMsg "dame"
 -- | Vomits up a colorful rainbow if vomitchan is asleep else it just vomits up red with no link
 cmdVomit :: CmdImp m => ContFunc m
 cmdVomit = do
-  msg   <- message <$> ask
+  msg   <- asks message
   state <- getChanStateM
   let
       randVom numT numG

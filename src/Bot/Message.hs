@@ -26,7 +26,7 @@ cmdWbPg = ["http", "ftp"]
 
 cmdPic :: [T.Text]
 cmdPic = ["jpg", "png", "jpeg", "gif", "jpg:large", "png:large",
-          "jpeg:large", "jpg#nsfw", "png#nsfw", "jpeg#nsfw"]
+          "jpeg:large", "jpg#nsfw", "png#nsfw", "jpeg#nsfw", "JPG"]
 
 cmdVid :: [T.Text]
 cmdVid = ["webm", "mp4", "flv", "ogv", "wmv", "gifv", "webm#nsfw"]
@@ -47,7 +47,7 @@ cmdAllS = S.fromList cmdAll
 
 -- takes an IRC message and generates the correct response
 respond :: BS.ByteString -> AllServers -> Either String Command -> Server -> VomState -> IO Func
-respond s _    (Left err)   server state = appendError err s >> print err >> return NoResponse
+respond s _    (Left err)   _erver _tate = appendError err s >> print err >> return NoResponse
 respond _ allS (Right priv) server state = f priv
   where
     f (PING (Ping s)) = return $ Response ("PONG", s)

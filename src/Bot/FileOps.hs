@@ -13,6 +13,7 @@ import qualified Data.Text          as T
 import qualified Data.Text.IO       as T
 import qualified Data.ByteString    as BS
 import qualified Data.Text.Encoding as TE
+import qualified Data.Maybe         as Maybe
 import           Data.Foldable     (fold)
 
 import           System.Directory
@@ -40,35 +41,51 @@ appendError err txt = T.appendFile "./data/errors.txt" (T.pack err <> " \n" <> T
 
 -- Downloads the requested file to the users path
 dwnUsrFile :: MonadIO io => PrivMsg -> Text -> io ExitCode
-dwnUsrFile msg url = shell ("cd " <> getUsrFldrT msg <>
-                            " && curl --max-filesize 104857600 --range 0-104857600 -O " <> url) empty
+dwnUsrFile msg url = do
+  validatedFile <- validateUrl url
+  shell ("cd "
+         <> getUsrFldrT msg
+         <> " && curl -f --max-filesize 104857600 --range 0-104857600 -o "
+         <> validatedFile <> " " <> url) empty
 
-upUsrFile :: MonadIO m => T.Text -> m T.Text
-upUsrFile = lainUpload
+validateUrl :: MonadIO m => Text -> m Text
+validateUrl url = do
+  (_, time) <- procStrict "date" ["+%s"] empty
+  pure (T.init time <> "-" <> validatedFileName)
+  where
+    fileName = last (T.splitOn "/" url)
+    validatedFileName
+      | T.isSuffixOf ":large" fileName = T.dropEnd (length (":large" :: String)) fileName
+      | T.isSuffixOf "#nsfw" fileName  = T.dropEnd (length ("#nsfw" :: String))  fileName
+      | otherwise                      = fileName
 
+upUsrFile :: (Alternative m, MonadIO m) => Text -> m Text
+upUsrFile t = do
+  res <- lainUpload t <|> w1r3Upload t
+  pure (Maybe.fromMaybe "" res)
 
-lainUpload :: MonadIO m => T.Text -> m T.Text
+lainUpload :: MonadIO m => T.Text -> m (Maybe T.Text)
 lainUpload file =
-  filesToF . check
+  fmap filesToF . check
     <$> shellStrict
          (fold ["curl"
                , " -F "
                , "files[]=@"
                , file
                , " https://pomf.lain.la/upload.php"
-               , "|  jq -c -r \".files[].url\""
+               , "| jq -c -r \".files[].url\""
                ])
          empty
   where check (_,n)
-          | T.isPrefixOf "http" n = T.init n
-          | otherwise             = ""
+          | T.isPrefixOf "http" n = Just (T.init n)
+          | otherwise             = Nothing
         filesToF = T.replace "/files/" "/f/"
 
-_w1r3Upload :: MonadIO m => T.Text -> m T.Text
-_w1r3Upload file = check <$> procStrict "curl" ["-F", "upload=@" <> file, "https://w1r3.net"] empty
+w1r3Upload :: MonadIO m => T.Text -> m (Maybe T.Text)
+w1r3Upload file = check <$> procStrict "curl" ["-F", "upload=@" <> file, "https://w1r3.net"] empty
   where check (_,n)
-          | T.isPrefixOf "http" n = T.init n
-          | otherwise             = ""
+          | T.isPrefixOf "http" n = Just (T.init n)
+          | otherwise             = Nothing
 
 
 -- HELPER FUNCTIONS ---------------------------------------------------------------------------
