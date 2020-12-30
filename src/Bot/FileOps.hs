@@ -1,3 +1,5 @@
+{-# LANGUAGE TemplateHaskell #-}
+{-# LANGUAGE NamedFieldPuns #-}
 module Bot.FileOps (
   createUsrFldr,
   appendLog,
@@ -10,11 +12,16 @@ module Bot.FileOps (
 ) where
 --- IMPORTS -----------------------------------------------------------------------------------
 import qualified Data.Text          as T
+import qualified Turtle.Bytes       as TB
 import qualified Data.Text.IO       as T
 import qualified Data.ByteString    as BS
 import qualified Data.Text.Encoding as TE
 import qualified Data.Maybe         as Maybe
 import           Data.Foldable     (fold)
+import qualified Data.Aeson         as JSON
+import qualified Data.Aeson.TH      as TH
+import           GHC.Generics
+
 
 import           System.Directory
 import           Turtle             hiding (FilePath, fold)
@@ -23,6 +30,31 @@ import           Data.List
 import Bot.MessageType
 
 -- TODO:: Instead of working off PrivMsg, work off UserI and Chan/Target instead!
+
+data PomfFormat =
+    Pomf {
+      success :: Bool,
+      files :: [FileFormat]
+    }
+    | Fail {
+      success :: Bool,
+      errorcode :: Int,
+      description :: T.Text
+    }
+    deriving (Show, Generic)
+
+
+data FileFormat = Fm {
+  hash :: T.Text,
+  name :: T.Text,
+  url  :: T.Text,
+  size :: Int
+} deriving (Show, Generic)
+
+instance JSON.FromJSON FileFormat
+instance JSON.ToJSON FileFormat
+
+TH.deriveJSON (JSON.defaultOptions { JSON.sumEncoding = JSON.UntaggedValue }) ''PomfFormat
 
 -- FUNCTIONS ----------------------------------------------------------------------------------
 
@@ -61,25 +93,34 @@ validateUrl url = do
 
 upUsrFile :: (Alternative m, MonadIO m) => Text -> m Text
 upUsrFile t = do
-  res <- lainUpload t <|> w1r3Upload t
+  res <- lainUpload t <|> w1r3Upload t <|> ifyouWorkUpload t
   pure (Maybe.fromMaybe "" res)
 
-lainUpload :: MonadIO m => T.Text -> m (Maybe T.Text)
-lainUpload file =
-  fmap filesToF . check
-    <$> shellStrict
+pomfUploader :: MonadIO m => T.Text -> m (Maybe T.Text)
+pomfUploader file = do
+  (_, msg) <-
+    TB.shellStrict
          (fold ["curl"
                , " -F "
                , "files[]=@"
                , file
                , " https://pomf.lain.la/upload.php"
-               , "| jq -c -r \".files[].url\""
                ])
          empty
-  where check (_,n)
-          | T.isPrefixOf "http" n = Just (T.init n)
-          | otherwise             = Nothing
-        filesToF = T.replace "/files/" "/f/"
+  pure $
+    case JSON.decodeStrict msg of
+      Just Pomf {files = Fm {url} : _} -> Just url
+      Just Pomf {files = []}           -> Nothing
+      Nothing                          -> Nothing
+      Just Fail {}                     -> Nothing
+
+lainUpload :: MonadIO m => T.Text -> m (Maybe T.Text)
+lainUpload = fmap (fmap filesToF) . pomfUploader
+  where
+    filesToF = T.replace "/files/" "/f/"
+
+ifyouWorkUpload :: MonadIO m => T.Text -> m (Maybe T.Text)
+ifyouWorkUpload = pomfUploader
 
 w1r3Upload :: MonadIO m => T.Text -> m (Maybe T.Text)
 w1r3Upload file = check <$> procStrict "curl" ["-F", "upload=@" <> file, "https://w1r3.net"] empty

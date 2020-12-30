@@ -84,7 +84,7 @@ quit userI = takeColon (CQUIT . CQuit userI)
 takeColon :: (T.Text -> b) -> Parser b
 takeColon f = do
   C.space
-  optionally (word8 58)
+  optional (word8 58)
   rest <- takeText
   return (f rest)
 
@@ -92,7 +92,7 @@ targetCmd :: (T.Text -> T.Text -> b) -> Parser b
 targetCmd f = do
   C.space
   target  <- takeTill isWhiteSpace
-  optionally (C.space *> word8 58)  -- 58 = :
+  optional (C.space *> word8 58)  -- 58 = :
   content <- takeText
   return (f (TE.decodeUtf8 target) content)
 
@@ -106,8 +106,8 @@ parseServer = do
 parseUserI :: Parser Prefix
 parseUserI = do
   nick <- parseNick
-  user <- optionally (word8 33 *> parseUser) -- 33 = !
-  host <- optionally (word8 64 *> parseHost) -- 64 = @
+  user <- optional (word8 33 *> parseUser) -- 33 = !
+  host <- optional (word8 64 *> parseHost) -- 64 = @
   C.space
   return (PUser (UserI (TE.decodeUtf8 nick) (TE.decodeUtf8 <$> user) (TE.decodeUtf8 <$> host)))
 
@@ -130,9 +130,6 @@ isWhiteSpace :: Word8 -> Bool
 isWhiteSpace x = C.isSpace_w8 x || x `S.member` whiteSpace
 
 -- HELPERS-------------------------------------------------------------------------------------
-optionally :: Alternative f => f a -> f (Maybe a)
-optionally p = option Nothing (Just <$> p)
-
 takeText :: Parser T.Text
 takeText = TE.decodeUtf8 <$> takeTill C.isEndOfLine
 
@@ -145,4 +142,5 @@ handleNOther :: Int -> Prefix -> T.Text -> Numbers
 handleNOther code prefix = NOther code . prefixToOther prefix
 
 handleOther :: BS.ByteString -> Prefix -> Parser Command
-handleOther word prefix = OTHER (TE.decodeUtf8 word) . prefixToOther prefix <$> takeText
+handleOther word prefix =
+  OTHER (TE.decodeUtf8 word) . prefixToOther prefix <$> takeText
