@@ -31,17 +31,16 @@ import Bot.MessageType
 
 -- TODO:: Instead of working off PrivMsg, work off UserI and Chan/Target instead!
 
-data PomfFormat =
-    Pomf {
-      success :: Bool,
-      files :: [FileFormat]
-    }
-    | Fail {
-      success :: Bool,
-      errorcode :: Int,
-      description :: T.Text
-    }
-    deriving (Show, Generic)
+data PomfFormat
+  = Pomf {
+    success :: Bool,
+    files :: [FileFormat]
+  }
+  | Fail {
+    success :: Bool,
+    errorcode :: Int,
+    description :: T.Text
+  } deriving (Show, Generic)
 
 
 data FileFormat = Fm {
