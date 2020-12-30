@@ -90,9 +90,17 @@ validateUrl url = do
       | T.isSuffixOf "#nsfw" fileName  = T.dropEnd (length ("#nsfw" :: String))  fileName
       | otherwise                      = fileName
 
+-- this probably exists as <|> somehow, but it does not do the proper thing without the lift
+(<<|>>) :: Monad m => m (Maybe a) -> m (Maybe a) -> m (Maybe a)
+(<<|>>) x y = do
+  v <- x
+  case v of
+    Nothing -> y
+    Just v -> pure (Just v)
+
 upUsrFile :: (Alternative m, MonadIO m) => Text -> m Text
 upUsrFile t = do
-  res <- lainUpload t <|> w1r3Upload t <|> ifyouWorkUpload t
+  res <- lainUpload t <<|>> w1r3Upload t <<|>> ifyouWorkUpload t
   pure (Maybe.fromMaybe "" res)
 
 pomfUploader :: MonadIO m => T.Text -> m (Maybe T.Text)
