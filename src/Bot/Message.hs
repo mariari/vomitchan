@@ -50,9 +50,10 @@ respond :: BS.ByteString -> AllServers -> Either String Command -> Server -> Vom
 respond s _    (Left err)   _erver _tate = appendError err s >> print err >> return NoResponse
 respond _ allS (Right priv) server state = f priv
   where
-    f (PING (Ping s)) = return $ Response ("PONG", s)
-    f (PRIVMSG priv)  = runReaderT (allLogsM >> runCmd) (Info priv server state allS)
-    f _               = return NoResponse
+    f (PRIVMSG priv)     = runReaderT (allLogsM >> runCmd) (Info priv server state allS)
+    f (TOPICCHANGE priv) = NoResponse <$ runReaderT allLogsM (Info priv server state allS)
+    f (PING (Ping s))    = return $ Response ("PONG", s)
+    f _                  = return NoResponse
 
 --- LOGGING -----------------------------------------------------------------------------------
 

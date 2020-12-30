@@ -45,7 +45,7 @@ dwnUsrFile msg url = do
   validatedFile <- validateUrl url
   shell ("cd "
          <> getUsrFldrT msg
-         <> " && curl -f --max-filesize 104857600 --range 0-104857600 -o "
+         <> " && curl -fL --max-filesize 104857600 --range 0-104857600 -o "
          <> validatedFile <> " " <> url) empty
 
 validateUrl :: MonadIO m => Text -> m Text

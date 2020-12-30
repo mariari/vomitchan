@@ -15,13 +15,14 @@ import Bot.NetworkType
 
 --- DATA STRUCTURES ---------------------------------------------------------------------------
 
-data Command = PRIVMSG PrivMsg
-             | JOIN    Join
-             | CQUIT   CQuit
-             | NUMBERS Numbers
-             | PART    Part
-             | PING    Ping
-             | OTHER   !T.Text Other -- the T.Text is the unidentified command
+data Command = PRIVMSG     PrivMsg
+             | TOPICCHANGE PrivMsg
+             | JOIN        Join
+             | CQUIT       CQuit
+             | NUMBERS     Numbers
+             | PART        Part
+             | PING        Ping
+             | OTHER       !T.Text Other -- the T.Text is the unidentified command
              | ERROR
              deriving Show
 
