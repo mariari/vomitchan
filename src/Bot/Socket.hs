@@ -16,6 +16,7 @@ import qualified Data.Text             as T
 import qualified Data.Text.IO          as T
 import qualified Network.Connection    as C
 import qualified Data.ByteString.Char8 as BS
+import qualified Network.HTTP.Client   as Client
 
 import Bot.MessageParser
 import Bot.MessageType
@@ -34,8 +35,9 @@ writeBS h (act, args) = C.connectionPut h txt >> BS.putStrLn txt
     txt = fold [act, " ", args, "\r\n"]
 
 -- simply listens to a socket forever
-listen :: (C.Connection, MVar Quit) -> AllServers -> T.Text -> GlobalState -> IO Quit
-listen (h, quit) allServs net state = do
+listen ::
+  (C.Connection, MVar Quit) -> AllServers -> T.Text -> GlobalState -> Client.Manager -> IO Quit
+listen (h, quit) allServs net state manager = do
   Just exit <- iterateUntil (/= Nothing) (resLoop quit)
   C.connectionClose h
   return exit
@@ -56,7 +58,7 @@ listen (h, quit) allServs net state = do
       tryTakeMVar quit
 
     inout s net quit state = do
-      res <- respond s allServs (parseMessage s) net state
+      res <- respond s allServs (parseMessage s) net state manager
       case res of
         Quit x     -> quitNetwork h >> putMVar quit x
         Response x -> write h x

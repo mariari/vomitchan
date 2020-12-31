@@ -1,14 +1,17 @@
 {-# LANGUAGE ScopedTypeVariables #-}
 module Main where
 --- IMPORTS -----------------------------------------------------------------------------------
-import qualified Control.Concurrent as C
-import qualified StmContainers.Map  as M
-import qualified StmContainers.Set  as S
-import qualified Data.List          as L
-import qualified Data.Text          as T
-import qualified Data.Hashable      as Hashable
+import qualified Control.Concurrent  as C
+import qualified StmContainers.Map   as M
+import qualified StmContainers.Set   as S
+import qualified Data.List           as L
+import qualified Data.Text           as T
+import qualified Data.Hashable       as Hashable
 import qualified ListT
-import qualified System.IO.Error    as Error
+import qualified System.IO.Error     as Error
+import qualified Network.Connection  as Connection
+import qualified Network.HTTP.Client as Client
+import qualified Network.HTTP.Client.TLS as ClientT
 
 import           Network.Connection(initConnectionContext, Connection(..), HostNotResolved)
 import           Control.Exception
@@ -80,12 +83,13 @@ main = do
          tids        <- C.newMVar []
          connections <- S.newIO
          ctx         <- initConnectionContext
+         manager     <- manager ctx
          handles <-
            let listenTry net identifier x@(con,_) = do
                  let conEq = ConnectionEq con identifier
                  let leave = atomically (S.delete conEq connections)
                  atomically (S.insert conEq connections)
-                 handleSelf (listen x servMap (netServer net) state <* leave)
+                 handleSelf (listen x servMap (netServer net) state manager <* leave)
                             (leave >> listenRetry net identifier)
                listenRetry n ident = do
                  x <- reconnectNetwork servMap ctx n
@@ -105,6 +109,14 @@ main = do
       return $ M.insert modes (netServer x <> chan) ht
 
 
+manager :: Connection.ConnectionContext -> IO Client.Manager
+manager ctx =
+  let settings =
+        ClientT.mkManagerSettingsContext
+          (Just ctx)
+          (Connection.TLSSettingsSimple False False False)
+          Nothing
+  in Client.newManager settings
 
 -- TODO replace manual instances with deriving via
 -- Give connection an EQ instance, by supplying an Int

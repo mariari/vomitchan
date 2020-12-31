@@ -16,6 +16,7 @@ import qualified Data.Set        as S
 import qualified  Network.HTTP.Req as Req
 import qualified Text.URI         as URI
 import qualified Control.Exception as Exception
+import qualified Network.HTTP.Client as Client
 
 import Bot.MessageParser
 import Bot.Commands
@@ -52,19 +53,27 @@ cmdAllS = S.fromList cmdAll
 --- FUNCTIONS ---------------------------------------------------------------------------------
 
 -- takes an IRC message and generates the correct response
-respond :: BS.ByteString -> AllServers -> Either String Command -> Server -> VomState -> IO Func
-respond s _    (Left err)   _erver _tate = appendError err s >> print err >> return NoResponse
-respond _ allS (Right priv) server state = f priv
+respond
+  :: BS.ByteString
+  -> AllServers
+  -> Either String Command
+  -> Server
+  -> VomState
+  -> Client.Manager
+  -> IO Func
+respond s _    (Left err)   _erver _tate _manager =
+  appendError err s >> print err >> return NoResponse
+respond _ allS (Right priv) server state manager = f priv
   where
-    f (PRIVMSG priv)     = runReaderT (allLogsM >> runCmd) (Info priv server state allS)
-    f (TOPICCHANGE priv) = NoResponse <$ runReaderT allLogsM (Info priv server state allS)
+    f (PRIVMSG priv)     = runReaderT (allLogsM manager >> runCmd) (Info priv server state allS)
+    f (TOPICCHANGE priv) = NoResponse <$ runReaderT (allLogsM manager) (Info priv server state allS)
     f (PING (Ping s))    = return $ Response ("PONG", s)
     f _                  = return NoResponse
 
 --- LOGGING -----------------------------------------------------------------------------------
 
-allLogsM :: CmdImp m => m ()
-allLogsM = traverse_ (toReaderImp . (. message)) [cmdFldr, cmdLog, cmdLogFile]
+allLogsM :: CmdImp m => Client.Manager -> m ()
+allLogsM mnger = traverse_ (toReaderImp . (. message)) [cmdFldr, cmdLog, cmdLogFile mnger]
 
 -- Logs any links posted and appends them to the users .log file
 cmdLog :: PrivMsg -> IO ()
@@ -73,13 +82,13 @@ cmdLog = traverse_ . appendLog <*> linLn
 
 
 -- Downloads any file and saves it to the user folder
-cmdLogFile :: PrivMsg -> IO ()
-cmdLogFile = traverse_ . dwnfile <*> allImg
+cmdLogFile :: Client.Manager -> PrivMsg -> IO ()
+cmdLogFile manager = traverse_ . dwnfile (Just manager) <*> allImg
   where allImg = allLinks
 
-dwnfile :: MonadIO m => PrivMsg -> Text -> m ()
-dwnfile msg link = do
-  extension <- getFileType link
+dwnfile :: MonadIO m => Maybe Client.Manager -> PrivMsg -> Text -> m ()
+dwnfile manager msg link = do
+  extension <- getFileType link manager
   case extension of
     Nothing -> pure ()
     Just ex -> () <$ dwnUsrFileExtension msg link ex
@@ -93,9 +102,9 @@ cmdFldr = createUsrFldr
 allLinks :: PrivMsg -> [T.Text]
 allLinks = (cmdWbPg >>=) . specWord
 
-getFileType :: MonadIO m => T.Text -> m (Maybe T.Text)
-getFileType link = do
-  mime <- getMimeType link
+getFileType :: MonadIO m => T.Text -> Maybe Client.Manager -> m (Maybe T.Text)
+getFileType link manager = do
+  mime <- getMimeType link manager
   pure $ case mime of
     Nothing -> Nothing
     Just extension
@@ -119,11 +128,11 @@ getSubtypeFromMime =
 
 -- todo ∷ pass the connection context from main to this
 -- this eats another 16 MB of ram, due to using Req's one
-getMimeType :: MonadIO m => Text -> m (Maybe BS.ByteString)
-getMimeType link =
+getMimeType :: MonadIO m => Text -> Maybe Client.Manager -> m (Maybe BS.ByteString)
+getMimeType link altMngr =
   liftIO $
     Exception.catch
-      (Req.runReq Req.defaultHttpConfig $ do
+      (Req.runReq Req.defaultHttpConfig { Req.httpConfigAltManager = altMngr} $ do
           uri <- URI.mkURI link
           let Just t = Req.useURI uri
           case t of
