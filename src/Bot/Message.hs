@@ -93,11 +93,6 @@ cmdFldr = createUsrFldr
 allLinks :: PrivMsg -> [T.Text]
 allLinks = (cmdWbPg >>=) . specWord
 
-isSuffix :: S.Set Text -> Text -> Bool
-isSuffix legalExtensions txt = extension `S.member` legalExtensions
-  where
-    (_,extension) = T.breakOnEnd "." txt
-
 getFileType :: MonadIO m => T.Text -> m (Maybe T.Text)
 getFileType link = do
   mime <- getMimeType link
@@ -108,8 +103,10 @@ getFileType link = do
       , y `S.member` cmdAllS ->
         --
         Just y
+      -- TODO ∷ don't run this on HTTPS
       | y <- last (T.splitOn "." link)
-      , y `S.member` S.fromList cmdMisc ->
+      , y `S.member` S.fromList cmdMisc
+      && getSubtypeFromMime (TE.decodeUtf8 extension) /= "html"  ->
         --
         Just y
       | otherwise ->
@@ -120,6 +117,8 @@ getSubtypeFromMime :: Text -> Text
 getSubtypeFromMime =
   T.takeWhile (/= ';') . T.drop 1 . T.dropWhile (/= '/')
 
+-- todo ∷ pass the connection context from main to this
+-- this eats another 16 MB of ram, due to using Req's one
 getMimeType :: MonadIO m => Text -> m (Maybe BS.ByteString)
 getMimeType link =
   liftIO $

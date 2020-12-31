@@ -22,7 +22,6 @@ import qualified Data.Aeson         as JSON
 import qualified Data.Aeson.TH      as TH
 import           GHC.Generics
 
-
 import           System.Directory
 import           Turtle             hiding (FilePath, fold)
 import           Data.List
@@ -63,7 +62,6 @@ type Extension = Text
 createUsrFldr :: PrivMsg -> IO ()
 createUsrFldr = createDirectoryIfMissing True . getUsrFldr
 
-
 --appends the log file for posted links for the user
 appendLog :: PrivMsg -> Text -> IO ()
 appendLog msg = T.appendFile (getUsrFldr msg <> "Links.log")
@@ -99,6 +97,7 @@ uniqueURL url extension = do
   where
     fileName = last (T.splitOn "/" url)
 
+escapeUrl :: Text -> Text
 escapeUrl =
   T.intercalate "\\&" . T.splitOn "&"
 
