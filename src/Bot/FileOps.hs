@@ -4,11 +4,11 @@ module Bot.FileOps (
   createUsrFldr,
   appendLog,
   appendError,
-  dwnUsrFile,
   usrFldrNoLog,
   upUsrFile,
   getUsrFldr,
-  getUsrFldrT
+  getUsrFldrT,
+  dwnUsrFileExtension
 ) where
 --- IMPORTS -----------------------------------------------------------------------------------
 import qualified Data.Text          as T
@@ -55,6 +55,8 @@ instance JSON.ToJSON FileFormat
 
 TH.deriveJSON (JSON.defaultOptions { JSON.sumEncoding = JSON.UntaggedValue }) ''PomfFormat
 
+type Extension = Text
+
 -- FUNCTIONS ----------------------------------------------------------------------------------
 
 -- Creates a folder of the irc channel and a user inside of it
@@ -70,25 +72,35 @@ appendLog msg = T.appendFile (getUsrFldr msg <> "Links.log")
 appendError :: String -> BS.ByteString -> IO ()
 appendError err txt = T.appendFile "./data/errors.txt" (T.pack err <> " \n" <> TE.decodeUtf8 txt)
 
--- Downloads the requested file to the users path
-dwnUsrFile :: MonadIO io => PrivMsg -> Text -> io ExitCode
-dwnUsrFile msg url = do
-  validatedFile <- validateUrl url
+dwnUsrFileExtension :: MonadIO io => PrivMsg -> Text -> Extension -> io ExitCode
+dwnUsrFileExtension msg url extension = do
+  uniqueURL <- uniqueURL url extension
+  let url' = escapeUrl url
   shell ("cd "
          <> getUsrFldrT msg
          <> " && curl -fL --max-filesize 104857600 --range 0-104857600 -o "
-         <> validatedFile <> " " <> url) empty
+         <> uniqueURL <> " " <> url') empty
 
-validateUrl :: MonadIO m => Text -> m Text
-validateUrl url = do
-  (_, time) <- procStrict "date" ["+%s"] empty
-  pure (T.init time <> "-" <> validatedFileName)
+-- | 'currentDate' - gets the current unix time stamp
+currentDate :: MonadIO m => m Text
+currentDate =
+  fmap snd (procStrict "date" ["+%s"] empty)
+
+dropExtension' :: T.Text -> T.Text
+dropExtension' file =
+  case T.breakOnEnd "." file of
+    ("", file)   -> file
+    (file, _ext) -> T.init file
+
+uniqueURL :: MonadIO m => Text -> Text -> m Text
+uniqueURL url extension = do
+  time <- currentDate
+  pure $ escapeUrl (T.init time <> "-" <> dropExtension' fileName <> "." <> extension)
   where
     fileName = last (T.splitOn "/" url)
-    validatedFileName
-      | T.isSuffixOf ":large" fileName = T.dropEnd (length (":large" :: String)) fileName
-      | T.isSuffixOf "#nsfw" fileName  = T.dropEnd (length ("#nsfw" :: String))  fileName
-      | otherwise                      = fileName
+
+escapeUrl =
+  T.intercalate "\\&" . T.splitOn "&"
 
 -- this probably exists as <|> somehow, but it does not do the proper thing without the lift
 (<<|>>) :: Monad m => m (Maybe a) -> m (Maybe a) -> m (Maybe a)
@@ -107,13 +119,13 @@ pomfUploader :: MonadIO m => T.Text -> m (Maybe T.Text)
 pomfUploader file = do
   (_, msg) <-
     TB.shellStrict
-         (fold ["curl"
-               , " -F "
-               , "files[]=@"
-               , file
-               , " https://pomf.lain.la/upload.php"
-               ])
-         empty
+      (fold ["curl"
+            , " -F "
+            , "files[]=@"
+            , file
+            , " https://pomf.lain.la/upload.php"
+            ])
+      empty
   pure $
     case JSON.decodeStrict msg of
       Just Pomf {files = Fm {url} : _} -> Just url

@@ -32,6 +32,11 @@ dependencies:
   - hashable
   - attoparsec
   - aeson
+  #########################
+  # needed for get requests
+  #########################
+  - req >= 3.8.0
+  - modern-uri
 
 default-extensions:
   - OverloadedStrings

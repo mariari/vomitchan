@@ -1,4 +1,5 @@
 {-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE ScopedTypeVariables #-}
 --- MODULE DEFINITION -------------------------------------------------------------------------
 module Bot.Message (
   respond
@@ -10,8 +11,13 @@ import           Control.Monad.Reader
 import           Turtle          hiding (fold)
 import qualified Data.Text       as T
 import qualified Data.ByteString as BS
+import qualified Data.Text.Encoding as TE
 import qualified Data.Set        as S
+import qualified  Network.HTTP.Req as Req
+import qualified Text.URI         as URI
+import qualified Control.Exception as Exception
 
+import Bot.MessageParser
 import Bot.Commands
 import Bot.MessageType
 import Bot.FileOps
@@ -32,7 +38,7 @@ cmdVid :: [T.Text]
 cmdVid = ["webm", "mp4", "flv", "ogv", "wmv", "gifv", "webm#nsfw"]
 
 cmdMus :: [T.Text]
-cmdMus = ["flac", "mp3", "tta", "ogg", "wma"]
+cmdMus = ["flac", "mp3", "tta", "ogg", "wma", "wav", "aiff"]
 
 cmdMisc :: [T.Text]
 cmdMisc = ["pdf", "epub", "djvu", "txt", "hs", "ml", "lisp", "cpp", "c", "java", "rs"]
@@ -68,8 +74,15 @@ cmdLog = traverse_ . appendLog <*> linLn
 
 -- Downloads any file and saves it to the user folder
 cmdLogFile :: PrivMsg -> IO ()
-cmdLogFile = traverse_ . dwnUsrFile <*> allImg
-  where allImg = filter (isSuffix cmdAllS) . allLinks
+cmdLogFile = traverse_ . dwnfile <*> allImg
+  where allImg = allLinks
+
+dwnfile :: MonadIO m => PrivMsg -> Text -> m ()
+dwnfile msg link = do
+  extension <- getFileType link
+  case extension of
+    Nothing -> pure ()
+    Just ex -> () <$ dwnUsrFileExtension msg link ex
 
 cmdFldr :: PrivMsg -> IO ()
 cmdFldr = createUsrFldr
@@ -84,3 +97,44 @@ isSuffix :: S.Set Text -> Text -> Bool
 isSuffix legalExtensions txt = extension `S.member` legalExtensions
   where
     (_,extension) = T.breakOnEnd "." txt
+
+getFileType :: MonadIO m => T.Text -> m (Maybe T.Text)
+getFileType link = do
+  mime <- getMimeType link
+  pure $ case mime of
+    Nothing -> Nothing
+    Just extension
+      | y <- getSubtypeFromMime (TE.decodeUtf8 extension)
+      , y `S.member` cmdAllS ->
+        --
+        Just y
+      | y <- last (T.splitOn "." link)
+      , y `S.member` S.fromList cmdMisc ->
+        --
+        Just y
+      | otherwise ->
+        Nothing
+
+-- image/jpeg ⟶ jpeg, text/html ; text utf8 ⟶ html
+getSubtypeFromMime :: Text -> Text
+getSubtypeFromMime =
+  T.takeWhile (/= ';') . T.drop 1 . T.dropWhile (/= '/')
+
+getMimeType :: MonadIO m => Text -> m (Maybe BS.ByteString)
+getMimeType link =
+  liftIO $
+    Exception.catch
+      (Req.runReq Req.defaultHttpConfig $ do
+          uri <- URI.mkURI link
+          let Just t = Req.useURI uri
+          case t of
+            Right x ->
+              response <$> uncurry reqHead x
+            Left x ->
+              response <$> uncurry reqHead x)
+      (\ (e :: Exception.SomeException) -> pure Nothing)
+  where
+    response t = Req.responseHeader t "content-type"
+
+-- reqHead :: Req.MonadHttp m => Req.Url scheme -> m Req.BsResponse
+reqHead x = Req.req Req.HEAD x Req.NoReqBody Req.bsResponse
