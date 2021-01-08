@@ -75,7 +75,8 @@ dwnUsrFileExtension msg url extension = do
   uniqueURL <- uniqueURL url extension
   let url' = escapeUrl url
   shell ("cd "
-         <> getUsrFldrT msg
+         -- escapeNick fixes bash errors like cd [czar]
+         <> escapeNick (getUsrFldrT msg)
          <> " && curl -fL --max-filesize 104857600 --range 0-104857600 -o "
          <> uniqueURL <> " " <> url') empty
 
@@ -97,9 +98,15 @@ uniqueURL url extension = do
   where
     fileName = last (T.splitOn "/" url)
 
+
+escapeNick :: Text -> Text
+escapeNick  = escape "[" . escape "]"
+
+escape str =
+  T.intercalate ("\\" <> str) . T.splitOn str
+
 escapeUrl :: Text -> Text
-escapeUrl =
-  T.intercalate "\\&" . T.splitOn "&"
+escapeUrl = escape "&"
 
 -- this probably exists as <|> somehow, but it does not do the proper thing without the lift
 (<<|>>) :: Monad m => m (Maybe a) -> m (Maybe a) -> m (Maybe a)

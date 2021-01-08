@@ -112,7 +112,6 @@ getFileType link manager = do
       , y `S.member` cmdAllS ->
         --
         Just y
-      -- TODO ∷ don't run this on HTTPS
       | y <- last (T.splitOn "." link)
       , y `S.member` S.fromList cmdMisc
       && getSubtypeFromMime (TE.decodeUtf8 extension) /= "html"  ->
@@ -144,5 +143,6 @@ getMimeType link altMngr =
   where
     response t = Req.responseHeader t "content-type"
 
--- reqHead :: Req.MonadHttp m => Req.Url scheme -> m Req.BsResponse
+reqHead ::
+  Req.MonadHttp m => Req.Url scheme -> Req.Option scheme -> m Req.BsResponse
 reqHead x = Req.req Req.HEAD x Req.NoReqBody Req.bsResponse
