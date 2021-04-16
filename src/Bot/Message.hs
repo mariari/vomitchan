@@ -66,6 +66,7 @@ respond s _    (Left err)   _erver _tate _manager =
 respond _ allS (Right priv) server state manager = f priv
   where
     f (PRIVMSG priv)     = runReaderT (allLogsM manager >> runCmd) (Info priv server state allS)
+    f (NOTICE priv)      = if ((usrNick . user $ priv) == "saybot") then (runReaderT (allLogsM manager >> runCmd) (Info priv server state allS)) else return NoResponse
     f (TOPICCHANGE priv) = NoResponse <$ runReaderT (allLogsM manager) (Info priv server state allS)
     f (PING (Ping s))    = return $ Response ("PONG", s)
     f _                  = return NoResponse
