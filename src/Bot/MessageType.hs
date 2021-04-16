@@ -17,6 +17,7 @@ import Bot.NetworkType
 
 data Command = PRIVMSG     PrivMsg
              | TOPICCHANGE PrivMsg
+             | NOTICE      PrivMsg
              | JOIN        Join
              | CQUIT       CQuit
              | NUMBERS     Numbers

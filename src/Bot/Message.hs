@@ -66,6 +66,7 @@ respond s _    (Left err)   _erver _tate _manager =
 respond _ allS (Right priv) server state manager = f priv
   where
     f (PRIVMSG priv)     = runReaderT (allLogsM manager >> runCmd) (Info priv server state allS)
+    f (NOTICE priv)      = processNotice priv (runReaderT (allLogsM manager >> runCmd) (Info priv server state allS))
     f (TOPICCHANGE priv) = NoResponse <$ runReaderT (allLogsM manager) (Info priv server state allS)
     f (PING (Ping s))    = return $ Response ("PONG", s)
     f _                  = return NoResponse
@@ -124,6 +125,12 @@ getFileType link manager = do
 getSubtypeFromMime :: Text -> Text
 getSubtypeFromMime =
   T.takeWhile (/= ';') . T.drop 1 . T.dropWhile (/= '/')
+
+processNotice :: PrivMsg -> IO Func -> IO Func
+processNotice priv process
+  | nickname priv == "saybot" = process
+  | otherwise                 = return NoResponse
+  where nickname = usrNick . user
 
 -- todo ∷ pass the connection context from main to this
 -- this eats another 16 MB of ram, due to using Req's one

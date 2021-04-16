@@ -48,6 +48,7 @@ commandW "JOIN"    (PUser userI) = join userI
 commandW "QUIT"    (PUser userI) = quit userI
 commandW "PART"    (PUser userI) = part userI
 commandW "TOPIC"   (PUser userI) = topicChange userI
+commandW "NOTICE"  (PUser userI) = notice userI
 commandW word      prefix        = handleOther word prefix
 
 numbers :: Int -> Prefix -> T.Text -> Numbers
@@ -58,6 +59,11 @@ numbers 903 (ServerName s) = N903 s
 numbers 904 (ServerName s) = N904 s
 numbers cod prefix         = handleNOther cod prefix
 -- COMMAND-------------------------------------------------------------------------------------
+
+notice :: UserI -> Parser Command
+notice userI = targetCmd f
+  where
+    f target = NOTICE . PrivMsg userI target
 
 topicChange :: UserI -> Parser Command
 topicChange userI = targetCmd f
