@@ -89,7 +89,7 @@ main = do
                  let conEq = ConnectionEq con identifier
                  let leave = atomically (S.delete conEq connections)
                  atomically (S.insert conEq connections)
-                 handleSelf (listen x servMap (netServer net) state manager <* leave)
+                 handleSelf (listen x servMap net (netServer net) state manager <* leave)
                             (leave >> listenRetry net identifier)
                listenRetry n ident = do
                  x <- reconnectNetwork servMap ctx n

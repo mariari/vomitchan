@@ -31,6 +31,7 @@ data InfoPriv = Info
   { message  :: !PrivMsg
   , server   :: !T.Text
   , vomState :: VomState
+  , network  :: IRCNetwork
   , _servers :: AllServers
   }
 

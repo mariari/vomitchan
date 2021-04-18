@@ -59,15 +59,16 @@ respond
   -> Either String Command
   -> Server
   -> VomState
+  -> IRCNetwork
   -> Client.Manager
   -> IO Func
-respond s _    (Left err)   _erver _tate _manager =
+respond s _    (Left err)   _erver _tate _ _manager =
   appendError err s >> print err >> return NoResponse
-respond _ allS (Right priv) server state manager = f priv
+respond _ allS (Right priv) server state net manager = f priv
   where
-    f (PRIVMSG priv)     = runReaderT (allLogsM manager >> runCmd) (Info priv server state allS)
-    f (NOTICE priv)      = processNotice priv (runReaderT (allLogsM manager >> runCmd) (Info priv server state allS))
-    f (TOPICCHANGE priv) = NoResponse <$ runReaderT (allLogsM manager) (Info priv server state allS)
+    f (PRIVMSG priv)     = runReaderT (allLogsM manager >> runCmd) (Info priv server state net allS)
+    f (NOTICE priv)      = processNotice priv (runReaderT (allLogsM manager >> runCmd) (Info priv server state net allS))
+    f (TOPICCHANGE priv) = NoResponse <$ runReaderT (allLogsM manager) (Info priv server state net allS)
     f (PING (Ping s))    = return $ Response ("PONG", s)
     f _                  = return NoResponse
 
