@@ -23,7 +23,7 @@ data IRCNetwork = IRCNetwork
   , netSSL    :: Bool
   , netNick   :: Nick
   , netPass   :: Pass
-  , admins    :: [Nick]
+  , netAdmins :: [Nick]
   , netChans  :: [Chan]
   , netState  :: StateConfig
   } deriving (Show, Generic)

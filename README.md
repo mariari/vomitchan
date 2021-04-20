@@ -60,14 +60,14 @@ This file should look like the following:
 
 ```json
 [
-    { "netServer" : "irc.freenode.net"
-      , "netPort" : 6697
-      , "netSSL"  : false
-      , "netNick" : "vomitchan"
-      , "netPass" : "PASS"
-      , "admins"  : ["mariari"]
-      , "netChans" : ["#hardfought", "#em.slashem.me", "#Haskell"]
-      , "netState" : [["#hardfought", {"dream"  : true,
+    { "netServer"   : "irc.freenode.net"
+      , "netPort"   : 6697
+      , "netSSL"    : false
+      , "netNick"   : "vomitchan"
+      , "netPass"   : "PASS"
+      , "netAdmins" : ["mariari"]
+      , "netChans"  : ["#hardfought", "#em.slashem.me", "#Haskell"]
+      , "netState"  : [["#hardfought", {"dream"  : true,
                                        "mute"   : false,
                                        "fleecy" : false,
                                        "yuki"   : false}]
@@ -77,14 +77,14 @@ This file should look like the following:
                                            "yuki"   : false}]]
     },
 
-    { "netServer" : "other"
-      , "netPort" : 6697
-      , "netSSL"  : false
-      , "netNick" : "vomitchan"
-      , "netPass" : ""
-      , "admins"  : ["mariari"]
-      , "netChans" : ["#bots", "#programming"]
-      , "netState" : []
+    { "netServer"   : "other"
+      , "netPort"   : 6697
+      , "netSSL"    : false
+      , "netNick"   : "vomitchan"
+      , "netPass"   : ""
+      , "netAdmins" : ["mariari"]
+      , "netChans"  : ["#bots", "#programming"]
+      , "netState"  : []
     }
 ]
 
