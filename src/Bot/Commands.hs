@@ -282,7 +282,7 @@ yukiMode cont = f <$> getChanStateM
 
 -- | checks if the user is an admin
 isAdmin :: InfoPriv -> Bool
-isAdmin info = (msgNick . message $ info) `elem` (admins . network $ info)
+isAdmin info = (msgNick . message $ info) `elem` (netAdmins . network $ info)
 
 -- generates the randomRange for the cmdVomit command
 randRange :: V.Vector Char
