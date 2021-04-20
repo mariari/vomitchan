@@ -60,11 +60,6 @@ effectList :: V.Vector TextEffects
 effectList = V.fromList [Txt " ", MonoSpace, Strikethrough, None] <> effectListLink
 --- DATA --------------------------------------------------------------------------------------
 
--- list of admins allowed to use certain commands
--- TODO: Load this from config file
-admins :: [T.Text]
-admins = ["loli", "~loli"]
-
 -- list of all Pure functions
 cmdList :: (Cmd m, CmdImp m') => [(ContFuncPure m m', [T.Text], Effect m')]
 cmdList = [(cmdBots, [".bots", ".bot vomitchan"], effectText)
@@ -125,14 +120,14 @@ cmdHelp = noticeMsg "Commands: (.lewd <someone>), (*vomits* [nick]), (*cheek pin
 
 -- quit
 cmdQuit :: (Cmd m, Monad m') => ContFuncPure m m'
-cmdQuit = asks (shouldQuit . message)
+cmdQuit = asks shouldQuit
   where
-    shouldQuit msg
-      | not (isAdmin msg)                 = noResponse
-      | isSnd words && allOrCurr == "all" = quit AllNetworks
-      | otherwise                         = quit CurrentNetwork
+    shouldQuit info
+      | not (isAdmin info)                 = noResponse
+      | isSnd words && allOrCurr == "all"  = quit AllNetworks
+      | otherwise                          = quit CurrentNetwork
       where
-        words     = wordMsg msg
+        words     = wordMsg . message $ info
         allOrCurr = words !! 1
 
 cmdLewds :: CmdImp m => ContFunc m
@@ -215,20 +210,24 @@ cmdVomit = do
 
 -- Joins the first channel in the message if the user is an admin else do nothing
 cmdJoin :: (Cmd m, Monad m') => ContFuncPure m m'
-cmdJoin = join . message <$> ask
+cmdJoin = join <$> ask
   where
-    join msg
-      | isAdmin msg && isSnd (wordMsg msg) = response ("JOIN", wordMsg msg !! 1)
+    join info
+      | isAdmin info && isSnd msg = response ("JOIN", msg !! 1)
       | otherwise                          = noResponse
+      where
+        msg = wordMsg . message $ info
 
 -- Leaves the first channel in the message if the user is an admin else do nothing
 cmdPart :: (Cmd m, Monad m') => ContFuncPure m m'
-cmdPart = part . message <$> ask
+cmdPart = part <$> ask
   where
-    part msg
-      | isAdmin msg && isSnd (wordMsg msg)            = response ("PART", wordMsg msg !! 1)
-      | isAdmin msg && "#" `T.isPrefixOf` msgChan msg = response ("PART", msgChan msg)
-      | otherwise                                     = noResponse
+    part info
+      | isAdmin info && isSnd msg                                 = response ("PART", msg !! 1)
+      | isAdmin info && "#" `T.isPrefixOf` msgChan (message info) = response ("PART", msgChan . message $ info)
+      | otherwise                                                 = noResponse
+      where
+        msg = wordMsg . message $ info
 
 -- SLEX COMMANDS--------------------------------------------------------------------------------
 
@@ -282,8 +281,8 @@ yukiMode cont = f <$> getChanStateM
 --- HELPER FUNCTIONS --------------------------------------------------------------------------
 
 -- | checks if the user is an admin
-isAdmin :: PrivMsg -> Bool
-isAdmin = maybe False (`elem` admins) . msgUser
+isAdmin :: InfoPriv -> Bool
+isAdmin info = (msgNick . message $ info) `elem` (admins . network $ info)
 
 -- generates the randomRange for the cmdVomit command
 randRange :: V.Vector Char

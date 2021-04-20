@@ -20,6 +20,7 @@ import qualified Network.HTTP.Client   as Client
 
 import Bot.MessageParser
 import Bot.MessageType
+import Bot.NetworkType
 import Bot.Message
 import Bot.StateType
 --- FUNCTIONS ---------------------------------------------------------------------------------
@@ -36,8 +37,8 @@ writeBS h (act, args) = C.connectionPut h txt >> BS.putStrLn txt
 
 -- simply listens to a socket forever
 listen ::
-  (C.Connection, MVar Quit) -> AllServers -> T.Text -> GlobalState -> Client.Manager -> IO Quit
-listen (h, quit) allServs net state manager = do
+  (C.Connection, MVar Quit) -> AllServers -> IRCNetwork -> T.Text -> GlobalState -> Client.Manager -> IO Quit
+listen (h, quit) allServs network net state manager = do
   Just exit <- iterateUntil (/= Nothing) (resLoop quit)
   C.connectionClose h
   return exit
@@ -58,7 +59,7 @@ listen (h, quit) allServs net state manager = do
       tryTakeMVar quit
 
     inout s net quit state = do
-      res <- respond s allServs (parseMessage s) net state manager
+      res <- respond s allServs (parseMessage s) net state network manager
       case res of
         Quit x     -> quitNetwork h >> putMVar quit x
         Response x -> write h x
