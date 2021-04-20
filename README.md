@@ -65,6 +65,7 @@ This file should look like the following:
       , "netSSL"  : false
       , "netNick" : "vomitchan"
       , "netPass" : "PASS"
+      , "admins"  : ["mariari"]
       , "netChans" : ["#hardfought", "#em.slashem.me", "#Haskell"]
       , "netState" : [["#hardfought", {"dream"  : true,
                                        "mute"   : false,
@@ -81,6 +82,7 @@ This file should look like the following:
       , "netSSL"  : false
       , "netNick" : "vomitchan"
       , "netPass" : ""
+      , "admins"  : ["mariari"]
       , "netChans" : ["#bots", "#programming"]
       , "netState" : []
     }
