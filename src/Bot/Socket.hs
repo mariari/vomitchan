@@ -17,6 +17,8 @@ import qualified Data.Text.IO          as T
 import qualified Network.Connection    as C
 import qualified Data.ByteString.Char8 as BS
 import qualified Network.HTTP.Client   as Client
+import qualified Text.Printf           as Printf
+
 
 import Bot.MessageParser
 import Bot.MessageType
@@ -27,8 +29,11 @@ import Bot.StateType
 
 -- takes a Handle and an (Action, Args) tuple and sends to socket
 write :: C.Connection -> (T.Text, T.Text) -> IO ()
-write h (act,args) = C.connectionPut h (encodeUtf8 txt) >> T.putStr txt
+write h (act,args) = C.connectionPut h encoded
+                  >> Printf.printf "%d " (BS.length encoded)
+                  >> BS.putStrLn encoded
   where
+    encoded = encodeUtf8 txt
     txt = fold [act, " ", args, "\n"]
 
 writeBS h (act, args) = C.connectionPut h txt >> BS.putStrLn txt

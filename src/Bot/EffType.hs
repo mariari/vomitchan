@@ -5,17 +5,24 @@ module Bot.EffType where
 
 import qualified Data.Text as T
 import           Control.Monad.Reader
+import qualified Data.Vector as V
 
 import Bot.MessageType
 import Bot.StateType
+import Bot.Modifier
 
 -- type of all command functions
 type Cmd m    = MonadReader InfoPriv m
 type CmdImp m = (Cmd m, MonadIO m)
 type Func     = Response (T.Text, T.Text)
 
+-- | Extra Paramater to send into effect functions
+newtype Extra =
+  Extra { validEffects :: V.Vector TextEffects }
+
+
 -- | Expresses the various effects *chink pinch*
-type Effect m = T.Text -> m T.Text
+type Effect m = Extra -> T.Text -> m T.Text
 
 -- | Continuation type for Func that encodes sending an effect in
 type ContFunc m = m (Effect m -> m Func)
