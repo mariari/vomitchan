@@ -20,11 +20,11 @@ import qualified Network.HTTP.Client   as Client
 import qualified Text.Printf           as Printf
 
 
-import Bot.MessageParser
-import Bot.MessageType
-import Bot.NetworkType
-import Bot.Message
-import Bot.StateType
+import           Bot.MessageParser
+import           Bot.MessageType
+import           Bot.NetworkType
+import qualified Bot.Message as Message
+import           Bot.StateType
 --- FUNCTIONS ---------------------------------------------------------------------------------
 
 -- takes a Handle and an (Action, Args) tuple and sends to socket
@@ -64,7 +64,7 @@ listen (h, quit) allServs network net state manager = do
       tryTakeMVar quit
 
     inout s net quit state = do
-      res <- respond s allServs (parseMessage s) net state network manager
+      res <- Message.respond s allServs (parseMessage s) net state network manager
       case res of
         Quit x     -> quitNetwork h >> putMVar quit x
         Response x -> write h x
