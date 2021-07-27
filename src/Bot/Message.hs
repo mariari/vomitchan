@@ -8,23 +8,24 @@ module Bot.Message (
 import           Control.Concurrent.STM
 import           Data.Foldable
 import           Control.Monad.Reader
-import           Turtle          hiding (fold)
-import qualified Data.Text       as T
+import           Turtle hiding (fold)
+import qualified Data.Text as T
 import qualified Data.ByteString as BS
 import qualified Data.Text.Encoding as TE
-import qualified Data.Set        as S
-import qualified  Network.HTTP.Req as Req
-import qualified Text.URI         as URI
+import qualified Data.Set as S
+import qualified Network.HTTP.Req as Req
+import qualified Text.URI as URI
 import qualified Control.Exception as Exception
 import qualified Network.HTTP.Client as Client
 
-import Bot.MessageParser
-import Bot.Commands
-import Bot.MessageType
-import Bot.FileOps
-import Bot.StateType
-import Bot.EffType
-import Bot.NetworkType
+import           Bot.Commands
+import           Bot.EffType
+import           Bot.FileOps
+import           Bot.MessageParser
+import           Bot.MessageType
+import           Bot.NetworkType
+import qualified Bot.Modifier as Modifier
+import           Bot.StateType
 --- DATA --------------------------------------------------------------------------------------
 
 -- Lists the type of webpages that are logged
@@ -69,7 +70,7 @@ respond _ allS (Right priv) server state net manager = f priv
     f (PRIVMSG priv)     = runReaderT (allLogsM manager >> runCmd) (information priv)
     f (NOTICE priv)      = processNotice priv (runReaderT (allLogsM manager >> runCmd) (information priv))
     f (TOPICCHANGE priv) = NoResponse <$ runReaderT (allLogsM manager) (information priv)
-    f (PING (Ping s))    = return $ Response ("PONG", s)
+    f (PING (Ping s))    = return $ Response ("PONG", [Modifier.effNonModifiable s])
     f _                  = return NoResponse
 
     information priv = Info priv server state net allS
@@ -82,13 +83,15 @@ allLogsM mnger = traverse_ (toReaderImp . (. message)) [cmdFldr, cmdLog, cmdLogF
 -- Logs any links posted and appends them to the users .log file
 cmdLog :: PrivMsg -> IO ()
 cmdLog = traverse_ . appendLog <*> linLn
-  where linLn = fmap (<> "\n") . allLinks
+  where
+    linLn = fmap (<> "\n") . allLinks
 
 
 -- Downloads any file and saves it to the user folder
 cmdLogFile :: Client.Manager -> PrivMsg -> IO ()
 cmdLogFile manager = traverse_ . dwnfile (Just manager) <*> allImg
-  where allImg = allLinks
+  where
+    allImg = allLinks
 
 dwnfile :: MonadIO m => Maybe Client.Manager -> PrivMsg -> Text -> m ()
 dwnfile manager msg link = do

@@ -24,6 +24,7 @@ import           Bot.MessageParser
 import           Bot.MessageType
 import           Bot.NetworkType
 import qualified Bot.Message as Message
+import qualified Bot.Modifier as Modifier
 import           Bot.StateType
 --- FUNCTIONS ---------------------------------------------------------------------------------
 
@@ -66,8 +67,8 @@ listen (h, quit) allServs network net state manager = do
     inout s net quit state = do
       res <- Message.respond s allServs (parseMessage s) net state network manager
       case res of
-        Quit x     -> quitNetwork h >> putMVar quit x
-        Response x -> write h x
-        NoResponse -> return ()
+        Quit x             -> quitNetwork h >> putMVar quit x
+        Response (act,msg) -> Modifier.toText msg >>= \msg -> write h (act, msg)
+        NoResponse         -> return ()
 
 quitNetwork h = write h ("QUIT", ":Exiting")

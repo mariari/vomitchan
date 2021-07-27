@@ -58,8 +58,7 @@ data Scope =
 
 -- | @Unit@ is the Effect over any particular representation of text,
 -- we break this up into scoped effects over text
-data Unit
-  = Unit Scope TextUnit
+data Unit = Unit Scope TextUnit
 
 type ChoiceEffects = V.Vector TextEffects
 
@@ -110,7 +109,10 @@ unitToText (Unit _ (NonModifiable t)) = t
 --     payload (Color c) = T.pack (showColor (fromEnum c)) <> txt
 --     payload _         = txt
 
+toText :: T -> IO T.Text
+toText = undefined
+
 -- for applyEffects we must chose a specific effect for the ones that
 -- vary for every effect
-applyEffects :: (MonadIO m) => Unit -> m T.Text
+applyEffects :: Unit -> IO T.Text
 applyEffects = undefined
