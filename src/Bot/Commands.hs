@@ -308,24 +308,23 @@ randRange = (chr <$>) . V.fromList $  [8704..8959]   -- Mathematical symbols
                                    <> [10631, 10632] -- obscure braces
                                    <> [945..969]     -- greek symbols
 
-respones = V.fromList ["It is certain"
-                      ,"It is decidedly so"
-                      ,"Without a doubt"
-                      ,"Yes definitely"
-                      ,"You may rely on it"
-                      ,"As I see it, yes"
-                      ,"Most likely"
-                      ,"Outlook good"
-                      ,"Yes"
-                      ,"Signs point to yes"
-                      ,"Reply hazy try again"
-                      ,"Ask again later"
-                      ,"Better not tell you now"
-                      ,"Cannot predict now"
-                      ,"Concentrate and ask again"
-                      ,"Don't count on it"
-                      ,"My reply is no"
-                      ]
+respones = V.fromList [ "It is certain"
+                      , "It is decidedly so"
+                      , "Without a doubt"
+                      , "Yes definitely"
+                      , "You may rely on it"
+                      , "As I see it, yes"
+                      , "Most likely"
+                      , "Outlook good"
+                      , "Yes"
+                      , "Signs point to yes"
+                      , "Reply hazy try again"
+                      , "Ask again later"
+                      , "Better not tell you now"
+                      , "Cannot predict now"
+                      , "Concentrate and ask again"
+                      , "Don't count on it"
+                      , "My reply is no" ]
 
 -- Figures out where to send a response to
 msgDest :: PrivMsg -> T.Text
@@ -343,8 +342,8 @@ drpMsg bk = asks (snd . T.breakOn bk . msgContent . message)
 
 -- composes the format that the final send message will be
 composeMsg :: (MonadReader InfoPriv m1, Monad m2) =>
-             T.Text -> Extra -> Message -> m1 (Effect m2 -> m2 Func)
-composeMsg method effModifier str = do
+             T.Text -> Message -> m1 (Effect m2 -> m2 Func)
+composeMsg method str = do
   dest <- asks (msgDest . message)
   pure $ \eff -> do
     -- if we have a message append nothing to it
@@ -353,7 +352,7 @@ composeMsg method effModifier str = do
           case str of
             Message _ -> id
             Action  _ -> actionMe
-    sentBack <- eff effModifier (unboxMessage str)
+    sentBack <- eff (Extra V.empty) (unboxMessage str)
     return
       $ Response (method
                  , Modifier.effNonModifiable (dest <> " :") : appendAction sentBack)
@@ -371,11 +370,11 @@ privMsg, actionMsg, noticeMsg
   :: (MonadReader InfoPriv m1, Monad m2)
   => Modifier.T
   -> m1 (Effect m2 -> m2 Func)
-privMsg = composeMsg "PRIVMSG" (Extra V.empty) . Message
+privMsg = composeMsg "PRIVMSG" . Message
 
-actionMsg = composeMsg "PRIVMSG" (Extra V.empty) . Action
+actionMsg = composeMsg "PRIVMSG" . Action
 
-noticeMsg = composeMsg "NOTICE" (Extra V.empty) . Message
+noticeMsg = composeMsg "NOTICE" . Message
 
 -- | the @Plain@ variants expect normal text with no effects applies to
 -- them. This occurs quite often when the text just has the effect
