@@ -159,25 +159,19 @@ cmdVomit = do
         fileCheck :: Maybe String -> IO T.Text
         fileCheck = maybe (return "") (upUsrFile . (getUsrFldrT newUsr <>) . T.pack)
 
-        randApply numLength =
-          fmap head
-            . contEffect (Extra {validEffects = effectList})
-            . return
-            . Modifier.effText
-            . T.pack
-            . randVom numLength
-        randApplyLink =
-          fmap head
-            . contEffect (Extra {validEffects = effectListLink})
-            . return
-            . Modifier.effLink
+        randApply numLength randSeed =
+          withUnitM (Modifier.effText (T.pack (randVom numLength randSeed)))
+                    (contEffect (Extra {validEffects = effectList}))
+        randApplyLink link =
+          withUnitM (Modifier.effLink link)
+                    (contEffect (Extra {validEffects = effectListLink}))
 
         nsfwStr txt
           | "nsfw" `T.isSuffixOf` Modifier.unitToText txt =
-            head $
-              [Modifier.effText "nsfw"]
-                `withSet`
-                [Modifier.Reverse, Modifier.Color Modifier.LBlue, Modifier.Bold]
+            withUnit
+              (Modifier.effText "nsfw")
+              (`withSet`
+                [Modifier.Reverse, Modifier.Color Modifier.LBlue, Modifier.Bold])
           | otherwise = Modifier.effText ""
 
         randPrivMsg = do
@@ -401,14 +395,24 @@ actionMe :: Modifier.T -> Modifier.T
 actionMe txt =
   Modifier.effNonModifiable "\0001ACTION " : txt <> [Modifier.effNonModifiable "\0001"]
 
-
 -- | applies TextEffects to all modifiers in the stack
 with :: Modifier.T -> [Modifier.Occurence] -> Modifier.T
 with mod newEffs =
   fmap (`Modifier.addBlockEffs` newEffs) mod
 
+-- | applies TextEffects to all modifiers in the stack with a set
+-- effect instead of randomly picking one out of a list
 withSet :: Modifier.T -> [Modifier.TextEffects] -> Modifier.T
 withSet mod = with mod . fmap Modifier.Set
+
+withUnitM ::
+  Functor f => Modifier.Unit -> (Modifier.T -> f Modifier.T) -> f Modifier.Unit
+withUnitM unit f =
+  head <$> f (return unit)
+
+withUnit :: Modifier.Unit -> (Modifier.T -> Modifier.T) -> Modifier.Unit
+withUnit unit f =
+  head $ f $ return unit
 
 -- | @withIndividual@ applies the effect modifier for every modifier action
 withIndividual :: Modifier.T -> [Modifier.ChoiceEffects] -> Modifier.T
