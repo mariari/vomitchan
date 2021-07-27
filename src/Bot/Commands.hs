@@ -160,15 +160,25 @@ cmdVomit = do
         fileCheck = maybe (return "") (upUsrFile . (getUsrFldrT newUsr <>) . T.pack)
 
         randApply numLength =
-          contEffect (Extra {validEffects = effectList}) . toEffectUnit . T.pack . randVom numLength
+          fmap head
+            . contEffect (Extra {validEffects = effectList})
+            . return
+            . Modifier.effText
+            . T.pack
+            . randVom numLength
         randApplyLink =
-          contEffect (Extra {validEffects = effectListLink}) . toEffectUnitLink
+          fmap head
+            . contEffect (Extra {validEffects = effectListLink})
+            . return
+            . Modifier.effLink
 
         nsfwStr txt
-          | "nsfw" `T.isSuffixOf` txt =
-            [Modifier.effText "nsfw"]
-              `with` [Modifier.Reverse, Modifier.Color Modifier.LBlue, Modifier.Bold]
-          | otherwise = ""
+          | "nsfw" `T.isSuffixOf` Modifier.unitToText txt =
+            head $
+              [Modifier.effText "nsfw"]
+                `withSet`
+                [Modifier.Reverse, Modifier.Color Modifier.LBlue, Modifier.Bold]
+          | otherwise = Modifier.effText ""
 
         randPrivMsg = do
           x               <- liftIO $ randomRIO (8,23)
@@ -176,10 +186,11 @@ cmdVomit = do
           link            <- liftIO randLink >>= randApplyLink
           startingVomText <- randApply x (head randomList)
           endingVomText   <- randApply x (randomList !! 1)
-          return $ T.pack (nsfwStr link) <> " "
-                 <> startingVomText      <> " "
-                 <> link                 <> " "
-                 <> endingVomText
+          return
+            $ nsfwStr link    : Modifier.effText " "
+            : startingVomText : Modifier.effText " "
+            : link            : Modifier.effText " "
+            : [endingVomText]
     toWrite <- randPrivMsg
     privMsg toWrite >>= ($ const pure)
 
@@ -188,7 +199,7 @@ cmdJoin :: (Cmd m, Monad m') => ContFuncPure m m'
 cmdJoin = asks join
   where
     join info
-      | isAdmin info && isSnd msg = response ("JOIN", msg !! 1)
+      | isAdmin info && isSnd msg = response ("JOIN", [Modifier.effNonModifiable (msg !! 1)])
       | otherwise                 = noResponse
       where
         msg = wordMsg . message $ info
@@ -198,9 +209,12 @@ cmdPart :: (Cmd m, Monad m') => ContFuncPure m m'
 cmdPart = asks part
   where
     part info
-      | isAdmin info && isSnd msg                                 = response ("PART", msg !! 1)
-      | isAdmin info && "#" `T.isPrefixOf` msgChan (message info) = response ("PART", msgChan . message $ info)
-      | otherwise                                                 = noResponse
+      | isAdmin info && isSnd msg =
+        response ("PART", [Modifier.effNonModifiable (msg !! 1)])
+      | isAdmin info && "#" `T.isPrefixOf` msgChan (message info) =
+        response ("PART", [Modifier.effNonModifiable (msgChan . message $ info)])
+      | otherwise =
+        noResponse
       where
         msg = wordMsg . message $ info
 
@@ -209,7 +223,7 @@ cmdPart = asks part
 cmdEightBall :: CmdImp m => ContFunc m
 cmdEightBall = do
   res <- liftIO (randElem respones <$> randomIO)
-  privMsg res
+  privMsgPlain res
 
 cmdTarget f = do
   target' <- drpMsg " "
@@ -217,7 +231,7 @@ cmdTarget f = do
       return noResponse
     else do
       let target = T.tail target'
-      privMsg (f target)
+      privMsgPlain (f target)
 
 cmdLotg :: (Cmd m, Monad m') => ContFuncPure m m'
 cmdLotg =
@@ -254,44 +268,34 @@ effectTextRandom Extra {validEffects = validEffects} =
 yukiMode :: (MonadReader InfoPriv f, MonadIO f) => Modifier.T -> f Modifier.T
 yukiMode text = f <$> getChanStateM
   where
-    f state | state^.yuki = text `with` [Modifier.Color Modifier.Blue]
+    f state | state^.yuki = text `withSet` [Modifier.Color Modifier.Blue]
             | otherwise   = text
 
 randomColorEffect
   :: (MonadReader InfoPriv m, MonadIO m)
   => Modifier.T -> m Modifier.T
 randomColorEffect text =
-  getChanStateM >>= f
+  f <$> getChanStateM
   where
     f state
       | not (state^.yuki) && (state^.dream) = do
-          let colorizeText (random1 :_) =
-                [randElem ansiColor random1]
-          onAllCharsT colorizeText text
+          text `withIndividual` [Modifier.ansiColor]
       | otherwise =
-          pure text
+          text
 
 randomEffect
   :: (MonadReader InfoPriv m, MonadIO m)
-  => V.Vector Modifier.TextEffects -> Modifier.T -> m Modifier.T
+  => Modifier.ChoiceEffects -> Modifier.T -> m Modifier.T
 randomEffect validEffects text =
-  let colorizeText (random1 : _) =
-        [randElem validEffects random1]
-  in onAllCharsT colorizeText text
+  pure $ text `withIndividual` [validEffects]
 
 dryEffect :: (MonadReader InfoPriv f, MonadIO f) => Modifier.T -> f Modifier.T
 dryEffect text =
   f <$> getChanStateM
   where
     f state
-      | not (state^.dream) = text `with` [Modifier.Color Modifier.Red, Modifier.Reverse]
+      | not (state^.dream) = text `withSet` [Modifier.Color Modifier.Red, Modifier.Reverse]
       | otherwise        = text
-
-onAllCharsT f text = do
-  let onAllElemetns char = do
-        randomElements <- randoms <$> newStdGen
-        pure $ Modifier.Unit (f randomElements) (T.singleton char)
-  liftIO $ traverse onAllElemetns (T.unpack text)
 
 -- TODO ∷ need to make the effect not run on texts
 heartify = undefined
@@ -360,7 +364,7 @@ composeMsg method effModifier str = do
       $ Response (method
                  , Modifier.effNonModifiable (dest <> " :") : appendAction sentBack)
 
-unboxMessage :: Message -> T.Text
+unboxMessage :: Message -> Modifier.T
 unboxMessage (Action  t) = t
 unboxMessage (Message t) = t
 
@@ -399,14 +403,17 @@ actionMe txt =
 
 
 -- | applies TextEffects to all modifiers in the stack
-with :: Modifier.T -> [Modifier.TextEffects] -> Modifier.T
+with :: Modifier.T -> [Modifier.Occurence] -> Modifier.T
 with mod newEffs =
-  fmap (\modUnit -> Modifier.addBlockEffs modUnit newEffs) mod
+  fmap (`Modifier.addBlockEffs` newEffs) mod
+
+withSet :: Modifier.T -> [Modifier.TextEffects] -> Modifier.T
+withSet mod = with mod . fmap Modifier.Set
 
 -- | @withIndividual@ applies the effect modifier for every modifier action
-withIndividual :: Modifier.T -> [Modifier.TextEffects] -> Modifier.T
+withIndividual :: Modifier.T -> [Modifier.ChoiceEffects] -> Modifier.T
 withIndividual mod newEffs =
-  fmap (\modUnit -> Modifier.addIndividualEffs modUnit newEffs) mod
+  fmap (`Modifier.addIndividualEffs` newEffs) mod
 
 -- Changes the nick of the msg
 changeNick :: Nick -> PrivMsg -> PrivMsg

@@ -42,7 +42,7 @@ data TextUnit
 -- or are set in stone
 data Occurence
   -- | @Pick@ represents the choice to select an arbitrary effect
-  = Pick [TextEffects]
+  = Pick ChoiceEffects
   -- | @Set@ represents a set effect over the entire block
   | Set TextEffects
 
@@ -51,14 +51,17 @@ data Scope =
   Scope
     { -- | @Block@ represents a block change over the entire Unit
       block :: [Occurence],
-      -- | @Individual@ represents a change over individual characters
-      individual :: [TextEffects]
+      -- | @Individual@ represents a change over individual characters,
+      -- these are always a pick of individual effects
+      individual :: [ChoiceEffects]
     }
 
 -- | @Unit@ is the Effect over any particular representation of text,
 -- we break this up into scoped effects over text
 data Unit
   = Unit Scope TextUnit
+
+type ChoiceEffects = V.Vector TextEffects
 
 type Representation = [Unit]
 
@@ -73,13 +76,18 @@ effLink = Unit (Scope [] []) . Link
 effNonModifiable :: T.Text -> Unit
 effNonModifiable = Unit (Scope [] []) . NonModifiable
 
-addIndividualEffs :: Unit -> [TextEffects] -> Unit
+addIndividualEffs :: Unit -> [V.Vector TextEffects] -> Unit
 addIndividualEffs (Unit (Scope block indiv) text) effs  =
   Unit (Scope block (indiv <> effs)) text
 
 addBlockEffs :: Unit -> [Occurence] -> Unit
 addBlockEffs (Unit (Scope block indiv) text) effs  =
   Unit (Scope (block <> effs) indiv) text
+
+unitToText :: Unit -> T.Text
+unitToText (Unit _ (Text t)) = t
+unitToText (Unit _ (Link t)) = t
+unitToText (Unit _ (NonModifiable t)) = t
 
 --------------------------------------------------------------------------------
 -- Modifier Reduction system
