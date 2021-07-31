@@ -435,16 +435,4 @@ isSnd _           = False
 wordMsg :: PrivMsg -> [T.Text]
 wordMsg = T.words . msgContent
 
--- in the IRC protocol if numbers don't have at least 2 digits, then changing the color before a
--- number would invalidate it
-showColor :: (Ord a, Num a, Show a) => a -> String
-showColor x
-  | x < 10    = "0" <> show x
-  | otherwise = show x
 
--- grabs an infinite list of random values inside some vector
-randElems :: V.Vector a -> Int -> [a]
-randElems xs = fmap (xs V.!)  . randomRs (0, length xs - 1) . mkStdGen
-
-randElem :: V.Vector a -> Int -> a
-randElem xs  = head . randElems xs
