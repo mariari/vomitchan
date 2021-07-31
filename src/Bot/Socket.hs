@@ -17,18 +17,24 @@ import qualified Data.Text.IO          as T
 import qualified Network.Connection    as C
 import qualified Data.ByteString.Char8 as BS
 import qualified Network.HTTP.Client   as Client
+import qualified Text.Printf           as Printf
 
-import Bot.MessageParser
-import Bot.MessageType
-import Bot.NetworkType
-import Bot.Message
-import Bot.StateType
+
+import           Bot.MessageParser
+import           Bot.MessageType
+import           Bot.NetworkType
+import qualified Bot.Message as Message
+import qualified Bot.Modifier as Modifier
+import           Bot.StateType
 --- FUNCTIONS ---------------------------------------------------------------------------------
 
 -- takes a Handle and an (Action, Args) tuple and sends to socket
 write :: C.Connection -> (T.Text, T.Text) -> IO ()
-write h (act,args) = C.connectionPut h (encodeUtf8 txt) >> T.putStr txt
+write h (act,args) = C.connectionPut h encoded
+                  >> Printf.printf "%d " (BS.length encoded)
+                  >> BS.putStrLn encoded
   where
+    encoded = encodeUtf8 txt
     txt = fold [act, " ", args, "\n"]
 
 writeBS h (act, args) = C.connectionPut h txt >> BS.putStrLn txt
@@ -59,10 +65,10 @@ listen (h, quit) allServs network net state manager = do
       tryTakeMVar quit
 
     inout s net quit state = do
-      res <- respond s allServs (parseMessage s) net state network manager
+      res <- Message.respond s allServs (parseMessage s) net state network manager
       case res of
-        Quit x     -> quitNetwork h >> putMVar quit x
-        Response x -> write h x
-        NoResponse -> return ()
+        Quit x             -> quitNetwork h >> putMVar quit x
+        Response (act,msg) -> Modifier.toText msg >>= \msg -> write h (act, msg)
+        NoResponse         -> return ()
 
 quitNetwork h = write h ("QUIT", ":Exiting")
