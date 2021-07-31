@@ -4,6 +4,7 @@ module Bot.Modifier where
 import           Control.Monad.IO.Class
 import           Control.Monad
 import           Control.Applicative ((<|>))
+import qualified Data.Maybe    as Maybe
 import qualified Data.List     as List
 import qualified Data.Vector   as V
 import qualified Data.Text     as T
@@ -121,7 +122,7 @@ applyEffects (Unit Scope {block, individual} texi) =
     Link l -> textLinkBody l
     NonModifiable text -> pure text
   where
-    blockEffs = traverse occurenceToEffect block
+    blockEffs = fmap Maybe.catMaybes (traverse occurenceToEffect block)
 
     effectsOutOfScopeStr nextClosure closure =
       concat $ Set.toList (effectsOutOfScope nextClosure closure)
@@ -135,7 +136,7 @@ applyEffects (Unit Scope {block, individual} texi) =
           textStr         = T.unpack text
       (lastClosure, resultingStr) <-
         foldM (\ (closure, textStr) char -> do
-                effects <- traverse choiceEffectToEffect individual
+                effects <- fmap Maybe.catMaybes (traverse choiceEffectToEffect individual)
                 -- to get the starting effects see the differences
                 -- between what enters scope, by doing
                 -- effectsOutOfScope in reverse.
@@ -150,12 +151,14 @@ applyEffects (Unit Scope {block, individual} texi) =
 
 -- | @occurenceToEffect@ turns an @Occurence@ into a @TextEffect@,
 -- chosing an arbitrary effect in the pick case
-occurenceToEffect :: Occurence -> IO TextEffects
-occurenceToEffect (Set eff)     = pure eff
+occurenceToEffect :: Occurence -> IO (Maybe TextEffects)
+occurenceToEffect (Set eff)     = pure (Just eff)
 occurenceToEffect (Pick choice) = choiceEffectToEffect choice
 
-choiceEffectToEffect :: ChoiceEffects -> IO TextEffects
-choiceEffectToEffect choice = Misc.randElem choice <$> Random.randomIO
+choiceEffectToEffect :: ChoiceEffects -> IO (Maybe TextEffects)
+choiceEffectToEffect choice
+  | V.null choice = pure Nothing
+  | otherwise     = Just . Misc.randElem choice <$> Random.randomIO
 
 ------------------------------------------------------------
 -- Effect Closure Operations
