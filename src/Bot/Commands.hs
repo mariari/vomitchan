@@ -24,6 +24,7 @@ import           Control.Lens
 import           Control.Monad.Reader
 import qualified Data.HashMap.Strict as M
 import qualified Data.Vector as V
+
 --- TYPES -------------------------------------------------------------------------------------
 
 data Message = Action Modifier.T | Message Modifier.T
@@ -53,6 +54,7 @@ cmdList = [(cmdBots, [".bots", ".bot vomitchan"], effectText)
 -- List of all Impure functions
 cmdListImp :: CmdImp m => [(ContFunc m, [T.Text], Effect m)]
 cmdListImp = [(cmdVomit,     ["*vomits*"]       , effectTextRandom)
+             ,(cmdRoulette,  ["*roulette*"]     , effectTextRandom)
              ,(cmdDream,     ["*cheek pinch*"]  , effectText)
              ,(cmdFleecy,    ["*step*"]         , effectText)
              ,(cmdYuki,      ["*yuki*"]         , effectText)
@@ -134,6 +136,58 @@ cmdFleecy = modifyFleecyState >> privMsgPlain "dame"
 -- | Causes vomit to go into Yuki ona mode
 cmdYuki :: CmdImp m => ContFunc m
 cmdYuki = modifyYukiState >> privMsgPlain "dame"
+
+-- | Vomit but random
+cmdRoulette :: CmdImp m => m (Effect m -> m Func)
+cmdRoulette = do
+  msg <- asks message
+  state <- getChanStateM
+  pure $ \contEffect -> do
+    usrFldr <- liftIO $ getRandomUsrFldr msg
+    let
+        randVom numT numG
+          | _fleecy state = replicate numT '♥'
+          | otherwise     = take numT (randElems randRange numG)
+
+        randLink
+          | _dream state = do
+              files <- pathFldrNoLog  usrFldr
+              i     <- randomRIO (0, length files - 1)
+              fileCheck (files ^? ix i)
+          | otherwise = return ""
+
+        -- checks if there is a file to upload!
+        fileCheck :: Maybe String -> IO T.Text
+        fileCheck = maybe (return "") (upUsrFile . ((T.pack usrFldr) <>) . T.pack)
+
+        randApply numLength randSeed =
+          withUnitM (Modifier.effText (T.pack (randVom numLength randSeed)))
+                    (contEffect (Extra {validEffects = effectList}))
+        randApplyLink link =
+          withUnitM (Modifier.effLink link)
+                    (contEffect (Extra {validEffects = effectListLink}))
+
+        nsfwStr txt
+          | "nsfw" `T.isSuffixOf` Modifier.unitToText txt =
+            withUnit
+              (Modifier.effText "nsfw")
+              (`withSet`
+                [Modifier.Reverse, Modifier.Color Modifier.LBlue, Modifier.Bold])
+          | otherwise = Modifier.effText ""
+
+        randPrivMsg = do
+          x               <- liftIO $ randomRIO (8,23)
+          randomList      <- liftIO (randoms <$> newStdGen :: IO [Int])
+          link            <- liftIO randLink >>= randApplyLink
+          startingVomText <- randApply x (head randomList)
+          endingVomText   <- randApply x (randomList !! 1)
+          return
+            $ nsfwStr link    : Modifier.effText " "
+            : startingVomText : Modifier.effText " "
+            : link            : Modifier.effText " "
+            : [endingVomText]
+    toWrite <- randPrivMsg
+    privMsg toWrite >>= ($ const pure)
 
 -- | Vomits up a colorful rainbow if vomitchan is asleep else it just vomits up red with no link
 cmdVomit :: CmdImp m => m (Effect m -> m Func)

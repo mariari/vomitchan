@@ -8,7 +8,9 @@ module Bot.FileOps (
   upUsrFile,
   getUsrFldr,
   getUsrFldrT,
-  dwnUsrFileExtension
+  dwnUsrFileExtension,
+  getRandomUsrFldr,
+  pathFldrNoLog
 ) where
 --- IMPORTS -----------------------------------------------------------------------------------
 import qualified Data.Text          as T
@@ -21,12 +23,15 @@ import           Data.Foldable     (fold)
 import qualified Data.Aeson         as JSON
 import qualified Data.Aeson.TH      as TH
 import           GHC.Generics
+import           System.Random
+import           Control.Monad
 
 import           System.Directory
 import           Turtle             hiding (FilePath, fold)
 import           Data.List
 
 import Bot.MessageType
+import Bot.Misc (randElemList)
 
 -- TODO:: Instead of working off PrivMsg, work off UserI and Chan/Target instead!
 
@@ -159,18 +164,37 @@ w1r3Upload file = check <$> procStrict "curl" ["-F", "upload=@" <> file, "https:
 getUsrFldrT :: PrivMsg -> T.Text
 getUsrFldrT msg = fold ["./data/logs/", msgChan msg, "/", msgNick msg, "/"]
 
+filterDirs :: FilePath -> [FilePath] -> IO [FilePath]
+filterDirs base xs = filterM f xs
+  where
+    f dir = do
+      files <- listDirectory (base <> dir)
+      return $ (length files) > 1
+
+--Gets a random folder of a user
+getRandomUsrFldr :: PrivMsg -> IO FilePath
+getRandomUsrFldr msg = do
+  dirs <- listDirectory (T.unpack base)
+  f_dirs <- filterDirs (T.unpack base) dirs
+  seed <- randomRIO (0, 5000000)
+  return $ T.unpack (fold [base ,T.pack (randElemList f_dirs seed), "/"])
+  where
+    base = fold ["./data/logs/", msgChan msg, "/"]
+
 -- Gets folder path based on PrivMsg (Chan <> Nick)
 getUsrFldr :: PrivMsg -> FilePath
 getUsrFldr = T.unpack . getUsrFldrT
 
 -- Lists all the files in the users directory
-listUsrFldr :: PrivMsg -> IO [FilePath]
-listUsrFldr msg = doesDirectoryExist usrfldr >>= lsFldr
+listUsrFldr :: FilePath -> IO [FilePath]
+listUsrFldr usrfldr = doesDirectoryExist usrfldr >>= lsFldr
   where lsFldr dirp
           | dirp      = listDirectory usrfldr
           | otherwise = return []
-        usrfldr = getUsrFldr msg
 
 -- Lists all the files except the .log files
 usrFldrNoLog :: PrivMsg -> IO [FilePath]
-usrFldrNoLog msg = filter (not . isSuffixOf ".log") <$> listUsrFldr msg
+usrFldrNoLog msg = filter (not . isSuffixOf ".log") <$> listUsrFldr (getUsrFldr msg)
+
+pathFldrNoLog :: FilePath -> IO [FilePath]
+pathFldrNoLog path  = filter (not . isSuffixOf ".log") <$> listUsrFldr path
