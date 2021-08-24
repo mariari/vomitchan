@@ -8,7 +8,6 @@ bindM :: (Applicative f, Monad m, Traversable m) => (a1 -> f (m a2)) -> m a1 -> 
 bindM f a = join <$> traverse f a
 
 
-
 --I know there is an abstraction to be made here but w/e
 randElemsList :: [a] -> Int -> [a]
 randElemsList xs = fmap (xs !!)  . Random.randomRs (0, length xs - 1) . Random.mkStdGen

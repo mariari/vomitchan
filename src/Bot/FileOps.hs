@@ -194,7 +194,7 @@ listUsrFldr usrfldr = doesDirectoryExist usrfldr >>= lsFldr
 
 -- Lists all the files except the .log files
 usrFldrNoLog :: PrivMsg -> IO [FilePath]
-usrFldrNoLog msg = filter (not . isSuffixOf ".log") <$> listUsrFldr (getUsrFldr msg)
+usrFldrNoLog = pathFldrNoLog . getUsrFldr
 
 pathFldrNoLog :: FilePath -> IO [FilePath]
 pathFldrNoLog path  = filter (not . isSuffixOf ".log") <$> listUsrFldr path

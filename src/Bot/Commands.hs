@@ -19,6 +19,7 @@ import Control.Applicative ((<|>))
 import Data.Maybe (fromMaybe)
 
 import qualified Data.Text as T
+import           Data.Foldable     (fold)
 import           System.Random
 import           Control.Lens
 import           Control.Monad.Reader
@@ -41,35 +42,54 @@ effectList =
 --- DATA --------------------------------------------------------------------------------------
 
 -- list of all Pure functions
-cmdList :: (Cmd m, CmdImp m') => [(ContFuncPure m m', [T.Text], Effect m')]
-cmdList = [(cmdBots, [".bots", ".bot vomitchan"], effectText)
-          ,(cmdSrc,  [".source vomitchan"]      , effectText)
-          ,(cmdHelp, [".help vomitchan"]        , effectText)
-          ,(cmdQuit, [".quit"]                  , const pure)
-          ,(cmdJoin, [".join"]                  , const pure)
-          ,(cmdPart, [".leave", ".part"]        , const pure)
-          ,(cmdLotg, [".lotg"]                  , effectText)
-          ,(cmdBane, [".amysbane"]              , effectText)]
+cmdList :: (Cmd m, CmdImp m') => [(ContFuncPure m m', [T.Text], Effect m', Maybe T.Text)]
+cmdList = [(cmdBots, [".bots", ".bot vomitchan"], effectText, Nothing)
+          ,(cmdSrc,  [".source vomitchan"]      , effectText, Nothing)
+          ,(cmdHelp, [".help vomitchan"]        , effectText, Nothing)
+          ,(cmdQuit, [".quit"]                  , const pure, Nothing)
+          ,(cmdJoin, [".join"]                  , const pure, Nothing)
+          ,(cmdPart, [".leave", ".part"]        , const pure, Nothing)
+          ,(cmdLotg, [".lotg"]                  , effectText, Just "<someone>")
+          ,(cmdBane, [".amysbane"]              , effectText, Just "<someone>")]
 
 -- List of all Impure functions
-cmdListImp :: CmdImp m => [(ContFunc m, [T.Text], Effect m)]
-cmdListImp = [(cmdVomit,     ["*vomits*"]       , effectTextRandom)
-             ,(cmdRoulette,  ["*roulette*"]     , effectTextRandom)
-             ,(cmdDream,     ["*cheek pinch*"]  , effectText)
-             ,(cmdFleecy,    ["*step*"]         , effectText)
-             ,(cmdYuki,      ["*yuki*"]         , effectText)
-             ,(cmdLewds,     [".lewd"]          , effectTextRandom)
-             ,(cmdEightBall, [".8ball"]         , effectText)]
+cmdListImp :: CmdImp m => [(ContFunc m, [T.Text], Effect m, Maybe T.Text)]
+cmdListImp = [(cmdVomit,     ["*vomits*"]       , effectTextRandom, Just "<someone>")
+             ,(cmdRoulette,  ["*roulette*"]     , effectTextRandom, Nothing)
+             ,(cmdDream,     ["*cheek pinch*"]  , effectText      , Nothing)
+             ,(cmdFleecy,    ["*step*"]         , effectText      , Nothing)
+             ,(cmdYuki,      ["*yuki*"]         , effectText      , Nothing)
+             ,(cmdLewds,     [".lewd"]          , effectTextRandom, Just "<someone>")
+             ,(cmdEightBall, [".8ball"]         , effectText      , Nothing)]
+
+--TODO Fix this fucking hack
+cmdListHelp :: [(T.Text, Maybe T.Text)]
+cmdListHelp = [(".bots"            , Nothing)
+              ,(".source vomitchan", Nothing)
+              ,(".help vomitchan"  , Nothing)
+              ,(".quit"            , Nothing)
+              ,(".join"            , Nothing)
+              ,(".leave"           , Nothing)
+              ,(".8ball"           , Nothing)
+              ,("*roulette*"       , Nothing)
+              ,("*cheek pinch*"    , Nothing)
+              ,("*step*"           , Nothing)
+              ,("*yuki*"           , Nothing)
+              ,(".lotg"            , Just "<someone>")
+              ,(".amysbane"        , Just "<someone>")
+              ,("*vomits*"         , Just "<someone>")
+              ,(".lewd"            , Just "<someone>")]
 
 -- The List of all functions pure <> impure
-cmdTotList :: CmdImp m => [(m (Effect m -> m Func), [T.Text], Effect m)]
+cmdTotList :: CmdImp m => [(m (Effect m -> m Func), [T.Text], Effect m, Maybe T.Text)]
 cmdTotList = cmdList <> cmdListImp
+
 
 -- the Map of all functions that are pure and impure
 cmdMapList :: CmdImp m => M.HashMap T.Text (m Func)
 cmdMapList = M.fromList $ cmdTotList >>= f
   where
-    f (cfn, aliasList, eff) = zip aliasList (repeat (cfn >>= ($ eff)))
+    f (cfn, aliasList, eff, _) = zip aliasList (repeat (cfn >>= ($ eff)))
 -- FUNCTIONS ----------------------------------------------------------------------------------
 
 -- only 1 space is allowed in a command at this point
@@ -97,8 +117,17 @@ cmdSrc = noticeMsgPlain "[Haskell] https://github.com/mariari/vomitchan"
 
 -- prints help information
 -- TODO: Store command info in cmdList and generate this text on the fly
+cmdHelpText :: T.Text
+cmdHelpText = fold (createHelp (head cmdListHelp) : (fmap createHelps $ drop 1 cmdListHelp))
+  where createHelps (cmd, Just help) = fold [", (", cmd, " ", help, ")"]
+        createHelps (cmd, Nothing)   = fold [", (", cmd, ")"]
+
+        createHelp (cmd, Just help) = fold ["(", cmd, " ", help, ")"]
+        createHelp (cmd, Nothing)   = fold ["(", cmd, ")"]
+
+
 cmdHelp :: (Cmd m, Monad m') => ContFuncPure m m'
-cmdHelp = noticeMsgPlain "Commands: (.lewd <someone>), (*vomits* [nick]), (*cheek pinch*)"
+cmdHelp = noticeMsgPlain ("Commands: " <> cmdHelpText)
 
 -- quit
 cmdQuit :: (Cmd m, Monad m') => ContFuncPure m m'
@@ -484,6 +513,9 @@ changeNickFstArg msg
 
 isSnd (_ : _ : _) = True
 isSnd _           = False
+
+frt :: (a, b, c, d) -> d
+frt (_, _, _, d) = d
 
 -- converts a message into a list containing a list of the contents based on words
 wordMsg :: PrivMsg -> [T.Text]
