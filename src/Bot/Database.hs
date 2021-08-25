@@ -1,5 +1,9 @@
 {-# LANGUAGE OverloadedStrings #-}
-module Bot.Database where
+module Bot.Database(addUser
+                   ,addVomit
+                   ,updateLink
+                   ,getRandomVomitPath
+                   ,getRouletteVomit) where
 
 import Control.Applicative
 import Database.SQLite.Simple
@@ -35,34 +39,25 @@ instance FromRow DBUser where
 instance FromRow DBVomit where
   fromRow = DBVomit <$> field <*> field <*> field <*> field <*> field
 
+
 addUser :: Username -> Channel -> IO ()
-addUser user chan = do
-  conn <- open "./data/vomits.db"
-  executeNamed conn "INSERT INTO user (username, channel_id, quantity_of_vomits) VALUES (:uname, (SELECT id FROM channels WHERE name=:cname), 0)" [":uname" := user, ":cname" := chan]
-  close conn
+addUser user chan = withConnection "./data/vomits.db" $
+  \conn -> executeNamed conn "INSERT INTO user (username, channel_id, quantity_of_vomits) VALUES (:uname, (SELECT id FROM channels WHERE name=:cname), 0)" [":uname" := user, ":cname" := chan]
 
 addVomit :: Username -> Channel -> String -> String -> IO ()
-addVomit nick chan md5 filepath = do
-  conn <- open "./data/vomits.db"
-  executeNamed conn "INSERT INTO vomits (filepath, vomit_md5, user_id) VALUES (:filepath, :md5, (SELECT id FROM user WHERE username=:uname AND channel_id=(SELECT id FROM channels where name=:cname)))" [":filepath" := filepath, ":md5" := md5, ":uname" := nick, ":cname" := chan]
-  close conn
+addVomit nick chan md5 filepath = withConnection "./data/vomits.db" $
+  \conn -> executeNamed conn "INSERT INTO vomits (filepath, vomit_md5, user_id) VALUES (:filepath, :md5, (SELECT id FROM user WHERE username=:uname AND channel_id=(SELECT id FROM channels where name=:cname)))" [":filepath" := filepath, ":md5" := md5, ":uname" := nick, ":cname" := chan]
 
 updateLink :: String -> String -> IO ()
-updateLink filepath link = do
-  conn <- open "./data/vomits.db"
-  executeNamed conn "UPDATE vomits SET link=:link WHERE filepath=:path" [":link" := link, ":path" := filepath]
-  close conn
+updateLink filepath link = withConnection "./data/vomits.db" $
+  \conn -> executeNamed conn "UPDATE vomits SET link=:link WHERE filepath=:path" [":link" := link, ":path" := filepath]
 
 getRandomVomitPath :: Username-> Channel-> IO String
-getRandomVomitPath user chan = do
-  conn <- open "./data/vomits.db"
+getRandomVomitPath user chan = withConnection "./data/vomits.db" $ \conn -> do
   vom  <- queryNamed conn "SELECT * FROM vomits WHERE user_id=(SELECT id FROM user WHERE username=:uname AND channel_id=(SELECT id FROM channels WHERE name=:cname)) ORDER BY RANDOM() LIMIT 1;" [":uname" := user, ":cname" := chan] :: IO [DBVomit]
-  close conn
   return . vomitPath . head $ vom
 
 getRouletteVomit :: Channel -> IO String
-getRouletteVomit chan = do
-  conn <- open "./data/vomits.db"
+getRouletteVomit chan = withConnection "./data/vomits.db" $ \conn -> do
   vom  <- queryNamed conn "SELECT * FROM vomits WHERE user_id=(SELECT id FROM user WHERE channel_id=(SELECT id FROM channels WHERE name=:cname) AND quantity_of_vomits>=1 ORDER BY RANDOM() LIMIT 1) ORDER BY RANDOM() LIMIT 1;" [":cname" := chan] :: IO [DBVomit]
-  close conn
   return . vomitPath . head $ vom
