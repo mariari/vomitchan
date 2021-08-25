@@ -3,6 +3,7 @@ module Bot.Database(addUser
                    ,addVomit
                    ,updateLink
                    ,updateUserQuantityOfVomits
+                   ,succUserQuantityOfVomits
                    ,getLink
                    ,getRandomVomitPath
                    ,getRouletteVomit
@@ -57,6 +58,10 @@ addVomit nick chan md5 filepath = withConnection "./data/vomits.db" $
 updateLink :: String -> String -> IO ()
 updateLink filepath link = withConnection "./data/vomits.db" $
   \conn -> executeNamed conn "UPDATE vomits SET link=:link WHERE filepath=:path" [":link" := link, ":path" := filepath]
+
+succUserQuantityOfVomits :: Username -> Channel -> IO ()
+succUserQuantityOfVomits user chan = withConnection "./data/vomits.db" $
+  \conn -> executeNamed conn "UPDATE user SET quantity_of_vomits = quantity_of_vomits + 1 WHERE username=:uname AND channel_id=(SELECT id FROM channels WHERE name=:cname)" [":uname" := user, ":cname" := chan]
 
 updateUserQuantityOfVomits :: Username -> Channel -> Int -> IO ()
 updateUserQuantityOfVomits user chan new = withConnection "./data/vomits.db" $
