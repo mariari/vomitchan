@@ -132,10 +132,34 @@ escapeUrl = escape "&"
 
 upUsrFile :: (Alternative m, MonadIO m) => Text -> m Text
 upUsrFile t = do
-  res <- lainUpload t <<|>> w1r3Upload t <<|>> ifyouWorkUpload t
+  res <- cacheUploader t <<|>> lainUpload t <<|>> w1r3Upload t <<|>> ifyouWorkUpload t
   let link = (Maybe.fromMaybe "" res)
   liftIO $ updateLink (T.unpack t) (T.unpack link)
   pure link
+
+cacheUploader :: MonadIO m => T.Text -> m (Maybe T.Text)
+cacheUploader file = do
+  cachedLink <- liftIO $ getLink (T.unpack file)
+  case cachedLink of
+    (Just link) -> checkValidity (T.pack link)
+    Nothing     -> return Nothing
+  where
+    isOK :: BS.ByteString -> T.Text -> Maybe T.Text
+    isOK "200" link = Just link
+    isOK _     _    = Nothing
+
+    checkValidity link = do
+      (_, msg) <-
+        TB.shellStrict
+          (fold ["curl"
+                ," -s "
+                ," -o "
+                ," /dev/null "
+                ," -w \"%{http_code}\" "
+                ,link
+                ])
+          empty
+      return $ isOK msg link
 
 pomfUploader :: MonadIO m => T.Text -> m (Maybe T.Text)
 pomfUploader file = do

@@ -2,6 +2,7 @@
 module Bot.Database(addUser
                    ,addVomit
                    ,updateLink
+                   ,getLink
                    ,getRandomVomitPath
                    ,getRouletteVomit) where
 
@@ -51,6 +52,11 @@ addVomit nick chan md5 filepath = withConnection "./data/vomits.db" $
 updateLink :: String -> String -> IO ()
 updateLink filepath link = withConnection "./data/vomits.db" $
   \conn -> executeNamed conn "UPDATE vomits SET link=:link WHERE filepath=:path" [":link" := link, ":path" := filepath]
+
+getLink :: String -> IO (Maybe String)
+getLink filepath = withConnection "./data/vomits.db" $ \conn -> do
+  vom <- queryNamed conn "SELECT * FROM vomits WHERE filepath=:path LIMIT 1;" [":path" := filepath] :: IO [DBVomit]
+  return . vomitLink . head $ vom
 
 getRandomVomitPath :: Username-> Channel-> IO String
 getRandomVomitPath user chan = withConnection "./data/vomits.db" $ \conn -> do
