@@ -35,6 +35,12 @@ instance FromRow DBUser where
 instance FromRow DBVomit where
   fromRow = DBVomit <$> field <*> field <*> field <*> field <*> field
 
+addUser :: Username -> Channel -> IO ()
+addUser user chan = do
+  conn <- open "./data/vomits.db"
+  executeNamed conn "INSERT INTO user (username, channel_id, quantity_of_vomits) VALUES (:uname, (SELECT id FROM channels WHERE name=:cname), 0)" [":uname" := user, ":cname" := chan]
+  close conn
+
 addVomit :: Username -> Channel -> String -> String -> IO ()
 addVomit nick chan md5 filepath = do
   conn <- open "./data/vomits.db"

@@ -66,7 +66,11 @@ type Extension = Text
 
 -- Creates a folder of the irc channel and a user inside of it
 createUsrFldr :: PrivMsg -> IO ()
-createUsrFldr = createDirectoryIfMissing True . getUsrFldr
+createUsrFldr msg = do
+  exists <- doesDirectoryExist . getUsrFldr $ msg
+  unless exists $ do
+    createDirectoryIfMissing True . getUsrFldr $ msg
+    addUser (T.unpack . msgNick $ msg) (T.unpack . msgChan $ msg)
 
 --appends the log file for posted links for the user
 appendLog :: PrivMsg -> Text -> IO ()
