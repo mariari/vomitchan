@@ -40,6 +40,9 @@ instance FromRow DBUser where
 instance FromRow DBVomit where
   fromRow = DBVomit <$> field <*> field <*> field <*> field <*> field
 
+ifEmpty :: [a] -> b -> (a -> b) -> b
+ifEmpty (x:_) _ f = f x
+ifEmpty [] def _  = def
 
 addUser :: Username -> Channel -> IO ()
 addUser user chan = withConnection "./data/vomits.db" $
@@ -56,14 +59,14 @@ updateLink filepath link = withConnection "./data/vomits.db" $
 getLink :: String -> IO (Maybe String)
 getLink filepath = withConnection "./data/vomits.db" $ \conn -> do
   vom <- queryNamed conn "SELECT * FROM vomits WHERE filepath=:path LIMIT 1;" [":path" := filepath] :: IO [DBVomit]
-  return . vomitLink . head $ vom
+  return $ ifEmpty vom Nothing vomitLink
 
 getRandomVomitPath :: Username-> Channel-> IO String
 getRandomVomitPath user chan = withConnection "./data/vomits.db" $ \conn -> do
   vom  <- queryNamed conn "SELECT * FROM vomits WHERE user_id=(SELECT id FROM user WHERE username=:uname AND channel_id=(SELECT id FROM channels WHERE name=:cname)) ORDER BY RANDOM() LIMIT 1;" [":uname" := user, ":cname" := chan] :: IO [DBVomit]
-  return . vomitPath . head $ vom
+  return $ ifEmpty vom "" vomitPath
 
 getRouletteVomit :: Channel -> IO String
 getRouletteVomit chan = withConnection "./data/vomits.db" $ \conn -> do
   vom  <- queryNamed conn "SELECT * FROM vomits WHERE user_id=(SELECT id FROM user WHERE channel_id=(SELECT id FROM channels WHERE name=:cname) AND quantity_of_vomits>=1 ORDER BY RANDOM() LIMIT 1) ORDER BY RANDOM() LIMIT 1;" [":cname" := chan] :: IO [DBVomit]
-  return . vomitPath . head $ vom
+  return $ ifEmpty vom "" vomitPath

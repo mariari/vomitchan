@@ -233,7 +233,7 @@ cmdVomit = do
 
         randLink
           | _dream state = do
-              filepath <- getRandomVomitPath (T.unpack $ msgNick msg) (T.unpack $ msgChan msg)
+              filepath <- getRandomVomitPath (T.unpack $ msgNick newUsr) (T.unpack $ msgChan msg)
               fileCheck (Just filepath)
           | otherwise = return ""
 
