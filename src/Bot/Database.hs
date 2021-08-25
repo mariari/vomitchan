@@ -2,9 +2,11 @@
 module Bot.Database(addUser
                    ,addVomit
                    ,updateLink
+                   ,updateUserQuantityOfVomits
                    ,getLink
                    ,getRandomVomitPath
-                   ,getRouletteVomit) where
+                   ,getRouletteVomit
+                   ,getUserQuantityOfVomits) where
 
 import Control.Applicative
 import Database.SQLite.Simple
@@ -55,6 +57,15 @@ addVomit nick chan md5 filepath = withConnection "./data/vomits.db" $
 updateLink :: String -> String -> IO ()
 updateLink filepath link = withConnection "./data/vomits.db" $
   \conn -> executeNamed conn "UPDATE vomits SET link=:link WHERE filepath=:path" [":link" := link, ":path" := filepath]
+
+updateUserQuantityOfVomits :: Username -> Channel -> Int -> IO ()
+updateUserQuantityOfVomits user chan new = withConnection "./data/vomits.db" $
+  \conn -> executeNamed conn "UPDATE user SET quantity_of_vomits=:voms WHERE username=:uname AND channel_id=(SELECT id FROM channels WHERE name=:cname);" [":voms" := new, ":uname" := user, ":cname" := chan]
+
+getUserQuantityOfVomits :: Username -> Channel -> IO Int
+getUserQuantityOfVomits username chan = withConnection "./data/vomits.db" $ \conn -> do
+  user <- queryNamed conn "SELECT * FROM user WHERE username=:uname AND channel_id=(SELECT id FROM channels WHERE name=:cname) LIMIT 1;" [":uname" := username, ":cname" := chan] :: IO [DBUser]
+  return $ ifEmpty user 0 userQuantityVomit
 
 getLink :: String -> IO (Maybe String)
 getLink filepath = withConnection "./data/vomits.db" $ \conn -> do

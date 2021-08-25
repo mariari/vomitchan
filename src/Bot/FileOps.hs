@@ -10,7 +10,8 @@ module Bot.FileOps (
   getUsrFldrT,
   dwnUsrFileExtension,
   getRandomUsrFldr,
-  pathFldrNoLog
+  pathFldrNoLog,
+  cacheUploader
 ) where
 --- IMPORTS -----------------------------------------------------------------------------------
 import qualified Data.Text          as T
@@ -91,7 +92,10 @@ dwnUsrFileExtension msg url extension = do
          <> " && curl -fL --max-filesize 104857600 --range 0-104857600 -o "
          <> uniqueURL <> " " <> url') empty
   (_, md5) <- TB.shellStrict (fold ["md5sum ", filepath, " | cut -d ' ' -f 1"]) empty
-  liftIO $ addVomit (T.unpack . msgNick $ msg) (T.unpack . msgChan $ msg) (T.unpack . TE.decodeUtf8 $ md5) (T.unpack filepath)
+  liftIO $ do
+    addVomit (T.unpack . msgNick $ msg) (T.unpack . msgChan $ msg) (T.unpack . TE.decodeUtf8 $ md5) (T.unpack filepath)
+    quantity <- getUserQuantityOfVomits (T.unpack . msgNick $ msg) (T.unpack . msgChan $ msg)
+    updateUserQuantityOfVomits (T.unpack . msgNick $ msg) (T.unpack . msgChan $ msg) (quantity + 1)
   return ret
 
 -- | 'currentDate' - gets the current unix time stamp
@@ -152,6 +156,7 @@ cacheUploader file = do
       (_, msg) <-
         TB.shellStrict
           (fold ["curl"
+                ," --head "
                 ," -s "
                 ," -o "
                 ," /dev/null "
