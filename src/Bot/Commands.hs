@@ -12,6 +12,7 @@ import           Bot.StateType
 import           Bot.Misc
 import           Bot.EffType
 import           Bot.NetworkType
+import           Bot.Database
 import qualified Bot.Modifier as Modifier
 
 import Data.Char (chr)
@@ -180,14 +181,13 @@ cmdRoulette = do
 
         randLink
           | _dream state = do
-              files <- pathFldrNoLog  usrFldr
-              i     <- randomRIO (0, length files - 1)
-              fileCheck (files ^? ix i)
-          | otherwise = return ""
+              filepath <- getRouletteVomit (T.unpack $ msgChan msg)
+              fileCheck (Just filepath)
+          | otherwise    = return ""
 
         -- checks if there is a file to upload!
         fileCheck :: Maybe String -> IO T.Text
-        fileCheck = maybe (return "") (upUsrFile . ((T.pack usrFldr) <>) . T.pack)
+        fileCheck = maybe (return "") (upUsrFile . T.pack)
 
         randApply numLength randSeed =
           withUnitM (Modifier.effText (T.pack (randVom numLength randSeed)))
@@ -233,14 +233,13 @@ cmdVomit = do
 
         randLink
           | _dream state = do
-              files <- usrFldrNoLog newUsr
-              i     <- randomRIO (0, length files - 1)
-              fileCheck (files ^? ix i)
+              filepath <- getRandomVomitPath (T.unpack $ msgNick msg) (T.unpack $ msgChan msg)
+              fileCheck (Just filepath)
           | otherwise = return ""
 
         -- checks if there is a file to upload!
         fileCheck :: Maybe String -> IO T.Text
-        fileCheck = maybe (return "") (upUsrFile . (getUsrFldrT newUsr <>) . T.pack)
+        fileCheck = maybe (return "") (upUsrFile . T.pack)
 
         randApply numLength randSeed =
           withUnitM (Modifier.effText (T.pack (randVom numLength randSeed)))

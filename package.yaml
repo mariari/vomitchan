@@ -32,6 +32,7 @@ dependencies:
   - hashable
   - attoparsec
   - aeson
+  - sqlite-simple
   #########################
   # needed for get requests
   #########################
@@ -68,3 +69,4 @@ executables:
       - stm-containers
       - list-t
       - hashable
+      - sqlite-simple

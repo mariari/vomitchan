@@ -31,6 +31,7 @@ import           Turtle             hiding (FilePath, fold)
 import           Data.List
 
 import Bot.MessageType
+import Bot.Database
 import Bot.Misc (randElemList)
 
 -- TODO:: Instead of working off PrivMsg, work off UserI and Chan/Target instead!
@@ -79,11 +80,15 @@ dwnUsrFileExtension :: MonadIO io => PrivMsg -> Text -> Extension -> io ExitCode
 dwnUsrFileExtension msg url extension = do
   uniqueURL <- uniqueURL url extension
   let url' = escapeUrl url
-  shell ("cd "
+  let filepath = escapeNick (getUsrFldrT msg) <> uniqueURL
+  ret <- shell ("cd "
          -- escapeNick fixes bash errors like cd [czar]
          <> escapeNick (getUsrFldrT msg)
          <> " && curl -fL --max-filesize 104857600 --range 0-104857600 -o "
          <> uniqueURL <> " " <> url') empty
+  (_, md5) <- TB.shellStrict (fold ["md5sum ", filepath, " | cut -d ' ' -f 1"]) empty
+  liftIO $ addVomit (T.unpack . msgNick $ msg) (T.unpack . msgChan $ msg) (T.unpack . TE.decodeUtf8 $ md5) (T.unpack filepath)
+  return ret
 
 -- | 'currentDate' - gets the current unix time stamp
 currentDate :: MonadIO m => m Text
@@ -124,7 +129,9 @@ escapeUrl = escape "&"
 upUsrFile :: (Alternative m, MonadIO m) => Text -> m Text
 upUsrFile t = do
   res <- lainUpload t <<|>> w1r3Upload t <<|>> ifyouWorkUpload t
-  pure (Maybe.fromMaybe "" res)
+  let link = (Maybe.fromMaybe "" res)
+  liftIO $ updateLink (T.unpack t) (T.unpack link)
+  pure link
 
 pomfUploader :: MonadIO m => T.Text -> m (Maybe T.Text)
 pomfUploader file = do
