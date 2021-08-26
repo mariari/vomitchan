@@ -151,6 +151,7 @@ cacheUploader file = do
     isOK "200" link = Just link
     isOK _     _    = Nothing
 
+    checkValidity ""   = return Nothing
     checkValidity link = do
       (_, msg) <-
         TB.shellStrict
