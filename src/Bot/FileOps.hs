@@ -133,7 +133,8 @@ escapeUrl = escape "&"
     Just v -> pure (Just v)
 
 upUsrFile :: (Alternative m, MonadIO m) => Text -> m Text
-upUsrFile t = do
+upUsrFile "" = pure ""
+upUsrFile t  = do
   res <- cacheUploader t <<|>> lainUpload t <<|>> w1r3Upload t <<|>> ifyouWorkUpload t
   let link = (Maybe.fromMaybe "" res)
   liftIO $ updateLink (T.unpack t) (T.unpack link)
