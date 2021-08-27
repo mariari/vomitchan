@@ -10,7 +10,8 @@ module Bot.FileOps (
   getUsrFldrT,
   dwnUsrFileExtension,
   getRandomUsrFldr,
-  pathFldrNoLog
+  pathFldrNoLog,
+  shredFile
 ) where
 --- IMPORTS -----------------------------------------------------------------------------------
 import qualified Data.Text          as T
@@ -79,6 +80,9 @@ appendLog msg = T.appendFile (getUsrFldr msg <> "Links.log")
 -- appends an error log file for whatever command tripped it
 appendError :: String -> BS.ByteString -> IO ()
 appendError err txt = T.appendFile "./data/errors.txt" (T.pack err <> " \n" <> TE.decodeUtf8 txt)
+
+shredFile :: FilePath -> IO ()
+shredFile path = procStrict "shred" ["-uzn", "64", T.pack path] empty >> return ()
 
 dwnUsrFileExtension :: MonadIO io => PrivMsg -> Text -> Extension -> io ExitCode
 dwnUsrFileExtension msg url extension = do

@@ -61,7 +61,8 @@ cmdListImp = [(cmdVomit,     ["*vomits*"]       , effectTextRandom, Just "<someo
              ,(cmdFleecy,    ["*step*"]         , effectText      , Nothing)
              ,(cmdYuki,      ["*yuki*"]         , effectText      , Nothing)
              ,(cmdLewds,     [".lewd"]          , effectTextRandom, Just "<someone>")
-             ,(cmdEightBall, [".8ball"]         , effectText      , Nothing)]
+             ,(cmdEightBall, [".8ball"]         , effectText      , Nothing)
+             ,(cmdNukeMD5,   ["*nuke*"]         , const pure      , Nothing)]
 
 --TODO Fix this fucking hack
 cmdListHelp :: [(T.Text, Maybe T.Text)]
@@ -129,6 +130,25 @@ cmdHelpText = fold (createHelp (head cmdListHelp) : (fmap createHelps $ drop 1 c
 
 cmdHelp :: (Cmd m, Monad m') => ContFuncPure m m'
 cmdHelp = noticeMsgPlain ("Commands: " <> cmdHelpText)
+
+cmdNukeMD5 :: CmdImp m => m (Effect m -> m Func)
+cmdNukeMD5 = do
+  info <- ask
+  shouldDelete info
+
+  where
+    shouldDelete info
+      | not (isAdmin info) = noticeMsgPlain "Not admin"
+      | isSnd words        = nukeMD5 (T.unpack md5)
+      | otherwise          = noticeMsgPlain "something went wrong"
+      where
+        words = wordMsg . message $ info
+        md5   = words !! 1
+
+        nukeMD5 md5 = do
+          files <- liftIO $ nukeVomitByMD5 md5
+          _ <- liftIO $ traverse shredFile files
+          noticeMsgPlain ("Deleted " <> (T.pack . show . length $ files) <> " files")
 
 -- quit
 cmdQuit :: (Cmd m, Monad m') => ContFuncPure m m'

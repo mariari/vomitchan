@@ -7,7 +7,11 @@ module Bot.Database(addUser
                    ,getLink
                    ,getRandomVomitPath
                    ,getRouletteVomit
-                   ,getUserQuantityOfVomits) where
+                   ,nukeVomitByMD5
+                   ,nukeUserFromDb
+                   ,nukeVomitsOfUserFromDb
+                   ,getUserQuantityOfVomits
+                   ,getRandomVomit) where
 
 import Control.Applicative
 import Database.SQLite.Simple
@@ -74,6 +78,16 @@ updateLink filepath link = withConnection "./data/vomits.db" $
         "UPDATE vomits SET link=:link WHERE filepath=:path"
         [":link" := link, ":path" := filepath]
 
+decUserQuantityOfVomits :: Username -> Channel -> IO ()
+decUserQuantityOfVomits user chan = withConnection "./data/vomits.db" $
+  \conn ->
+    executeNamed
+        conn
+        "UPDATE user SET quantity_of_vomits = quantity_of_vomits - 1\
+        \ WHERE username=:uname\
+        \ AND channel_id=(SELECT id FROM channels WHERE name=:cname)"
+        [":uname" := user, ":cname" := chan]
+
 succUserQuantityOfVomits :: Username -> Channel -> IO ()
 succUserQuantityOfVomits user chan = withConnection "./data/vomits.db" $
   \conn ->
@@ -114,6 +128,18 @@ getLink filepath = withConnection "./data/vomits.db" $
                 [":path" := filepath] :: IO [DBVomit]
     return $ ifEmpty vom Nothing vomitLink
 
+getRandomVomit :: Username-> Channel-> IO [DBVomit]
+getRandomVomit user chan = withConnection "./data/vomits.db" $
+  \conn -> do
+    vom  <- queryNamed
+                conn
+                "SELECT * FROM vomits\
+                \ WHERE user_id=(SELECT id FROM user WHERE username=:uname\
+                \ AND channel_id=(SELECT id FROM channels WHERE name=:cname))\
+                \ ORDER BY RANDOM() LIMIT 1;"
+                [":uname" := user, ":cname" := chan] :: IO [DBVomit]
+    return vom
+
 getRandomVomitPath :: Username-> Channel-> IO String
 getRandomVomitPath user chan = withConnection "./data/vomits.db" $
   \conn -> do
@@ -138,3 +164,48 @@ getRouletteVomit chan = withConnection "./data/vomits.db" $
                 \ ORDER BY RANDOM() LIMIT 1;"
                 [":cname" := chan] :: IO [DBVomit]
     return $ ifEmpty vom "" vomitPath
+
+nukeVomitByMD5 :: String -> IO [String]
+nukeVomitByMD5 md5_orig = withConnection "./data/vomits.db" $
+  \conn -> do
+    voms <- queryNamed
+                conn
+                "SELECT * FROM vomits\
+                \ WHERE vomit_md5=:md5"
+                [":md5" := md5] :: IO [DBVomit]
+    _ <- executeNamed
+                conn
+                "DELETE FROM vomits\
+                \ WHERE vomit_md5=:md5"
+                [":md5" := md5]
+
+    _ <- traverse (fixVomitCount conn . vomitUserId) voms
+    return $ vomitPath <$> voms
+    where
+      md5 = md5_orig <> "\n"
+      fixVomitCount conn user_id = executeNamed
+                                        conn
+                                        "UPDATE user SET quantity_of_vomits = quantity_of_vomits - 1\
+                                        \ WHERE id=:user_id"
+                                        [":user_id" := user_id]
+
+nukeVomitsOfUserFromDb :: Username -> Channel -> IO ()
+nukeVomitsOfUserFromDb user chan = withConnection "./data/vomits.db" $
+  \conn ->
+    executeNamed
+        conn
+        "DELETE FROM vomits\
+        \ WHERE user_id=(SELECT id FROM user\
+        \ WHERE channel_id=(SELECT id FROM channels WHERE name=:cname)\
+        \ AND username=:uname);"
+        [":uname" := user, ":cname" := chan]
+
+nukeUserFromDb :: Username -> Channel -> IO ()
+nukeUserFromDb user chan = withConnection "./data/vomits.db" $
+  \conn ->
+    executeNamed
+        conn
+        "DELETE FROM user\
+        \ WHERE username=:uname\
+        \ AND channel_id=(SELECT id FROM channels WHERE name=:cname);"
+        [":uname" := user, ":cname" := chan]
