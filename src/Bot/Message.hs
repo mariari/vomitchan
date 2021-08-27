@@ -67,9 +67,9 @@ respond s _    (Left err)   _erver _tate _ _manager =
   appendError err s >> print err >> return NoResponse
 respond _ allS (Right priv) server state net manager = f priv
   where
-    f (PRIVMSG priv)     = runReaderT (allLogsM manager >> runCmd) (information priv)
-    f (NOTICE priv)      = processNotice priv (runReaderT (allLogsM manager >> runCmd) (information priv))
-    f (TOPICCHANGE priv) = NoResponse <$ runReaderT (allLogsM manager) (information priv)
+    f (PRIVMSG priv)     = runReaderT (allLogsM manager (information priv) >> runCmd) (information priv)
+    f (NOTICE priv)      = processNotice priv (runReaderT (allLogsM manager (information priv)>> runCmd) (information priv))
+    f (TOPICCHANGE priv) = NoResponse <$ runReaderT (allLogsM manager (information priv)) (information priv)
     f (PING (Ping s))    = return $ Response ("PONG", [Modifier.effNonModifiable s])
     f _                  = return NoResponse
 
@@ -77,8 +77,8 @@ respond _ allS (Right priv) server state net manager = f priv
 
 --- LOGGING -----------------------------------------------------------------------------------
 
-allLogsM :: CmdImp m => Client.Manager -> m ()
-allLogsM mnger = traverse_ (toReaderImp . (. message)) [cmdFldr, cmdLog, cmdLogFile mnger]
+allLogsM :: CmdImp m => Client.Manager -> InfoPriv -> m ()
+allLogsM mnger info = traverse_ (toReaderImp . (. message)) [cmdFldr, cmdLog, cmdLogFile mnger info]
 
 -- Logs any links posted and appends them to the users .log file
 cmdLog :: PrivMsg -> IO ()
@@ -88,17 +88,17 @@ cmdLog = traverse_ . appendLog <*> linLn
 
 
 -- Downloads any file and saves it to the user folder
-cmdLogFile :: Client.Manager -> PrivMsg -> IO ()
-cmdLogFile manager = traverse_ . dwnfile (Just manager) <*> allImg
+cmdLogFile :: Client.Manager -> InfoPriv -> PrivMsg -> IO ()
+cmdLogFile manager info = traverse_ . dwnfile (Just manager) info <*> allImg
   where
     allImg = allLinks
 
-dwnfile :: MonadIO m => Maybe Client.Manager -> PrivMsg -> Text -> m ()
-dwnfile manager msg link = do
+dwnfile :: MonadIO m => Maybe Client.Manager -> InfoPriv -> PrivMsg -> Text -> m ()
+dwnfile manager info msg link = do
   extension <- getFileType link manager
   case extension of
     Nothing -> pure ()
-    Just ex -> () <$ dwnUsrFileExtension msg link ex
+    Just ex -> () <$ dwnUsrFileExtension info msg link ex
 
 cmdFldr :: PrivMsg -> IO ()
 cmdFldr = createUsrFldr

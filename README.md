@@ -67,6 +67,7 @@ This file should look like the following:
       , "netPass"   : "PASS"
       , "netAdmins" : ["mariari"]
       , "netChans"  : ["#hardfought", "#em.slashem.me", "#Haskell"]
+      , "netBans"   : []
       , "netState"  : [["#hardfought", {"dream"  : true,
                                        "mute"   : false,
                                        "fleecy" : false,
@@ -84,6 +85,7 @@ This file should look like the following:
       , "netPass"   : ""
       , "netAdmins" : ["mariari"]
       , "netChans"  : ["#bots", "#programming"]
+      , "netBans"   : ["4ed600d4c9f69bcaf14540e887c75bbe"]
       , "netState"  : []
     }
 ]

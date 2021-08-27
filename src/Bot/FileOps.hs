@@ -26,6 +26,7 @@ import qualified Data.Aeson.TH      as TH
 import           GHC.Generics
 import           System.Random
 import           Control.Monad
+import           System.Exit
 
 import           System.Directory
 import           Turtle             hiding (FilePath, fold)
@@ -33,6 +34,7 @@ import           Data.List
 
 import Bot.MessageType
 import Bot.Database
+import Bot.NetworkType
 import Bot.Misc (randElemList)
 
 -- TODO:: Instead of working off PrivMsg, work off UserI and Chan/Target instead!
@@ -84,8 +86,12 @@ appendError err txt = T.appendFile "./data/errors.txt" (T.pack err <> " \n" <> T
 shredFile :: FilePath -> IO ()
 shredFile path = procStrict "shred" ["-uzn", "64", T.pack path] empty >> return ()
 
-dwnUsrFileExtension :: MonadIO io => PrivMsg -> Text -> Extension -> io ExitCode
-dwnUsrFileExtension msg url extension = do
+-- | check if file is network banned
+isBanned :: InfoPriv -> MD5 -> Bool
+isBanned info md5 = md5 `elem` (netBans . network $ info)
+
+dwnUsrFileExtension :: MonadIO io => InfoPriv -> PrivMsg -> Text -> Extension -> io ExitCode
+dwnUsrFileExtension info msg url extension = do
   uniqueURL <- uniqueURL url extension
   let url' = escapeUrl url
   let filepath = escapeNick (getUsrFldrT msg) <> uniqueURL
@@ -95,10 +101,16 @@ dwnUsrFileExtension msg url extension = do
          <> " && curl -fL --max-filesize 104857600 --range 0-104857600 -o "
          <> uniqueURL <> " " <> url') empty
   (_, md5) <- TB.shellStrict (fold ["md5sum ", filepath, " | cut -d ' ' -f 1"]) empty
-  liftIO $ do
-    addVomit (T.unpack . msgNick $ msg) (T.unpack . msgChan $ msg) (T.unpack . TE.decodeUtf8 $ md5) (T.unpack filepath)
-    succUserQuantityOfVomits (T.unpack . msgNick $ msg) (T.unpack . msgChan $ msg)
-  return ret
+  liftIO $ ifBanned (T.unpack filepath) (T.stripEnd . TE.decodeUtf8 $ md5) $ do
+    liftIO $ do
+      addVomit (T.unpack . msgNick $ msg) (T.unpack . msgChan $ msg) (T.unpack . TE.decodeUtf8 $ md5) (T.unpack filepath)
+      succUserQuantityOfVomits (T.unpack . msgNick $ msg) (T.unpack . msgChan $ msg)
+    return ret
+
+  where
+    ifBanned filepath md5 cont
+      | isBanned info md5 = shredFile filepath >> liftIO exitSuccess
+      | otherwise         = cont
 
 -- | 'currentDate' - gets the current unix time stamp
 currentDate :: MonadIO m => m Text
