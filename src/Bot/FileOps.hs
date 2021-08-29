@@ -14,19 +14,25 @@ module Bot.FileOps (
   shredFile
 ) where
 --- IMPORTS -----------------------------------------------------------------------------------
-import qualified Data.Text          as T
-import qualified Turtle.Bytes       as TB
-import qualified Data.Text.IO       as T
-import qualified Data.ByteString    as BS
-import qualified Data.Text.Encoding as TE
-import qualified Data.Maybe         as Maybe
-import           Data.Foldable     (fold)
-import qualified Data.Aeson         as JSON
-import qualified Data.Aeson.TH      as TH
+import qualified Data.Text                             as T
+import qualified Turtle.Bytes                          as TB
+import qualified Data.Text.IO                          as T
+import qualified Data.ByteString                       as BS
+import qualified Data.ByteString.Lazy                  as LBS
+import qualified Data.Text.Encoding                    as TE
+import qualified Data.Maybe                            as Maybe
+import           Control.Monad.Catch
+import           Data.Foldable                         (fold)
+import qualified Data.Aeson                            as JSON
+import qualified Data.Aeson.TH                         as TH
 import           GHC.Generics
 import           System.Random
 import           Control.Monad
 import           System.Exit
+import           Network.HTTP.Types.Status
+import qualified Network.HTTP.Client                   as H
+import qualified Network.HTTP.Client.TLS               as HT
+import qualified Network.HTTP.Client.MultipartFormData as MFD
 
 import           System.Directory
 import           Turtle             hiding (FilePath, fold)
@@ -40,8 +46,7 @@ import Bot.Misc (randElemList)
 -- TODO:: Instead of working off PrivMsg, work off UserI and Chan/Target instead!
 
 data PomfFormat
-  = Pomf {
-    success :: Bool,
+  = Pomf {success :: Bool,
     files :: [FileFormat]
   }
   | Fail {
@@ -151,7 +156,7 @@ escapeComma = escape ","
     Nothing -> y
     Just v -> pure (Just v)
 
-upUsrFile :: (Alternative m, MonadIO m) => Text -> m Text
+upUsrFile :: (Alternative m, MonadIO m, MonadThrow m) => Text -> m Text
 upUsrFile "" = pure ""
 upUsrFile t  = do
   res <- cacheUploader t <<|>> lainUpload t <<|>> w1r3Upload t <<|>> ifyouWorkUpload t
@@ -163,55 +168,49 @@ cacheUploader :: MonadIO m => T.Text -> m (Maybe T.Text)
 cacheUploader file = do
   cachedLink <- liftIO $ getLink (T.unpack file)
   case cachedLink of
-    (Just link) -> checkValidity (T.pack link)
+    (Just link) -> checkValidity link
     Nothing     -> return Nothing
   where
-    isOK :: BS.ByteString -> T.Text -> Maybe T.Text
-    isOK "200" link = Just link
-    isOK _     _    = Nothing
+    isOK status link
+      | status == status200 = Just link
+      | otherwise           = Nothing
 
     checkValidity ""   = return Nothing
-    checkValidity link = do
-      (_, msg) <-
-        TB.shellStrict
-          (fold ["curl"
-                ," --head "
-                ," -s "
-                ," -o "
-                ," /dev/null "
-                ," -w \"%{http_code}\" "
-                ,link
-                ])
-          empty
-      return $ isOK msg link
+    checkValidity link = liftIO $ do
+      manager <- liftIO $ H.newManager HT.tlsManagerSettings
+      req <- H.parseRequest $ "GET " <> link
+      response <- H.httpNoBody req manager
+      return $ isOK (H.responseStatus response) (T.pack link)
 
-pomfUploader :: MonadIO m => T.Text -> m (Maybe T.Text)
+multiPartFileUpload :: (MonadIO m, MonadThrow m) => T.Text -> String -> T.Text -> m (LBS.ByteString)
+multiPartFileUpload input link file = do
+  let part = MFD.partFileSource input (T.unpack file)
+  manager <- liftIO $ H.newManager HT.tlsManagerSettings
+  initialReq <- H.parseRequest link
+  req <- MFD.formDataBody [part] initialReq
+  msg <- liftIO $ H.httpLbs req manager
+  return $ H.responseBody msg
+
+pomfUploader :: (MonadIO m, MonadThrow m) => T.Text -> m (Maybe T.Text)
 pomfUploader file = do
-  (_, msg) <-
-    TB.shellStrict
-      (fold ["curl"
-            , " -F "
-            , "\"files[]=@"
-            , file
-            , "\" \"https://pomf.lain.la/upload.php\""
-            ])
-      empty
+  msg <- multiPartFileUpload "files[]" "https://pomf.lain.la/upload.php" file
   pure $
-    case JSON.decodeStrict msg of
+    case JSON.decodeStrict (LBS.toStrict msg) of
       Just Pomf {files = Fm {url} : _} -> Just url
       Just Pomf {files = []}           -> Nothing
       Nothing                          -> Nothing
       Just Fail {}                     -> Nothing
 
-lainUpload :: MonadIO m => T.Text -> m (Maybe T.Text)
+lainUpload :: (MonadIO m, MonadThrow m) => T.Text -> m (Maybe T.Text)
 lainUpload = fmap (fmap filesToF) . pomfUploader
   where
     filesToF = T.replace "/files/" "/f/"
 
-ifyouWorkUpload :: MonadIO m => T.Text -> m (Maybe T.Text)
+ifyouWorkUpload :: (MonadIO m, MonadThrow m) => T.Text -> m (Maybe T.Text)
 ifyouWorkUpload = pomfUploader
 
-w1r3Upload :: MonadIO m => T.Text -> m (Maybe T.Text)
+-- This site is down so w/e
+w1r3Upload :: (MonadIO m, MonadThrow m) => T.Text -> m (Maybe T.Text)
 w1r3Upload file = check <$> procStrict "curl" ["-F", "upload=@" <> file, "https://w1r3.net"] empty
   where check (_,n)
           | T.isPrefixOf "http" n = Just (T.init n)

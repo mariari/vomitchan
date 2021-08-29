@@ -40,6 +40,8 @@ dependencies:
   - modern-uri
   - http-client
   - http-client-tls
+  - http-types
+  - exceptions
 
 default-extensions:
   - OverloadedStrings
@@ -70,3 +72,4 @@ executables:
       - list-t
       - hashable
       - sqlite-simple
+      - exceptions
