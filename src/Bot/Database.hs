@@ -65,9 +65,10 @@ addVomit nick chan md5 filepath = withConnection "./data/vomits.db" $
   \conn ->
     executeNamed
         conn
-        "INSERT INTO vomits (filepath, vomit_md5, user_id)\
+        "INSERT INTO vomits (filepath, vomit_md5, user_id, link)\
         \ VALUES (:filepath, :md5, (SELECT id FROM user WHERE username=:uname\
-        \ AND channel_id=(SELECT id FROM channels where name=:cname)))"
+        \ AND channel_id=(SELECT id FROM channels where name=:cname)),\
+        \ (SELECT link FROM vomits WHERE vomit_md5=:md5))"
         [":filepath" := filepath, ":md5" := md5, ":uname" := nick, ":cname" := chan]
 
 updateLink :: String -> String -> IO ()
