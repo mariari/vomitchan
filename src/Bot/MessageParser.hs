@@ -4,15 +4,18 @@ module Bot.MessageParser where
 import Bot.MessageType
 import Bot.NetworkType
 
-import           Prelude hiding (takeWhile)
-import           Control.Applicative
-import           Data.Attoparsec.ByteString
-import           Data.Word
 import qualified Data.Text                        as T
 import qualified Data.ByteString                  as BS
 import qualified Data.Set                         as S
 import qualified Data.Attoparsec.ByteString.Char8 as C
 import qualified Data.Text.Encoding               as TE
+import           Data.Attoparsec.ByteString
+import           Data.Word
+
+import           Prelude hiding (takeWhile)
+
+import           Control.Applicative
+
 -- TYPES FOR PARSING---------------------------------------------------------------------------
 data Prefix = ServerName Server
             | PUser UserI

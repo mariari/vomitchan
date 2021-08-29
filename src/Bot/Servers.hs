@@ -1,6 +1,7 @@
 module Bot.Servers where
 
 import qualified Data.Map.Strict as M
+
 import           Control.Concurrent.MVar
 import           Control.Concurrent.STM.TVar
 import           Control.Concurrent.STM

@@ -15,29 +15,33 @@ module Bot.FileOps (
   shredFile
 ) where
 --- IMPORTS -----------------------------------------------------------------------------------
-import qualified Data.Text                             as T
-import qualified Turtle.Bytes                          as TB
-import qualified Data.Text.IO                          as T
-import qualified Data.ByteString                       as BS
-import qualified Data.ByteString.Lazy                  as LBS
-import qualified Data.Text.Encoding                    as TE
-import qualified Data.Maybe                            as Maybe
-import           Control.Monad.Catch
-import           Data.Foldable                         (fold)
-import qualified Data.Aeson                            as JSON
-import qualified Data.Aeson.TH                         as TH
-import           GHC.Generics
-import           System.Random
+import qualified Data.Text            as T
+import qualified Data.Text.IO         as T
+import qualified Data.Text.Encoding   as TE
+import qualified Data.ByteString      as BS
+import qualified Data.ByteString.Lazy as LBS
+import qualified Data.Maybe           as Maybe
+import qualified Data.Aeson           as JSON
+import qualified Data.Aeson.TH        as TH
+import           Data.List
+import           Data.Foldable        (fold)
+
+import           Turtle       hiding (FilePath, fold)
+import qualified Turtle.Bytes as TB
+
 import           Control.Monad
+import           Control.Monad.Catch
+
+import           GHC.Generics
+
+import           System.Random
 import           System.Exit
+import           System.Directory
+
 import           Network.HTTP.Types.Status
 import qualified Network.HTTP.Client                   as H
 import qualified Network.HTTP.Client.TLS               as HT
 import qualified Network.HTTP.Client.MultipartFormData as MFD
-
-import           System.Directory
-import           Turtle             hiding (FilePath, fold)
-import           Data.List
 
 import Bot.MessageType
 import Bot.Database

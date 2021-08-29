@@ -13,19 +13,19 @@ import           Bot.Misc
 import           Bot.EffType
 import           Bot.NetworkType
 import           Bot.Database
-import qualified Bot.Modifier as Modifier
+import qualified Bot.Modifier    as Modifier
 
-import Data.Char (chr)
+import Data.Char           (chr)
 import Control.Applicative ((<|>))
-import Data.Maybe (fromMaybe)
+import Data.Maybe          (fromMaybe)
 
-import qualified Data.Text as T
-import           Data.Foldable     (fold)
+import qualified Data.Text            as T
+import           Data.Foldable        (fold)
 import           System.Random
 import           Control.Lens
 import           Control.Monad.Reader
-import qualified Data.HashMap.Strict as M
-import qualified Data.Vector as V
+import qualified Data.HashMap.Strict  as M
+import qualified Data.Vector          as V
 
 --- TYPES -------------------------------------------------------------------------------------
 

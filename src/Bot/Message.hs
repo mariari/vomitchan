@@ -5,27 +5,31 @@ module Bot.Message (
   respond
 ) where
 --- IMPORTS -----------------------------------------------------------------------------------
-import           Control.Concurrent.STM
-import           Data.Foldable
-import           Control.Monad.Reader
-import           Turtle hiding (fold)
-import qualified Data.Text as T
-import qualified Data.ByteString as BS
+import qualified Data.Text          as T
 import qualified Data.Text.Encoding as TE
-import qualified Data.Set as S
-import qualified Network.HTTP.Req as Req
-import qualified Text.URI as URI
-import qualified Control.Exception as Exception
-import qualified Network.HTTP.Client as Client
+import qualified Data.ByteString    as BS
+import qualified Data.Set           as S
+import           Data.Foldable
 
+import qualified Control.Exception      as Exception
+import           Control.Concurrent.STM
+import           Control.Monad.Reader
+
+import qualified Text.URI as URI
+
+import qualified Network.HTTP.Client as Client
+import qualified Network.HTTP.Req    as Req
+
+import qualified Bot.Modifier      as Modifier
 import           Bot.Commands
 import           Bot.EffType
 import           Bot.FileOps
-import           Bot.MessageParser
 import           Bot.MessageType
 import           Bot.NetworkType
-import qualified Bot.Modifier as Modifier
 import           Bot.StateType
+
+import           Turtle hiding (fold)
+
 --- DATA --------------------------------------------------------------------------------------
 
 -- Lists the type of webpages that are logged

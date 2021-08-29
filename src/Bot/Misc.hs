@@ -1,8 +1,10 @@
 module Bot.Misc (bindM, randElems, randElem, randElemList) where
 
-import           Control.Monad (join)
+import Control.Monad (join)
+
 import qualified System.Random as Random
-import qualified Data.Vector   as V
+
+import qualified Data.Vector as V
 
 bindM :: (Applicative f, Monad m, Traversable m) => (a1 -> f (m a2)) -> m a1 -> f (m a2)
 bindM f a = join <$> traverse f a

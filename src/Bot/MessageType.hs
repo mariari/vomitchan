@@ -3,9 +3,11 @@
 --- MODULE DEFINITION -------------------------------------------------------------------------
 module Bot.MessageType where
 --- IMPORTS -----------------------------------------------------------------------------------
+import qualified Data.Text       as T
+import qualified Data.Map.Strict as M
+
 import qualified Network.HTTP.Client as Client
-import qualified Data.Text          as T
-import qualified Data.Map.Strict    as M
+
 import           Control.Concurrent.MVar
 import           Control.Concurrent.STM.TVar
 import           Control.Lens

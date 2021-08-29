@@ -2,6 +2,7 @@ module Bot.NetworkType where
 
 import qualified Data.Aeson as JSON
 import qualified Data.Text  as T
+
 import           GHC.Generics
 
 import Bot.StateType

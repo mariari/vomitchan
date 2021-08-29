@@ -14,15 +14,17 @@ import qualified Data.Aeson             as JSON
 import qualified Data.ByteString.Lazy   as BL
 import qualified Data.ByteString.Char8  as BC (putStrLn)
 import qualified Data.Text              as T
-import qualified Network.Connection     as C
 import qualified Data.ByteString.Base64 as BS64
 import           Data.Text.Encoding     (encodeUtf8)
 import           Data.Foldable          (traverse_)
-import           Control.Monad          (when)
-import           Control.Exception      (try, SomeException)
-import           Control.Concurrent.STM (atomically)
+
+import qualified Network.Connection as C
+
+import           Control.Monad           (when)
+import           Control.Exception       (try, SomeException)
+import           Control.Concurrent.STM  (atomically)
+import           Control.Concurrent      (threadDelay)
 import           Control.Concurrent.MVar
-import           Control.Concurrent(threadDelay)
 
 import Bot.MessageType
 import Bot.MessageParser

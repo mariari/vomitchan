@@ -5,26 +5,27 @@ module Bot.Socket (
   quitNetwork
 ) where
 --- IMPORTS -----------------------------------------------------------------------------------
-import Control.Monad.Loops (iterateUntil)
-import Control.Monad       (unless)
-import Data.Foldable       (fold)
-import Data.Text.Encoding  (encodeUtf8)
-import Control.Concurrent  (tryTakeMVar, forkIO, MVar, putMVar)
-import Control.Exception.Base (throw)
-
 import qualified Data.Text             as T
 import qualified Data.Text.IO          as T
-import qualified Network.Connection    as C
+import           Data.Text.Encoding    (encodeUtf8)
 import qualified Data.ByteString.Char8 as BS
-import qualified Network.HTTP.Client   as Client
-import qualified Text.Printf           as Printf
+import           Data.Foldable         (fold)
 
+import Control.Monad.Loops    (iterateUntil)
+import Control.Monad          (unless)
+import Control.Concurrent     (tryTakeMVar, forkIO, MVar, putMVar)
+import Control.Exception.Base (throw)
 
+import qualified Network.Connection   as C
+import qualified Network.HTTP.Client  as Client
+
+import qualified Text.Printf as Printf
+
+import qualified Bot.Message       as Message
+import qualified Bot.Modifier      as Modifier
 import           Bot.MessageParser
 import           Bot.MessageType
 import           Bot.NetworkType
-import qualified Bot.Message as Message
-import qualified Bot.Modifier as Modifier
 import           Bot.StateType
 --- FUNCTIONS ---------------------------------------------------------------------------------
 
