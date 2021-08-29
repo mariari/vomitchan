@@ -140,6 +140,9 @@ escape str =
 escapeUrl :: Text -> Text
 escapeUrl = escape "&"
 
+escapeComma :: Text -> Text
+escapeComma = escape ","
+
 -- this probably exists as <|> somehow, but it does not do the proper thing without the lift
 (<<|>>) :: Monad m => m (Maybe a) -> m (Maybe a) -> m (Maybe a)
 (<<|>>) x y = do
@@ -188,9 +191,9 @@ pomfUploader file = do
     TB.shellStrict
       (fold ["curl"
             , " -F "
-            , "files[]=@"
+            , "\"files[]=@"
             , file
-            , " https://pomf.lain.la/upload.php"
+            , "\" \"https://pomf.lain.la/upload.php\""
             ])
       empty
   pure $
