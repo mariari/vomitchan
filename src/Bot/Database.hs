@@ -72,10 +72,11 @@ addVomit nick chan md5 filepath = withConnection "./data/vomits.db" $
 
 updateLink :: String -> String -> IO ()
 updateLink filepath link = withConnection "./data/vomits.db" $
-  \conn ->
+  \conn -> do
     executeNamed
         conn
-        "UPDATE vomits SET link=:link WHERE filepath=:path"
+        "UPDATE vomits SET link=:link WHERE vomit_md5=(SELECT vomit_md5 FROM vomits\
+        \ WHERE filepath=:path)"
         [":link" := link, ":path" := filepath]
 
 decUserQuantityOfVomits :: Username -> Channel -> IO ()

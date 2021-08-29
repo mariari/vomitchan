@@ -169,22 +169,24 @@ upUsrFile manager t  = do
   liftIO $ updateLink (T.unpack t) (T.unpack link)
   pure link
 
-cacheUploader :: MonadIO m => T.Text -> H.Manager -> m (Maybe T.Text)
-cacheUploader file manager = do
+cacheUploader :: (MonadIO m, MonadCatch m) => T.Text -> H.Manager -> m (Maybe T.Text)
+cacheUploader file manager = catch work (\ (_ :: SomeException) -> pure Nothing)
+  where
+  work = do
   cachedLink <- liftIO $ getLink (T.unpack file)
   case cachedLink of
     (Just link) -> checkValidity link
     Nothing     -> return Nothing
-  where
-    isOK status link
-      | status == status200 = Just link
-      | otherwise           = Nothing
+    where
+      isOK status link
+        | status == status200 = Just link
+        | otherwise           = Nothing
 
-    checkValidity ""   = return Nothing
-    checkValidity link = liftIO $ do
-      req <- H.parseRequest $ "GET " <> link
-      response <- H.httpNoBody req manager
-      return $ isOK (H.responseStatus response) (T.pack link)
+      checkValidity ""   = return Nothing
+      checkValidity link = liftIO $ do
+        req <- H.parseRequest $ "GET " <> link
+        response <- H.httpNoBody req manager
+        return $ isOK (H.responseStatus response) (T.pack link)
 
 multiPartFileUpload :: (MonadIO m, MonadThrow m) => T.Text -> String -> T.Text -> H.Manager -> m (LBS.ByteString)
 multiPartFileUpload input link file manager = do
