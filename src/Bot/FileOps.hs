@@ -1,5 +1,6 @@
 {-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE NamedFieldPuns #-}
+{-# LANGUAGE ScopedTypeVariables #-}
 module Bot.FileOps (
   createUsrFldr,
   appendLog,
@@ -156,16 +157,16 @@ escapeComma = escape ","
     Nothing -> y
     Just v -> pure (Just v)
 
-upUsrFile :: (Alternative m, MonadIO m, MonadThrow m) => Text -> m Text
-upUsrFile "" = pure ""
-upUsrFile t  = do
-  res <- cacheUploader t <<|>> lainUpload t <<|>> w1r3Upload t <<|>> ifyouWorkUpload t
+upUsrFile :: (Alternative m, MonadIO m, MonadThrow m, MonadCatch m) => H.Manager -> Text -> m Text
+upUsrFile _ "" = pure ""
+upUsrFile manager t  = do
+  res <- cacheUploader t manager <<|>> lainUpload t manager <<|>> w1r3Upload t manager <<|>> ifyouWorkUpload t manager
   let link = (Maybe.fromMaybe "" res)
   liftIO $ updateLink (T.unpack t) (T.unpack link)
   pure link
 
-cacheUploader :: MonadIO m => T.Text -> m (Maybe T.Text)
-cacheUploader file = do
+cacheUploader :: MonadIO m => T.Text -> H.Manager -> m (Maybe T.Text)
+cacheUploader file manager = do
   cachedLink <- liftIO $ getLink (T.unpack file)
   case cachedLink of
     (Just link) -> checkValidity link
@@ -177,41 +178,41 @@ cacheUploader file = do
 
     checkValidity ""   = return Nothing
     checkValidity link = liftIO $ do
-      manager <- liftIO $ H.newManager HT.tlsManagerSettings
       req <- H.parseRequest $ "GET " <> link
       response <- H.httpNoBody req manager
       return $ isOK (H.responseStatus response) (T.pack link)
 
-multiPartFileUpload :: (MonadIO m, MonadThrow m) => T.Text -> String -> T.Text -> m (LBS.ByteString)
-multiPartFileUpload input link file = do
+multiPartFileUpload :: (MonadIO m, MonadThrow m) => T.Text -> String -> T.Text -> H.Manager -> m (LBS.ByteString)
+multiPartFileUpload input link file manager = do
   let part = MFD.partFileSource input (T.unpack file)
-  manager <- liftIO $ H.newManager HT.tlsManagerSettings
   initialReq <- H.parseRequest link
   req <- MFD.formDataBody [part] initialReq
   msg <- liftIO $ H.httpLbs req manager
   return $ H.responseBody msg
 
-pomfUploader :: (MonadIO m, MonadThrow m) => T.Text -> m (Maybe T.Text)
-pomfUploader file = do
-  msg <- multiPartFileUpload "files[]" "https://pomf.lain.la/upload.php" file
-  pure $
-    case JSON.decodeStrict (LBS.toStrict msg) of
-      Just Pomf {files = Fm {url} : _} -> Just url
-      Just Pomf {files = []}           -> Nothing
-      Nothing                          -> Nothing
-      Just Fail {}                     -> Nothing
+pomfUploader :: (MonadIO m, MonadThrow m, MonadCatch m) => T.Text -> H.Manager -> m (Maybe T.Text)
+pomfUploader file manager = catch work (\ (_ :: SomeException) -> pure Nothing)
+  where
+  work = do
+    msg <- multiPartFileUpload "files[]" "https://pomf.lain.la/upload.php" file manager
+    pure $
+      case JSON.decodeStrict (LBS.toStrict msg) of
+        Just Pomf {files = Fm {url} : _} -> Just url
+        Just Pomf {files = []}           -> Nothing
+        Nothing                          -> Nothing
+        Just Fail {}                     -> Nothing
 
-lainUpload :: (MonadIO m, MonadThrow m) => T.Text -> m (Maybe T.Text)
-lainUpload = fmap (fmap filesToF) . pomfUploader
+lainUpload :: (MonadIO m, MonadThrow m, MonadCatch m) => T.Text -> H.Manager -> m (Maybe T.Text)
+lainUpload t = fmap (fmap filesToF) . pomfUploader t
   where
     filesToF = T.replace "/files/" "/f/"
 
-ifyouWorkUpload :: (MonadIO m, MonadThrow m) => T.Text -> m (Maybe T.Text)
+ifyouWorkUpload :: (MonadIO m, MonadThrow m, MonadCatch m) => T.Text -> H.Manager -> m (Maybe T.Text)
 ifyouWorkUpload = pomfUploader
 
 -- This site is down so w/e
-w1r3Upload :: (MonadIO m, MonadThrow m) => T.Text -> m (Maybe T.Text)
-w1r3Upload file = check <$> procStrict "curl" ["-F", "upload=@" <> file, "https://w1r3.net"] empty
+w1r3Upload :: (MonadIO m, MonadThrow m) => T.Text -> H.Manager -> m (Maybe T.Text)
+w1r3Upload file _ = check <$> procStrict "curl" ["-F", "upload=@" <> file, "https://w1r3.net"] empty
   where check (_,n)
           | T.isPrefixOf "http" n = Just (T.init n)
           | otherwise             = Nothing

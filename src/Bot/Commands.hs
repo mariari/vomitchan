@@ -191,6 +191,7 @@ cmdYuki = modifyYukiState >> privMsgPlain "dame"
 cmdRoulette :: CmdImp m => m (Effect m -> m Func)
 cmdRoulette = do
   msg <- asks message
+  manager <- asks manager
   state <- getChanStateM
   pure $ \contEffect -> do
     usrFldr <- liftIO $ getRandomUsrFldr msg
@@ -207,7 +208,7 @@ cmdRoulette = do
 
         -- checks if there is a file to upload!
         fileCheck :: Maybe String -> IO T.Text
-        fileCheck = maybe (return "") (upUsrFile . T.pack)
+        fileCheck = maybe (return "") (upUsrFile manager . T.pack)
 
         randApply numLength randSeed =
           withUnitM (Modifier.effText (T.pack (randVom numLength randSeed)))
@@ -242,6 +243,7 @@ cmdRoulette = do
 cmdVomit :: CmdImp m => m (Effect m -> m Func)
 cmdVomit = do
   msg   <- asks message
+  manager <- asks manager
   state <- getChanStateM
   pure $ \contEffect -> do
     let
@@ -259,7 +261,7 @@ cmdVomit = do
 
         -- checks if there is a file to upload!
         fileCheck :: Maybe String -> IO T.Text
-        fileCheck = maybe (return "") (upUsrFile . T.pack)
+        fileCheck = maybe (return "") (upUsrFile manager . T.pack)
 
         randApply numLength randSeed =
           withUnitM (Modifier.effText (T.pack (randVom numLength randSeed)))

@@ -67,13 +67,14 @@ respond s _    (Left err)   _erver _tate _ _manager =
   appendError err s >> print err >> return NoResponse
 respond _ allS (Right priv) server state net manager = f priv
   where
-    f (PRIVMSG priv)     = runReaderT (allLogsM manager (information priv) >> runCmd) (information priv)
-    f (NOTICE priv)      = processNotice priv (runReaderT (allLogsM manager (information priv)>> runCmd) (information priv))
-    f (TOPICCHANGE priv) = NoResponse <$ runReaderT (allLogsM manager (information priv)) (information priv)
+    f (PRIVMSG priv)     = runReaderT (allLogsM manager (information priv manager) >> runCmd) (information priv manager)
+    f (NOTICE priv)      = processNotice priv (runReaderT (allLogsM manager (information priv manager)>> runCmd) (information priv manager))
+    f (TOPICCHANGE priv) = NoResponse <$ runReaderT (allLogsM manager (information priv manager)) (information priv manager)
     f (PING (Ping s))    = return $ Response ("PONG", [Modifier.effNonModifiable s])
     f _                  = return NoResponse
 
-    information priv = Info priv server state net allS
+    information :: PrivMsg -> Client.Manager -> InfoPriv
+    information priv mng = Info priv server state mng net allS
 
 --- LOGGING -----------------------------------------------------------------------------------
 
