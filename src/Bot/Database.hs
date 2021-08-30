@@ -1,4 +1,6 @@
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE ScopedTypeVariables #-}
+
 module Bot.Database(addUser
                    ,addVomit
                    ,updateLink
@@ -16,6 +18,10 @@ module Bot.Database(addUser
 import Control.Applicative
 import Database.SQLite.Simple
 import Database.SQLite.Simple.FromRow
+
+import Control.Concurrent
+import Control.Exception
+import Control.Monad.Catch hiding (catch)
 
 type Username = String
 type Channel  = String
@@ -37,6 +43,9 @@ data DBVomit = DBVomit { vomitId     :: Int
                        , vomitLink   :: Maybe String
                        } deriving (Show, Eq)
 
+data RetryException = RetryException deriving (Show)
+instance Exception RetryException
+
 -- TODO Derive somehow
 instance FromRow DBChannel where
   fromRow = DBChannel <$> field <*> field
@@ -47,12 +56,22 @@ instance FromRow DBUser where
 instance FromRow DBVomit where
   fromRow = DBVomit <$> field <*> field <*> field <*> field <*> field
 
+-- Helpers
 ifEmpty :: [a] -> b -> (a -> b) -> b
 ifEmpty (x:_) _ f = f x
 ifEmpty [] def _  = def
 
+retryGen :: Integer -> Integer -> IO a -> IO a
+retryGen n current action
+  | current >= n = throw RetryException
+  | otherwise     = action `catch` (\(e :: SomeException) -> threadDelay 10000 >> retryGen n (current + 1) action)
+
+retry :: IO a -> IO a
+retry = retryGen 5 0
+
+-- Db functions
 addUser :: Username -> Channel -> IO ()
-addUser user chan = withConnection "./data/vomits.db" $
+addUser user chan = retry . withConnection "./data/vomits.db" $
   \conn ->
     executeNamed
         conn
@@ -61,7 +80,7 @@ addUser user chan = withConnection "./data/vomits.db" $
         [":uname" := user, ":cname" := chan]
 
 addVomit :: Username -> Channel -> String -> String -> IO ()
-addVomit nick chan md5 filepath = withConnection "./data/vomits.db" $
+addVomit nick chan md5 filepath = retry . withConnection "./data/vomits.db" $
   \conn ->
     executeNamed
         conn
@@ -72,7 +91,7 @@ addVomit nick chan md5 filepath = withConnection "./data/vomits.db" $
         [":filepath" := filepath, ":md5" := md5, ":uname" := nick, ":cname" := chan]
 
 updateLink :: String -> String -> IO ()
-updateLink filepath link = withConnection "./data/vomits.db" $
+updateLink filepath link = retry . withConnection "./data/vomits.db" $
   \conn -> do
     executeNamed
         conn
@@ -81,7 +100,7 @@ updateLink filepath link = withConnection "./data/vomits.db" $
         [":link" := link, ":path" := filepath]
 
 decUserQuantityOfVomits :: Username -> Channel -> IO ()
-decUserQuantityOfVomits user chan = withConnection "./data/vomits.db" $
+decUserQuantityOfVomits user chan = retry . withConnection "./data/vomits.db" $
   \conn ->
     executeNamed
         conn
@@ -91,7 +110,7 @@ decUserQuantityOfVomits user chan = withConnection "./data/vomits.db" $
         [":uname" := user, ":cname" := chan]
 
 succUserQuantityOfVomits :: Username -> Channel -> IO ()
-succUserQuantityOfVomits user chan = withConnection "./data/vomits.db" $
+succUserQuantityOfVomits user chan = retry . withConnection "./data/vomits.db" $
   \conn ->
     executeNamed
         conn
@@ -101,7 +120,7 @@ succUserQuantityOfVomits user chan = withConnection "./data/vomits.db" $
         [":uname" := user, ":cname" := chan]
 
 updateUserQuantityOfVomits :: Username -> Channel -> Int -> IO ()
-updateUserQuantityOfVomits user chan new = withConnection "./data/vomits.db" $
+updateUserQuantityOfVomits user chan new = retry . withConnection "./data/vomits.db" $
   \conn ->
     executeNamed
         conn
@@ -111,7 +130,7 @@ updateUserQuantityOfVomits user chan new = withConnection "./data/vomits.db" $
         [":voms" := new, ":uname" := user, ":cname" := chan]
 
 getUserQuantityOfVomits :: Username -> Channel -> IO Int
-getUserQuantityOfVomits username chan = withConnection "./data/vomits.db" $
+getUserQuantityOfVomits username chan = retry . withConnection "./data/vomits.db" $
   \conn -> do
     user <- queryNamed
                 conn
@@ -122,7 +141,7 @@ getUserQuantityOfVomits username chan = withConnection "./data/vomits.db" $
     return $ ifEmpty user 0 userQuantityVomit
 
 getLink :: String -> IO (Maybe String)
-getLink filepath = withConnection "./data/vomits.db" $
+getLink filepath = retry . withConnection "./data/vomits.db" $
   \conn -> do
     vom <- queryNamed
                 conn
@@ -131,7 +150,7 @@ getLink filepath = withConnection "./data/vomits.db" $
     return $ ifEmpty vom Nothing vomitLink
 
 getRandomVomit :: Username-> Channel-> IO [DBVomit]
-getRandomVomit user chan = withConnection "./data/vomits.db" $
+getRandomVomit user chan = retry . withConnection "./data/vomits.db" $
   \conn -> do
     vom  <- queryNamed
                 conn
@@ -143,7 +162,7 @@ getRandomVomit user chan = withConnection "./data/vomits.db" $
     return vom
 
 getRandomVomitPath :: Username-> Channel-> IO String
-getRandomVomitPath user chan = withConnection "./data/vomits.db" $
+getRandomVomitPath user chan = retry . withConnection "./data/vomits.db" $
   \conn -> do
     vom  <- queryNamed
                 conn
@@ -155,7 +174,7 @@ getRandomVomitPath user chan = withConnection "./data/vomits.db" $
     return $ ifEmpty vom "" vomitPath
 
 getRouletteVomit :: Channel -> IO String
-getRouletteVomit chan = withConnection "./data/vomits.db" $
+getRouletteVomit chan = retry . withConnection "./data/vomits.db" $
   \conn -> do
     vom  <- queryNamed
                 conn
@@ -168,7 +187,7 @@ getRouletteVomit chan = withConnection "./data/vomits.db" $
     return $ ifEmpty vom "" vomitPath
 
 nukeVomitByMD5 :: String -> IO [String]
-nukeVomitByMD5 md5_orig = withConnection "./data/vomits.db" $
+nukeVomitByMD5 md5_orig = retry . withConnection "./data/vomits.db" $
   \conn -> do
     voms <- queryNamed
                 conn
@@ -192,7 +211,7 @@ nukeVomitByMD5 md5_orig = withConnection "./data/vomits.db" $
                                         [":user_id" := user_id]
 
 nukeVomitsOfUserFromDb :: Username -> Channel -> IO ()
-nukeVomitsOfUserFromDb user chan = withConnection "./data/vomits.db" $
+nukeVomitsOfUserFromDb user chan = retry . withConnection "./data/vomits.db" $
   \conn ->
     executeNamed
         conn
@@ -203,7 +222,7 @@ nukeVomitsOfUserFromDb user chan = withConnection "./data/vomits.db" $
         [":uname" := user, ":cname" := chan]
 
 nukeUserFromDb :: Username -> Channel -> IO ()
-nukeUserFromDb user chan = withConnection "./data/vomits.db" $
+nukeUserFromDb user chan = retry . withConnection "./data/vomits.db" $
   \conn ->
     executeNamed
         conn
