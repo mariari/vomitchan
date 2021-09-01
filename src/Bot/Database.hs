@@ -186,8 +186,15 @@ getRouletteVomit chan = retry . withConnection "./data/vomits.db" $
                 [":cname" := chan] :: IO [DBVomit]
     return $ ifEmpty vom "" vomitPath
 
+
 nukeVomitByMD5 :: String -> IO [String]
-nukeVomitByMD5 md5_orig = retry . withConnection "./data/vomits.db" $
+nukeVomitByMD5 md5 = do
+  withNewline <- nukeVomitByMD5Fix $ md5 <> "\n"
+  withoutNewline <- nukeVomitByMD5Fix md5
+  return $ withNewline <> withoutNewline
+
+nukeVomitByMD5Fix :: String -> IO [String]
+nukeVomitByMD5Fix md5 = retry . withConnection "./data/vomits.db" $
   \conn -> do
     voms <- queryNamed
                 conn
@@ -203,7 +210,6 @@ nukeVomitByMD5 md5_orig = retry . withConnection "./data/vomits.db" $
     _ <- traverse (fixVomitCount conn . vomitUserId) voms
     return $ vomitPath <$> voms
     where
-      md5 = md5_orig <> "\n"
       fixVomitCount conn user_id = executeNamed
                                         conn
                                         "UPDATE user SET quantity_of_vomits = quantity_of_vomits - 1\
