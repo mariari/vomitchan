@@ -15,13 +15,10 @@ module Bot.Database(addUser
                    ,getUserQuantityOfVomits
                    ,getRandomVomit) where
 
-import Control.Applicative
 import Database.SQLite.Simple
-import Database.SQLite.Simple.FromRow
 
 import Control.Concurrent
 import Control.Exception
-import Control.Monad.Catch hiding (catch)
 
 type Username = String
 type Channel  = String
@@ -64,7 +61,7 @@ ifEmpty [] def _  = def
 retryGen :: Integer -> Integer -> IO a -> IO a
 retryGen n current action
   | current >= n = throw RetryException
-  | otherwise     = action `catch` (\(e :: SomeException) -> threadDelay 10000 >> retryGen n (current + 1) action)
+  | otherwise     = action `catch` (\(_ :: SomeException) -> threadDelay 10000 >> retryGen n (current + 1) action)
 
 retry :: IO a -> IO a
 retry = retryGen 5 0
@@ -98,16 +95,6 @@ updateLink filepath link = retry . withConnection "./data/vomits.db" $
         "UPDATE vomits SET link=:link WHERE vomit_md5=(SELECT vomit_md5 FROM vomits\
         \ WHERE filepath=:path)"
         [":link" := link, ":path" := filepath]
-
-decUserQuantityOfVomits :: Username -> Channel -> IO ()
-decUserQuantityOfVomits user chan = retry . withConnection "./data/vomits.db" $
-  \conn ->
-    executeNamed
-        conn
-        "UPDATE user SET quantity_of_vomits = quantity_of_vomits - 1\
-        \ WHERE username=:uname\
-        \ AND channel_id=(SELECT id FROM channels WHERE name=:cname)"
-        [":uname" := user, ":cname" := chan]
 
 succUserQuantityOfVomits :: Username -> Channel -> IO ()
 succUserQuantityOfVomits user chan = retry . withConnection "./data/vomits.db" $
