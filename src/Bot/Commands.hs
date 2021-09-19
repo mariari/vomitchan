@@ -188,23 +188,19 @@ cmdFleecy = modifyFleecyState >> privMsgPlain "dame"
 cmdYuki :: CmdImp m => ContFunc m
 cmdYuki = modifyYukiState >> privMsgPlain "dame"
 
--- | Vomit but random
-cmdRoulette :: CmdImp m => m (Effect m -> m Func)
-cmdRoulette = do
+publishLink :: CmdImp m => String -> m (Effect m -> m Func)
+publishLink filepath = do
   msg <- asks message
   manager <- asks manager
   state <- getChanStateM
   pure $ \contEffect -> do
-    usrFldr <- liftIO $ getRandomUsrFldr msg
     let
         randVom numT numG
           | _fleecy state = replicate numT '♥'
           | otherwise     = take numT (randElems randRange numG)
 
         randLink
-          | _dream state = do
-              filepath <- getRouletteVomit (T.unpack $ msgChan msg)
-              fileCheck (Just filepath)
+          | _dream state = fileCheck (Just filepath)
           | otherwise    = return ""
 
         -- checks if there is a file to upload!
@@ -240,58 +236,20 @@ cmdRoulette = do
     toWrite <- randPrivMsg
     privMsg toWrite >>= ($ const pure)
 
+-- | Vomit but random
+cmdRoulette :: CmdImp m => m (Effect m -> m Func)
+cmdRoulette = do
+  msg      <- asks message
+  filepath <- liftIO $ getRouletteVomit (T.unpack $ msgChan msg)
+  publishLink filepath
+
 -- | Vomits up a colorful rainbow if vomitchan is asleep else it just vomits up red with no link
 cmdVomit :: CmdImp m => m (Effect m -> m Func)
 cmdVomit = do
-  msg   <- asks message
-  manager <- asks manager
-  state <- getChanStateM
-  pure $ \contEffect -> do
-    let
-        randVom numT numG
-          | _fleecy state = replicate numT '♥'
-          | otherwise     = take numT (randElems randRange numG)
-
-        newUsr = changeNickFstArg msg
-
-        randLink
-          | _dream state = do
-              filepath <- getRandomVomitPath (T.unpack $ msgNick newUsr) (T.unpack $ msgChan msg)
-              fileCheck (Just filepath)
-          | otherwise = return ""
-
-        -- checks if there is a file to upload!
-        fileCheck :: Maybe String -> IO T.Text
-        fileCheck = maybe (return "") (upUsrFile manager . T.pack)
-
-        randApply numLength randSeed =
-          withUnitM (Modifier.effText (T.pack (randVom numLength randSeed)))
-                    (contEffect (Extra {validEffects = effectList}))
-        randApplyLink link =
-          withUnitM (Modifier.effLink link)
-                    (contEffect (Extra {validEffects = effectListLink}))
-
-        nsfwStr txt
-          | "nsfw" `T.isSuffixOf` Modifier.unitToText txt =
-            withUnit
-              (Modifier.effText "nsfw")
-              (`withSet`
-                [Modifier.Reverse, Modifier.Color Modifier.LBlue, Modifier.Bold])
-          | otherwise = Modifier.effText ""
-
-        randPrivMsg = do
-          x               <- liftIO $ randomRIO (8,23)
-          randomList      <- liftIO (randoms <$> newStdGen :: IO [Int])
-          link            <- liftIO randLink >>= randApplyLink
-          startingVomText <- randApply x (head randomList)
-          endingVomText   <- randApply x (randomList !! 1)
-          return
-            $ nsfwStr link    : Modifier.effText " "
-            : startingVomText : Modifier.effText " "
-            : link            : Modifier.effText " "
-            : [endingVomText]
-    toWrite <- randPrivMsg
-    privMsg toWrite >>= ($ const pure)
+  msg      <- asks message
+  let newUsr = changeNickFstArg msg
+  filepath <- liftIO $ getRandomVomitPath (T.unpack $ msgNick newUsr) (T.unpack $ msgChan msg)
+  publishLink filepath
 
 -- Joins the first channel in the message if the user is an admin else do nothing
 cmdJoin :: (Cmd m, Monad m') => ContFuncPure m m'
