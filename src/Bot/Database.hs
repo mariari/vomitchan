@@ -13,7 +13,8 @@ module Bot.Database(addUser
                    ,nukeUserFromDb
                    ,nukeVomitsOfUserFromDb
                    ,getUserQuantityOfVomits
-                   ,getRandomVomit) where
+                   ,getRandomVomit
+                   ,genDb) where
 
 import Database.SQLite.Simple
 
@@ -67,6 +68,27 @@ retry :: IO a -> IO a
 retry = retryGen 5 0
 
 -- Db functions
+genDb :: IO ()
+genDb = withConnection "./data/vomits.db" $ \conn -> do
+  execute_ conn
+           "CREATE TABLE IF NOT EXISTS channels\
+           \ (id INTEGER PRIMARY KEY, name text);"
+  execute_ conn
+           "CREATE TABLE IF NOT EXISTS user\
+           \ (id INTEGER PRIMARY KEY,\
+           \  username text NOT NULL,\
+           \  channel_id INTEGER NOT NULL,\
+           \  quantity_of_vomits NOT NULL,\
+           \  FOREIGN KEY (channel_id) REFERENCES channels (id));"
+  execute_ conn
+           "CREATE TABLE IF NOT EXISTS vomits\
+           \ (id INTEGER PRIMARY KEY,\
+           \  filepath text NOT NULL,\
+           \  vomit_md5 text NOT NULL,\
+           \  user_id INTEGER NOT NULL,\
+           \  link text,\
+           \ FOREIGN KEY (user_id) REFERENCES user (id));"
+
 addUser :: Username -> Channel -> IO ()
 addUser user chan = retry . withConnection "./data/vomits.db" $
   \conn ->
