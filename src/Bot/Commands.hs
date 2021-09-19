@@ -1,4 +1,5 @@
 {-# LANGUAGE FlexibleContexts #-}
+
 --- MODULE DEFINITION -------------------------------------------------------------------------
 module Bot.Commands (
   runCmd,
@@ -62,9 +63,8 @@ cmdListImp = [(cmdVomit,     ["*vomits*"]       , effectTextRandom, Just "<someo
              ,(cmdYuki,      ["*yuki*"]         , effectText      , Nothing)
              ,(cmdLewds,     [".lewd"]          , effectTextRandom, Just "<someone>")
              ,(cmdEightBall, [".8ball"]         , effectText      , Nothing)
-             ,(cmdNukeMD5,   ["*nuke*"]         , const pure      , Nothing)]
+             ,(cmdNukeMD5,   ["*nuke*"]         , const pure      , Just "<md5>")]
 
---TODO Fix this fucking hack
 cmdListHelp :: [(T.Text, Maybe T.Text)]
 cmdListHelp = [(".bots"            , Nothing)
               ,(".source vomitchan", Nothing)

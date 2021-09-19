@@ -12,7 +12,8 @@ module Bot.FileOps (
   dwnUsrFileExtension,
   getRandomUsrFldr,
   pathFldrNoLog,
-  shredFile
+  shredFile,
+  nekoUpload
 ) where
 --- IMPORTS -----------------------------------------------------------------------------------
 import qualified Data.Text            as T
@@ -164,7 +165,7 @@ escapeComma = escape ","
 upUsrFile :: (Alternative m, MonadIO m, MonadThrow m, MonadCatch m) => H.Manager -> Text -> m Text
 upUsrFile _ "" = pure ""
 upUsrFile manager t  = do
-  res <- cacheUploader t manager <<|>> lainUpload t manager <<|>> w1r3Upload t manager <<|>> ifyouWorkUpload t manager
+  res <- cacheUploader t manager <<|>> lainUpload t manager <<|>> nekoUpload t manager <<|>> w1r3Upload t manager <<|>> ifyouWorkUpload t manager
   let link = (Maybe.fromMaybe "" res)
   liftIO $ updateLink (T.unpack t) (T.unpack link)
   pure link
@@ -196,11 +197,11 @@ multiPartFileUpload input link file manager = do
   msg <- liftIO $ H.httpLbs req manager
   return $ H.responseBody msg
 
-pomfUploader :: (MonadIO m, MonadThrow m, MonadCatch m) => T.Text -> H.Manager -> m (Maybe T.Text)
-pomfUploader file manager = catch work (\ (_ :: SomeException) -> pure Nothing)
+pomfUploader :: (MonadIO m, MonadThrow m, MonadCatch m) => T.Text -> String -> H.Manager -> m (Maybe T.Text)
+pomfUploader file url manager = catch work (\ (_ :: SomeException) -> pure Nothing)
   where
   work = do
-    msg <- multiPartFileUpload "files[]" "https://pomf.lain.la/upload.php" file manager
+    msg <- multiPartFileUpload "files[]" url file manager
     pure $
       case JSON.decodeStrict (LBS.toStrict msg) of
         Just Pomf {files = Fm {url} : _} -> Just url
@@ -208,13 +209,16 @@ pomfUploader file manager = catch work (\ (_ :: SomeException) -> pure Nothing)
         Nothing                          -> Nothing
         Just Fail {}                     -> Nothing
 
+nekoUpload :: (MonadIO m, MonadThrow m, MonadCatch m) => T.Text -> H.Manager -> m (Maybe T.Text)
+nekoUpload file = pomfUploader file "https://img.neko.airforce/upload.php"
+
 lainUpload :: (MonadIO m, MonadThrow m, MonadCatch m) => T.Text -> H.Manager -> m (Maybe T.Text)
-lainUpload t = fmap (fmap filesToF) . pomfUploader t
+lainUpload t = fmap (fmap filesToF) . pomfUploader t "https://pomf.lain.la/upload.php"
   where
     filesToF = T.replace "/files/" "/f/"
 
 ifyouWorkUpload :: (MonadIO m, MonadThrow m, MonadCatch m) => T.Text -> H.Manager -> m (Maybe T.Text)
-ifyouWorkUpload = pomfUploader
+ifyouWorkUpload = lainUpload
 
 -- This site is down so w/e
 w1r3Upload :: (MonadIO m, MonadThrow m) => T.Text -> H.Manager -> m (Maybe T.Text)
