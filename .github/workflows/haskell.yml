@@ -1,0 +1,14 @@
+on: [push]
+name: build
+jobs:
+  runhaskell:
+    name: Vomitchan
+    runs-on: ubuntu-latest # or macOS-latest, or windows-latest
+    steps:
+      - uses: actions/checkout@v2
+      - uses: actions/setup-haskell@v1.1
+        with:
+          ghc-version: '8.6.5' # Exact version of ghc to use
+          enable-stack: true
+          stack-version: 'latest'
+      - run: stack build
