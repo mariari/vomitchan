@@ -1,7 +1,6 @@
 {-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE ScopedTypeVariables #-}
-
 module Bot.FileOps (
   createUsrFldr,
   appendLog,
@@ -44,8 +43,6 @@ import           Network.HTTP.Types.Status
 import qualified Network.HTTP.Client                   as H
 import qualified Network.HTTP.Client.TLS               as HT
 import qualified Network.HTTP.Client.MultipartFormData as MFD
-
-import qualified Control.Concurrent.Async as C
 
 import Bot.MessageType
 import Bot.Database
@@ -158,18 +155,6 @@ escapeComma :: Text -> Text
 escapeComma = escape ","
 
 -- this probably exists as <|> somehow, but it does not do the proper thing without the lift
-concurrentlyFail :: IO (Maybe a) -> IO (Maybe a) -> IO (Maybe a)
-concurrentlyFail left right =
-  C.withAsync left $ \a ->
-  C.withAsync right $ \b ->
-  do
-    res <- C.waitEither a b
-    case res of
-      (Left Nothing)   -> C.wait b
-      (Left (Just x))  -> C.cancel b >> return (Just x)
-      (Right Nothing)  -> C.wait a
-      (Right (Just x)) -> C.cancel a >> return (Just x)
-
 (<<|>>) :: Monad m => m (Maybe a) -> m (Maybe a) -> m (Maybe a)
 (<<|>>) x y = do
   v <- x
@@ -180,16 +165,16 @@ concurrentlyFail left right =
 upUsrFile :: (Alternative m, MonadIO m, MonadThrow m, MonadCatch m) => H.Manager -> Text -> m Text
 upUsrFile _ "" = pure ""
 upUsrFile manager t  = do
-  res <- liftIO $ cacheUploader t manager `concurrentlyFail` lainUpload t manager `concurrentlyFail` nekoUpload t manager `concurrentlyFail` w1r3Upload t manager `concurrentlyFail` ifyouWorkUpload t manager
+  res <- cacheUploader t manager <<|>> lainUpload t manager <<|>> nekoUpload t manager <<|>> w1r3Upload t manager <<|>> ifyouWorkUpload t manager
   let link = (Maybe.fromMaybe "" res)
   liftIO $ updateLink (T.unpack t) (T.unpack link)
   pure link
 
-cacheUploader :: T.Text -> H.Manager -> IO (Maybe T.Text)
+cacheUploader :: (MonadIO m, MonadCatch m) => T.Text -> H.Manager -> m (Maybe T.Text)
 cacheUploader file manager = catch work (\ (_ :: SomeException) -> pure Nothing)
   where
   work = do
-    cachedLink <- getLink (T.unpack file)
+    cachedLink <- liftIO $ getLink (T.unpack file)
     case cachedLink of
       (Just link) -> checkValidity link
       Nothing     -> return Nothing
@@ -204,7 +189,7 @@ cacheUploader file manager = catch work (\ (_ :: SomeException) -> pure Nothing)
           response <- H.httpNoBody req manager
           return $ isOK (H.responseStatus response) (T.pack link)
 
-multiPartFileUpload :: T.Text -> String -> T.Text -> H.Manager -> IO (LBS.ByteString)
+multiPartFileUpload :: (MonadIO m, MonadThrow m) => T.Text -> String -> T.Text -> H.Manager -> m (LBS.ByteString)
 multiPartFileUpload input link file manager = do
   let part = MFD.partFileSource input (T.unpack file)
   initialReq <- H.parseRequest link
@@ -212,7 +197,7 @@ multiPartFileUpload input link file manager = do
   msg <- liftIO $ H.httpLbs req manager
   return $ H.responseBody msg
 
-pomfUploader :: T.Text -> String -> H.Manager -> IO (Maybe T.Text)
+pomfUploader :: (MonadIO m, MonadThrow m, MonadCatch m) => T.Text -> String -> H.Manager -> m (Maybe T.Text)
 pomfUploader file url manager = catch work (\ (_ :: SomeException) -> pure Nothing)
   where
   work = do
@@ -224,19 +209,19 @@ pomfUploader file url manager = catch work (\ (_ :: SomeException) -> pure Nothi
         Nothing                          -> Nothing
         Just Fail {}                     -> Nothing
 
-nekoUpload :: T.Text -> H.Manager -> IO (Maybe T.Text)
+nekoUpload :: (MonadIO m, MonadThrow m, MonadCatch m) => T.Text -> H.Manager -> m (Maybe T.Text)
 nekoUpload file = pomfUploader file "https://img.neko.airforce/upload.php"
 
-lainUpload :: T.Text -> H.Manager -> IO (Maybe T.Text)
+lainUpload :: (MonadIO m, MonadThrow m, MonadCatch m) => T.Text -> H.Manager -> m (Maybe T.Text)
 lainUpload t = fmap (fmap filesToF) . pomfUploader t "https://pomf.lain.la/upload.php"
   where
     filesToF = T.replace "/files/" "/f/"
 
-ifyouWorkUpload :: T.Text -> H.Manager -> IO (Maybe T.Text)
+ifyouWorkUpload :: (MonadIO m, MonadThrow m, MonadCatch m) => T.Text -> H.Manager -> m (Maybe T.Text)
 ifyouWorkUpload = lainUpload
 
 -- This site is down so w/e
-w1r3Upload :: T.Text -> H.Manager -> IO (Maybe T.Text)
+w1r3Upload :: (MonadIO m, MonadThrow m) => T.Text -> H.Manager -> m (Maybe T.Text)
 w1r3Upload file _ = check <$> procStrict "curl" ["-F", "upload=@" <> file, "https://w1r3.net"] empty
   where check (_,n)
           | T.isPrefixOf "http" n = Just (T.init n)
