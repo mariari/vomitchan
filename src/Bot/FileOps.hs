@@ -165,7 +165,11 @@ escapeComma = escape ","
 upUsrFile :: (Alternative m, MonadIO m, MonadThrow m, MonadCatch m) => H.Manager -> Text -> m Text
 upUsrFile _ "" = pure ""
 upUsrFile manager t  = do
-  res <- cacheUploader t manager <<|>> lainUpload t manager <<|>> nekoUpload t manager <<|>> w1r3Upload t manager <<|>> ifyouWorkUpload t manager
+  res <-  cacheUploader t manager
+    <<|>> lainUpload t manager
+    <<|>> nekoUpload t manager
+    <<|>> w1r3Upload t manager
+    <<|>> ifyouWorkUpload t manager
   let link = (Maybe.fromMaybe "" res)
   liftIO $ updateLink (T.unpack t) (T.unpack link)
   pure link
