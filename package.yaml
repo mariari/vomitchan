@@ -42,6 +42,7 @@ dependencies:
   - http-client-tls
   - http-types
   - exceptions
+  - async
 
 default-extensions:
   - OverloadedStrings
@@ -73,3 +74,4 @@ executables:
       - hashable
       - sqlite-simple
       - exceptions
+      - async
