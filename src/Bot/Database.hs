@@ -3,6 +3,7 @@
 
 module Bot.Database(addUser
                    ,addVomit
+                   ,addChannel
                    ,updateLink
                    ,updateUserQuantityOfVomits
                    ,succUserQuantityOfVomits
@@ -14,12 +15,23 @@ module Bot.Database(addUser
                    ,nukeVomitsOfUserFromDb
                    ,getUserQuantityOfVomits
                    ,getRandomVomit
-                   ,genDb) where
+                   ,genDb
+                   ,fixQuantityOfVomits) where
 
-import Database.SQLite.Simple
+import Database.SQLite.Simple hiding (fold)
 
 import Control.Concurrent
 import Control.Exception
+import Control.Monad
+
+import           Data.Foldable
+import qualified Data.Text          as T
+import qualified Data.Text.Encoding as TE
+
+import           Turtle       hiding (FilePath, fold)
+import qualified Turtle.Bytes as TB
+
+import qualified System.Directory as D
 
 type Username = String
 type Channel  = String
@@ -69,34 +81,84 @@ retry = retryGen 5 0
 
 -- Db functions
 genDb :: IO ()
-genDb = withConnection "./data/vomits.db" $ \conn -> do
-  execute_ conn
-           "CREATE TABLE IF NOT EXISTS channels\
-           \ (id INTEGER PRIMARY KEY, name text);"
-  execute_ conn
-           "CREATE TABLE IF NOT EXISTS user\
-           \ (id INTEGER PRIMARY KEY,\
-           \  username text NOT NULL,\
-           \  channel_id INTEGER NOT NULL,\
-           \  quantity_of_vomits NOT NULL,\
-           \  FOREIGN KEY (channel_id) REFERENCES channels (id));"
-  execute_ conn
-           "CREATE TABLE IF NOT EXISTS vomits\
-           \ (id INTEGER PRIMARY KEY,\
-           \  filepath text NOT NULL,\
-           \  vomit_md5 text NOT NULL,\
-           \  user_id INTEGER NOT NULL,\
-           \  link text,\
-           \ FOREIGN KEY (user_id) REFERENCES user (id));"
+genDb = do
+  dbExists <- D.doesFileExist "./data/vomits.db"
+  unless dbExists $ do
+    withConnection "./data/vomits.db" $ \conn -> do
+      execute_ conn
+        "CREATE TABLE IF NOT EXISTS channels\
+        \ (id INTEGER PRIMARY KEY, name text, UNIQUE(name));"
+      execute_ conn
+        "CREATE TABLE IF NOT EXISTS user\
+        \ (id INTEGER PRIMARY KEY,\
+        \  username text NOT NULL,\
+        \  channel_id INTEGER NOT NULL,\
+        \  quantity_of_vomits NOT NULL,\
+        \  FOREIGN KEY (channel_id) REFERENCES channels (id));"
+      execute_ conn
+        "CREATE TABLE IF NOT EXISTS vomits\
+        \ (id INTEGER PRIMARY KEY,\
+        \  filepath text NOT NULL,\
+        \  vomit_md5 text NOT NULL,\
+        \  user_id INTEGER NOT NULL,\
+        \  link text,\
+        \ FOREIGN KEY (user_id) REFERENCES user (id));"
+
+      directories <- D.listDirectory "./data/logs"
+      users_ <- traverse D.listDirectory (fmap ("./data/logs/" <>) directories)
+      let users = zip users_ directories
+      vomits <- traverse generator ((\(names, chan) -> (\name -> (name, chan, "./data/logs/" <> chan <> "/" <> name)) <$> names) =<< users)
+
+      _ <- traverse addChannel directories
+      _ <- traverse usersAdd users
+      _ <- traverse vomitAdd vomits
+      _ <- traverse fixQuantity vomits
+      return ()
+
+      where
+        usersAdd :: ([FilePath], FilePath) -> IO ()
+        usersAdd (xs, x) = traverse (flip addUser x) xs >> return ()
+
+        vomitAdd :: (FilePath, FilePath, [FilePath]) -> IO ()
+        vomitAdd (name, chan, paths) = do
+          traverse (\x -> do
+                       unless (x == "Links.log") $ do
+                         (_, md5) <- TB.shellStrict (fold ["md5sum ", T.pack x, " | cut -d ' ' -f 1"]) empty
+                         addVomit name chan (T.unpack . T.stripEnd . TE.decodeUtf8 $ md5) x
+                   ) paths >> return ()
+
+        fixQuantity :: (FilePath, FilePath, [FilePath]) -> IO ()
+        fixQuantity (name, chan, paths) = updateUserQuantityOfVomits name chan (length paths)
+
+        generator :: (FilePath, FilePath, FilePath) -> IO (FilePath, FilePath, [FilePath])
+        generator (name, chan, dir) = do
+          vomits <- D.listDirectory dir
+          return (name, chan, ((("./data/logs/" <> chan <> "/" <> name <> "/") <>) <$> vomits))
 
 addUser :: Username -> Channel -> IO ()
 addUser user chan = retry . withConnection "./data/vomits.db" $
-  \conn ->
+  \conn -> do
+    addChannel chan
     executeNamed
         conn
         "INSERT INTO user (username, channel_id, quantity_of_vomits)\
         \ VALUES (:uname, (SELECT id FROM channels WHERE name=:cname), 0)"
         [":uname" := user, ":cname" := chan]
+
+fixQuantityOfVomits :: IO ()
+fixQuantityOfVomits = retry . withConnection "./data/vomits.db" $
+  \conn ->
+    execute_
+        conn
+        "UPDATE user SET quantity_of_vomits=(SELECT COUNT(md5) FROM vomits WHERE user.id = vomit.id)"
+
+addChannel :: Channel -> IO ()
+addChannel chan = retry . withConnection "./data/vomits.db" $
+  \conn ->
+    executeNamed
+        conn
+        "INSERT OR IGNORE INTO channels (name) VALUES (:cname)"
+        [":cname" := chan]
 
 addVomit :: Username -> Channel -> String -> String -> IO ()
 addVomit nick chan md5 filepath = retry . withConnection "./data/vomits.db" $
