@@ -128,7 +128,8 @@ genDb = do
                    ) paths >> return ()
 
         fixQuantity :: (FilePath, FilePath, [FilePath]) -> IO ()
-        fixQuantity (name, chan, paths) = updateUserQuantityOfVomits name chan (length paths)
+        fixQuantity (name, chan, paths) = updateUserQuantityOfVomits name chan
+          (length . filter (not . T.isSuffixOf "Links.log") $ T.pack <$> paths)
 
         generator :: (FilePath, FilePath, FilePath) -> IO (FilePath, FilePath, [FilePath])
         generator (name, chan, dir) = do
