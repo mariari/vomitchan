@@ -123,7 +123,7 @@ genDb = do
         vomitAdd (name, chan, paths) = do
           traverse (\x -> do
                        unless (x == "Links.log") $ do
-                         (_, md5) <- TB.shellStrict (fold ["md5sum ", T.pack x, " | cut -d ' ' -f 1"]) empty
+                         (_, md5) <- TB.shellStrict (fold ["md5sum '", T.pack x, "' | cut -d ' ' -f 1"]) empty
                          addVomit name chan (T.unpack . T.stripEnd . TE.decodeUtf8 $ md5) x
                    ) paths >> return ()
 
