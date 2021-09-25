@@ -122,7 +122,7 @@ genDb = do
         vomitAdd :: (FilePath, FilePath, [FilePath]) -> IO ()
         vomitAdd (name, chan, paths) = do
           traverse (\x -> do
-                       unless (T.isSuffixOf "Links.log" (T.pack x)) $ do
+                       unless ("Links.log" `T.isSuffixOf` (T.pack x)) $ do
                          (_, md5) <- TB.shellStrict (fold ["md5sum '", T.pack x, "' | cut -d ' ' -f 1"]) empty
                          addVomit name chan (T.unpack . T.stripEnd . TE.decodeUtf8 $ md5) x
                    ) paths >> return ()
