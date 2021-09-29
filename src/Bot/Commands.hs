@@ -1,4 +1,5 @@
 {-# LANGUAGE FlexibleContexts #-}
+
 --- MODULE DEFINITION -------------------------------------------------------------------------
 module Bot.Commands (
   runCmd,
@@ -12,18 +13,21 @@ import           Bot.StateType
 import           Bot.Misc
 import           Bot.EffType
 import           Bot.NetworkType
-import qualified Bot.Modifier as Modifier
+import           Bot.Database
+import qualified Bot.Modifier    as Modifier
 
-import Data.Char (chr)
+import Data.Char           (chr)
 import Control.Applicative ((<|>))
-import Data.Maybe (fromMaybe)
+import Data.Maybe          (fromMaybe)
 
-import qualified Data.Text as T
+import qualified Data.Text            as T
+import           Data.Foldable        (fold)
 import           System.Random
 import           Control.Lens
 import           Control.Monad.Reader
-import qualified Data.HashMap.Strict as M
-import qualified Data.Vector as V
+import qualified Data.HashMap.Strict  as M
+import qualified Data.Vector          as V
+
 --- TYPES -------------------------------------------------------------------------------------
 
 data Message = Action Modifier.T | Message Modifier.T
@@ -40,34 +44,55 @@ effectList =
 --- DATA --------------------------------------------------------------------------------------
 
 -- list of all Pure functions
-cmdList :: (Cmd m, CmdImp m') => [(ContFuncPure m m', [T.Text], Effect m')]
-cmdList = [(cmdBots, [".bots", ".bot vomitchan"], effectText)
-          ,(cmdSrc,  [".source vomitchan"]      , effectText)
-          ,(cmdHelp, [".help vomitchan"]        , effectText)
-          ,(cmdQuit, [".quit"]                  , const pure)
-          ,(cmdJoin, [".join"]                  , const pure)
-          ,(cmdPart, [".leave", ".part"]        , const pure)
-          ,(cmdLotg, [".lotg"]                  , effectText)
-          ,(cmdBane, [".amysbane"]              , effectText)]
+cmdList :: (Cmd m, CmdImp m') => [(ContFuncPure m m', [T.Text], Effect m', Maybe T.Text)]
+cmdList = [(cmdBots, [".bots", ".bot vomitchan"], effectText, Nothing)
+          ,(cmdSrc,  [".source vomitchan"]      , effectText, Nothing)
+          ,(cmdHelp, [".help vomitchan"]        , effectText, Nothing)
+          ,(cmdQuit, [".quit"]                  , const pure, Nothing)
+          ,(cmdJoin, [".join"]                  , const pure, Nothing)
+          ,(cmdPart, [".leave", ".part"]        , const pure, Nothing)
+          ,(cmdLotg, [".lotg"]                  , effectText, Just "<someone>")
+          ,(cmdBane, [".amysbane"]              , effectText, Just "<someone>")]
 
 -- List of all Impure functions
-cmdListImp :: CmdImp m => [(ContFunc m, [T.Text], Effect m)]
-cmdListImp = [(cmdVomit,     ["*vomits*"]       , effectTextRandom)
-             ,(cmdDream,     ["*cheek pinch*"]  , effectText)
-             ,(cmdFleecy,    ["*step*"]         , effectText)
-             ,(cmdYuki,      ["*yuki*"]         , effectText)
-             ,(cmdLewds,     [".lewd"]          , effectTextRandom)
-             ,(cmdEightBall, [".8ball"]         , effectText)]
+cmdListImp :: CmdImp m => [(ContFunc m, [T.Text], Effect m, Maybe T.Text)]
+cmdListImp = [(cmdVomit,     ["*vomits*"]       , effectTextRandom, Just "<someone>")
+             ,(cmdRoulette,  ["*roulette*"]     , effectTextRandom, Nothing)
+             ,(cmdDream,     ["*cheek pinch*"]  , effectText      , Nothing)
+             ,(cmdFleecy,    ["*step*"]         , effectText      , Nothing)
+             ,(cmdYuki,      ["*yuki*"]         , effectText      , Nothing)
+             ,(cmdLewds,     [".lewd"]          , effectTextRandom, Just "<someone>")
+             ,(cmdEightBall, [".8ball"]         , effectText      , Nothing)
+             ,(cmdNukeMD5,   ["*nuke*"]         , const pure      , Just "<md5>")]
+
+cmdListHelp :: [(T.Text, Maybe T.Text)]
+cmdListHelp = [(".bots"            , Nothing)
+              ,(".source vomitchan", Nothing)
+              ,(".help vomitchan"  , Nothing)
+              ,(".quit"            , Nothing)
+              ,(".join"            , Nothing)
+              ,(".leave"           , Nothing)
+              ,(".8ball"           , Nothing)
+              ,("*roulette*"       , Nothing)
+              ,("*cheek pinch*"    , Nothing)
+              ,("*step*"           , Nothing)
+              ,("*yuki*"           , Nothing)
+              ,("*roulette*"       , Nothing)
+              ,(".lotg"            , Just "<someone>")
+              ,(".amysbane"        , Just "<someone>")
+              ,("*vomits*"         , Just "<someone>")
+              ,(".lewd"            , Just "<someone>")]
 
 -- The List of all functions pure <> impure
-cmdTotList :: CmdImp m => [(m (Effect m -> m Func), [T.Text], Effect m)]
+cmdTotList :: CmdImp m => [(m (Effect m -> m Func), [T.Text], Effect m, Maybe T.Text)]
 cmdTotList = cmdList <> cmdListImp
+
 
 -- the Map of all functions that are pure and impure
 cmdMapList :: CmdImp m => M.HashMap T.Text (m Func)
 cmdMapList = M.fromList $ cmdTotList >>= f
   where
-    f (cfn, aliasList, eff) = zip aliasList (repeat (cfn >>= ($ eff)))
+    f (cfn, aliasList, eff, _) = zip aliasList (repeat (cfn >>= ($ eff)))
 -- FUNCTIONS ----------------------------------------------------------------------------------
 
 -- only 1 space is allowed in a command at this point
@@ -95,8 +120,36 @@ cmdSrc = noticeMsgPlain "[Haskell] https://github.com/mariari/vomitchan"
 
 -- prints help information
 -- TODO: Store command info in cmdList and generate this text on the fly
+cmdHelpText :: T.Text
+cmdHelpText = fold (createHelp (head cmdListHelp) : (fmap createHelps $ drop 1 cmdListHelp))
+  where createHelps (cmd, Just help) = fold [", (", cmd, " ", help, ")"]
+        createHelps (cmd, Nothing)   = fold [", (", cmd, ")"]
+
+        createHelp (cmd, Just help) = fold ["(", cmd, " ", help, ")"]
+        createHelp (cmd, Nothing)   = fold ["(", cmd, ")"]
+
+
 cmdHelp :: (Cmd m, Monad m') => ContFuncPure m m'
-cmdHelp = noticeMsgPlain "Commands: (.lewd <someone>), (*vomits* [nick]), (*cheek pinch*)"
+cmdHelp = noticeMsgPlain ("Commands: " <> cmdHelpText)
+
+cmdNukeMD5 :: CmdImp m => m (Effect m -> m Func)
+cmdNukeMD5 = do
+  info <- ask
+  shouldDelete info
+
+  where
+    shouldDelete info
+      | not (isAdmin info) = noticeMsgPlain "Not admin"
+      | isSnd words        = nukeMD5 (T.unpack md5)
+      | otherwise          = noticeMsgPlain "something went wrong"
+      where
+        words = wordMsg . message $ info
+        md5   = words !! 1
+
+        nukeMD5 md5 = do
+          files <- liftIO $ nukeVomitByMD5 md5
+          _ <- liftIO $ traverse shredFile files
+          noticeMsgPlain ("Deleted " <> (T.pack . show . length $ files) <> " files")
 
 -- quit
 cmdQuit :: (Cmd m, Monad m') => ContFuncPure m m'
@@ -135,10 +188,10 @@ cmdFleecy = modifyFleecyState >> privMsgPlain "dame"
 cmdYuki :: CmdImp m => ContFunc m
 cmdYuki = modifyYukiState >> privMsgPlain "dame"
 
--- | Vomits up a colorful rainbow if vomitchan is asleep else it just vomits up red with no link
-cmdVomit :: CmdImp m => m (Effect m -> m Func)
-cmdVomit = do
-  msg   <- asks message
+publishLink :: CmdImp m => String -> m (Effect m -> m Func)
+publishLink filepath = do
+  msg <- asks message
+  manager <- asks manager
   state <- getChanStateM
   pure $ \contEffect -> do
     let
@@ -146,18 +199,13 @@ cmdVomit = do
           | _fleecy state = replicate numT '♥'
           | otherwise     = take numT (randElems randRange numG)
 
-        newUsr = changeNickFstArg msg
-
         randLink
-          | _dream state = do
-              files <- usrFldrNoLog newUsr
-              i     <- randomRIO (0, length files - 1)
-              fileCheck (files ^? ix i)
-          | otherwise = return ""
+          | _dream state = fileCheck (Just filepath)
+          | otherwise    = return ""
 
         -- checks if there is a file to upload!
         fileCheck :: Maybe String -> IO T.Text
-        fileCheck = maybe (return "") (upUsrFile . (getUsrFldrT newUsr <>) . T.pack)
+        fileCheck = maybe (return "") (upUsrFile manager . T.pack)
 
         randApply numLength randSeed =
           withUnitM (Modifier.effText (T.pack (randVom numLength randSeed)))
@@ -187,6 +235,21 @@ cmdVomit = do
             : [endingVomText]
     toWrite <- randPrivMsg
     privMsg toWrite >>= ($ const pure)
+
+-- | Vomit but random
+cmdRoulette :: CmdImp m => m (Effect m -> m Func)
+cmdRoulette = do
+  msg      <- asks message
+  filepath <- liftIO $ getRouletteVomit (T.unpack $ msgChan msg)
+  publishLink filepath
+
+-- | Vomits up a colorful rainbow if vomitchan is asleep else it just vomits up red with no link
+cmdVomit :: CmdImp m => m (Effect m -> m Func)
+cmdVomit = do
+  msg      <- asks message
+  let newUsr = changeNickFstArg msg
+  filepath <- liftIO $ getRandomVomitPath (T.unpack $ msgNick newUsr) (T.unpack $ msgChan msg)
+  publishLink filepath
 
 -- Joins the first channel in the message if the user is an admin else do nothing
 cmdJoin :: (Cmd m, Monad m') => ContFuncPure m m'
@@ -430,6 +493,9 @@ changeNickFstArg msg
 
 isSnd (_ : _ : _) = True
 isSnd _           = False
+
+frt :: (a, b, c, d) -> d
+frt (_, _, _, d) = d
 
 -- converts a message into a list containing a list of the contents based on words
 wordMsg :: PrivMsg -> [T.Text]

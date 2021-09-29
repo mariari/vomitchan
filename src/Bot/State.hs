@@ -10,10 +10,12 @@ module Bot.State (
   ) where
 
 --- IMPORTS -----------------------------------------------------------------------------------
-import qualified Data.Text         as T
+import qualified Data.Text  as T
+import           Data.Maybe (fromMaybe)
+
 import qualified StmContainers.Map as M
+
 import           Control.Concurrent.STM (atomically, STM(..))
-import           Data.Maybe             (fromMaybe)
 import           Control.Lens
 
 import Bot.StateType

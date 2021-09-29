@@ -5,27 +5,31 @@ module Bot.Message (
   respond
 ) where
 --- IMPORTS -----------------------------------------------------------------------------------
-import           Control.Concurrent.STM
-import           Data.Foldable
-import           Control.Monad.Reader
-import           Turtle hiding (fold)
-import qualified Data.Text as T
-import qualified Data.ByteString as BS
+import qualified Data.Text          as T
 import qualified Data.Text.Encoding as TE
-import qualified Data.Set as S
-import qualified Network.HTTP.Req as Req
-import qualified Text.URI as URI
-import qualified Control.Exception as Exception
-import qualified Network.HTTP.Client as Client
+import qualified Data.ByteString    as BS
+import qualified Data.Set           as S
+import           Data.Foldable
 
+import qualified Control.Exception      as Exception
+import           Control.Concurrent.STM
+import           Control.Monad.Reader
+
+import qualified Text.URI as URI
+
+import qualified Network.HTTP.Client as Client
+import qualified Network.HTTP.Req    as Req
+
+import qualified Bot.Modifier      as Modifier
 import           Bot.Commands
 import           Bot.EffType
 import           Bot.FileOps
-import           Bot.MessageParser
 import           Bot.MessageType
 import           Bot.NetworkType
-import qualified Bot.Modifier as Modifier
 import           Bot.StateType
+
+import           Turtle hiding (fold)
+
 --- DATA --------------------------------------------------------------------------------------
 
 -- Lists the type of webpages that are logged
@@ -67,18 +71,19 @@ respond s _    (Left err)   _erver _tate _ _manager =
   appendError err s >> print err >> return NoResponse
 respond _ allS (Right priv) server state net manager = f priv
   where
-    f (PRIVMSG priv)     = runReaderT (allLogsM manager >> runCmd) (information priv)
-    f (NOTICE priv)      = processNotice priv (runReaderT (allLogsM manager >> runCmd) (information priv))
-    f (TOPICCHANGE priv) = NoResponse <$ runReaderT (allLogsM manager) (information priv)
+    f (PRIVMSG priv)     = runReaderT (allLogsM manager (information priv manager) >> runCmd) (information priv manager)
+    f (NOTICE priv)      = processNotice priv (runReaderT (allLogsM manager (information priv manager)>> runCmd) (information priv manager))
+    f (TOPICCHANGE priv) = NoResponse <$ runReaderT (allLogsM manager (information priv manager)) (information priv manager)
     f (PING (Ping s))    = return $ Response ("PONG", [Modifier.effNonModifiable s])
     f _                  = return NoResponse
 
-    information priv = Info priv server state net allS
+    information :: PrivMsg -> Client.Manager -> InfoPriv
+    information priv mng = Info priv server state mng net allS
 
 --- LOGGING -----------------------------------------------------------------------------------
 
-allLogsM :: CmdImp m => Client.Manager -> m ()
-allLogsM mnger = traverse_ (toReaderImp . (. message)) [cmdFldr, cmdLog, cmdLogFile mnger]
+allLogsM :: CmdImp m => Client.Manager -> InfoPriv -> m ()
+allLogsM mnger info = traverse_ (toReaderImp . (. message)) [cmdFldr, cmdLog, cmdLogFile mnger info]
 
 -- Logs any links posted and appends them to the users .log file
 cmdLog :: PrivMsg -> IO ()
@@ -88,17 +93,17 @@ cmdLog = traverse_ . appendLog <*> linLn
 
 
 -- Downloads any file and saves it to the user folder
-cmdLogFile :: Client.Manager -> PrivMsg -> IO ()
-cmdLogFile manager = traverse_ . dwnfile (Just manager) <*> allImg
+cmdLogFile :: Client.Manager -> InfoPriv -> PrivMsg -> IO ()
+cmdLogFile manager info = traverse_ . dwnfile (Just manager) info <*> allImg
   where
     allImg = allLinks
 
-dwnfile :: MonadIO m => Maybe Client.Manager -> PrivMsg -> Text -> m ()
-dwnfile manager msg link = do
+dwnfile :: MonadIO m => Maybe Client.Manager -> InfoPriv -> PrivMsg -> Text -> m ()
+dwnfile manager info msg link = do
   extension <- getFileType link manager
   case extension of
     Nothing -> pure ()
-    Just ex -> () <$ dwnUsrFileExtension msg link ex
+    Just ex -> () <$ dwnUsrFileExtension info msg link ex
 
 cmdFldr :: PrivMsg -> IO ()
 cmdFldr = createUsrFldr

@@ -25,6 +25,7 @@ import Bot.Network
 import Bot.Socket
 import Bot.StateType
 import Bot.Servers
+import Bot.Database
 import GHC.Conc (numCapabilities)
 --- FUNCTIONS ---------------------------------------------------------------------------------
 
@@ -75,6 +76,7 @@ main = do
   putStrLn $ "number of cores: " ++ show numCapabilities
   nets  <- readNetworks "data/networks.json"
   state <- toGlobalState <$> M.newIO
+  genDb
   case nets of
        Nothing       -> putStrLn "ERROR loading servers from JSON"
        Just networks -> do

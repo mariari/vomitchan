@@ -1,17 +1,19 @@
 {-# LANGUAGE NamedFieldPuns #-}
 module Bot.Modifier where
 
+import qualified Data.Maybe  as Maybe
+import qualified Data.List   as List
+import qualified Data.Vector as V
+import qualified Data.Text   as T
+import qualified Data.Set    as Set
+
 import           Control.Monad.IO.Class
 import           Control.Monad
-import           Control.Applicative ((<|>))
-import qualified Data.Maybe    as Maybe
-import qualified Data.List     as List
-import qualified Data.Vector   as V
-import qualified Data.Text     as T
-import qualified Data.Set      as Set
-import qualified System.Random as Random
-import qualified Bot.Misc      as Misc
+import           Control.Applicative    ((<|>))
 
+import qualified System.Random as Random
+
+import qualified Bot.Misc      as Misc
 
 data Color = White | Black | Blue  | Green | Red  | Brown | Purple | Orange | Yellow | LGreen
            | Teal  | LCyan | LBlue | Pink  | Grey | LGrey

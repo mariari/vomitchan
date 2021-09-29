@@ -16,10 +16,13 @@ module Bot.StateType (
   dream, fleecy, yuki, mute
 ) where
 --- IMPORTS -----------------------------------------------------------------------------------
-import qualified Data.Text         as T
-import qualified Data.Aeson        as JSON
+import qualified Data.Text  as T
+import qualified Data.Aeson as JSON
+
 import qualified StmContainers.Map as M
+
 import           Control.Lens
+
 import           GHC.Generics
 --- TYPES -------------------------------------------------------------------------------------
 type Chan = T.Text

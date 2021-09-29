@@ -3,9 +3,9 @@
 
 module Bot.EffType where
 
-import qualified Data.Text as T
 import           Control.Monad.Reader
-import qualified Data.Vector as V
+import qualified Data.Text            as T
+import qualified Data.Vector          as V
 
 import Bot.MessageType
 import Bot.StateType

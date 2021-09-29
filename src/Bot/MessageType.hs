@@ -3,8 +3,11 @@
 --- MODULE DEFINITION -------------------------------------------------------------------------
 module Bot.MessageType where
 --- IMPORTS -----------------------------------------------------------------------------------
-import qualified Data.Text          as T
-import qualified Data.Map.Strict    as M
+import qualified Data.Text       as T
+import qualified Data.Map.Strict as M
+
+import qualified Network.HTTP.Client as Client
+
 import           Control.Concurrent.MVar
 import           Control.Concurrent.STM.TVar
 import           Control.Lens
@@ -31,6 +34,7 @@ data InfoPriv = Info
   { message  :: !PrivMsg
   , server   :: !T.Text
   , vomState :: VomState
+  , manager  :: Client.Manager
   , network  :: IRCNetwork
   , _servers :: AllServers
   }

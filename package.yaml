@@ -32,6 +32,7 @@ dependencies:
   - hashable
   - attoparsec
   - aeson
+  - sqlite-simple
   #########################
   # needed for get requests
   #########################
@@ -39,6 +40,8 @@ dependencies:
   - modern-uri
   - http-client
   - http-client-tls
+  - http-types
+  - exceptions
 
 default-extensions:
   - OverloadedStrings
@@ -68,3 +71,5 @@ executables:
       - stm-containers
       - list-t
       - hashable
+      - sqlite-simple
+      - exceptions

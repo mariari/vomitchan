@@ -2,6 +2,7 @@ module Bot.NetworkType where
 
 import qualified Data.Aeson as JSON
 import qualified Data.Text  as T
+
 import           GHC.Generics
 
 import Bot.StateType
@@ -16,6 +17,7 @@ type Pass    = T.Text
 type Chan    = T.Text
 type Target  = T.Text
 type Content = T.Text
+type MD5     = T.Text
 
 data IRCNetwork = IRCNetwork
   { netServer :: Server
@@ -24,6 +26,7 @@ data IRCNetwork = IRCNetwork
   , netNick   :: Nick
   , netPass   :: Pass
   , netAdmins :: [Nick]
+  , netBans   :: [MD5]
   , netChans  :: [Chan]
   , netState  :: StateConfig
   } deriving (Show, Generic)
