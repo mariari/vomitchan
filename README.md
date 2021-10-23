@@ -65,7 +65,7 @@ This file should look like the following:
       , "netSSL"    : false
       , "netNick"   : "vomitchan"
       , "netPass"   : "PASS"
-      , "netAdmins" : ["mariari"]
+      , "netAdmins" : ["mariari@net-8bn.43k.64gvlf.IP"]
       , "netChans"  : ["#hardfought", "#em.slashem.me", "#Haskell"]
       , "netBans"   : []
       , "netState"  : [["#hardfought", {"dream"  : true,
@@ -83,7 +83,7 @@ This file should look like the following:
       , "netSSL"    : false
       , "netNick"   : "vomitchan"
       , "netPass"   : ""
-      , "netAdmins" : ["mariari"]
+      , "netAdmins" : ["mariari@net.ip"]
       , "netChans"  : ["#bots", "#programming"]
       , "netBans"   : ["4ed600d4c9f69bcaf14540e887c75bbe"]
       , "netState"  : []
