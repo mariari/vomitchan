@@ -361,7 +361,10 @@ heartify = undefined
 
 -- | checks if the user is an admin
 isAdmin :: InfoPriv -> Bool
-isAdmin info = (msgNick . message $ info) `elem` (netAdmins . network $ info)
+isAdmin info = (nick <> "@" <> host) `elem` (netAdmins . network $ info)
+  where
+    host = maybe "" id (msgHost . message $ info)
+    nick = msgNick . message $ info
 
 -- generates the randomRange for the cmdVomit command
 randRange :: V.Vector Char
