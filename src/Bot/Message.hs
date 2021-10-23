@@ -41,7 +41,7 @@ cmdPic = ["jpg", "png", "jpeg", "gif", "jpg:large", "png:large",
           "jpeg:large", "jpg#nsfw", "png#nsfw", "jpeg#nsfw", "JPG"]
 
 cmdVid :: [T.Text]
-cmdVid = ["webm", "mp4", "flv", "ogv", "wmv", "gifv", "webm#nsfw"]
+cmdVid = ["webm", "mp4", "flv", "ogv", "wmv", "gifv", "webm#nsfw", "x-m4v", "video/x-m4v"]
 
 cmdMus :: [T.Text]
 cmdMus = ["flac", "mp3", "tta", "ogg", "wma", "wav", "aiff"]
