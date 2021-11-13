@@ -41,10 +41,10 @@ cmdPic = ["jpg", "png", "jpeg", "gif", "jpg:large", "png:large",
           "jpeg:large", "jpg#nsfw", "png#nsfw", "jpeg#nsfw", "JPG"]
 
 cmdVid :: [T.Text]
-cmdVid = ["webm", "mp4", "flv", "ogv", "wmv", "gifv", "webm#nsfw", "x-m4v", "video/x-m4v"]
+cmdVid = ["webm", "mp4", "flv", "ogv", "wmv", "gifv", "webm#nsfw", "x-m4v"]
 
 cmdMus :: [T.Text]
-cmdMus = ["flac", "mp3", "tta", "ogg", "wma", "wav", "aiff"]
+cmdMus = ["flac", "mp3", "tta", "ogg", "wma", "wav", "aiff", "mpeg"]
 
 cmdMisc :: [T.Text]
 cmdMisc = ["pdf", "epub", "djvu", "txt", "hs", "ml", "lisp", "cpp", "c", "java", "rs"]
@@ -157,7 +157,9 @@ getMimeType link altMngr =
               response <$> uncurry reqHead x
             Left x ->
               response <$> uncurry reqHead x)
-      (\ (e :: Exception.SomeException) -> pure Nothing)
+      (\ (e :: Exception.SomeException) -> do
+          print e
+          pure Nothing)
   where
     response t = Req.responseHeader t "content-type"
 

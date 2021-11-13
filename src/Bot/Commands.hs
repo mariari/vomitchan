@@ -373,6 +373,15 @@ randRange = (chr <$>) . V.fromList $  [8704..8959]   -- Mathematical symbols
                                    <> [10627,10628]  -- obscure braces
                                    <> [10631, 10632] -- obscure braces
                                    <> [945..969]     -- greek symbols
+                                   <> decimateBy 70 [19968..40959] -- Chinese range 1
+                                   <> decimateBy 23 [13312..19893] -- Chinese range 2
+
+decimateBy :: Int -> [a] -> [a]
+decimateBy _ [] = []
+decimateBy a (x:xs) =
+  case drop a (x : xs) of
+    x : xs -> x : decimateBy a xs
+    [    ] -> [x]
 
 respones = V.fromList [ "It is certain"
                       , "It is decidedly so"
