@@ -19,6 +19,7 @@ module Bot.Database(addUser
                    ,fixQuantityOfVomits) where
 
 import Database.SQLite.Simple hiding (fold)
+import Database.SQLite.Simple.FromField
 
 import Control.Concurrent
 import Control.Exception
@@ -32,10 +33,12 @@ import           Turtle       hiding (FilePath, fold)
 import qualified Turtle.Bytes as TB
 
 import qualified System.Directory as D
+import qualified System.Random    as R
 
 type Username = String
 type Channel  = String
 
+newtype Count = Count Integer
 data DBChannel = DBChannel { chanId   :: Int
                            , chanName :: String
                            } deriving (Show, Eq)
@@ -57,6 +60,9 @@ data RetryException = RetryException deriving (Show)
 instance Exception RetryException
 
 -- TODO Derive somehow
+instance FromRow Count where
+  fromRow = Count <$> field
+
 instance FromRow DBChannel where
   fromRow = DBChannel <$> field <*> field
 
@@ -236,26 +242,43 @@ getRandomVomit user chan = retry . withConnection "./data/vomits.db" $
 getRandomVomitPath :: Username-> Channel-> IO String
 getRandomVomitPath user chan = retry . withConnection "./data/vomits.db" $
   \conn -> do
-    vom  <- queryNamed
+    vomOff <- queryNamed
+                conn
+                "SELECT COUNT(*) FROM vomits\
+                \ WHERE user_id=(SELECT id FROM user WHERE username=:uname\
+                \ AND channel_id=(SELECT id FROM channels WHERE name=:cname));"
+                [":uname" := user, ":cname" := chan] :: IO [Count]
+    let (Count maxNum) = ifEmpty vomOff (Count 1) id
+    select <- R.randomRIO (0,  maxNum - 1)
+    vom <- queryNamed
                 conn
                 "SELECT * FROM vomits\
                 \ WHERE user_id=(SELECT id FROM user WHERE username=:uname\
                 \ AND channel_id=(SELECT id FROM channels WHERE name=:cname))\
-                \ ORDER BY RANDOM() LIMIT 1;"
-                [":uname" := user, ":cname" := chan] :: IO [DBVomit]
+                \ LIMIT 1 OFFSET :off;"
+                [":uname" := user, ":cname" := chan, ":off" := select] :: IO [DBVomit]
     return $ ifEmpty vom "" vomitPath
 
 getRouletteVomit :: Channel -> IO String
 getRouletteVomit chan = retry . withConnection "./data/vomits.db" $
   \conn -> do
+    vomOff  <- queryNamed
+                conn
+                "SELECT Count(*) FROM vomits\
+                \ WHERE user_id IN (SELECT id FROM user\
+                \ WHERE channel_id=(SELECT id FROM channels WHERE name=:cname)\
+                \ AND quantity_of_vomits>=1)"
+                [":cname" := chan] :: IO [Count]
+    let (Count maxNum) = ifEmpty vomOff (Count 1) id
+    select <- R.randomRIO (0, maxNum - 1)
     vom  <- queryNamed
                 conn
                 "SELECT * FROM vomits\
-                \ WHERE user_id=(SELECT id FROM user\
+                \ WHERE user_id IN (SELECT id FROM user\
                 \ WHERE channel_id=(SELECT id FROM channels WHERE name=:cname)\
-                \ AND quantity_of_vomits>=1 ORDER BY RANDOM() LIMIT 1)\
-                \ ORDER BY RANDOM() LIMIT 1;"
-                [":cname" := chan] :: IO [DBVomit]
+                \ AND quantity_of_vomits>=1)\
+                \ LIMIT 1 OFFSET :off;"
+                [":cname" := chan, ":off" := select] :: IO [DBVomit]
     return $ ifEmpty vom "" vomitPath
 
 
