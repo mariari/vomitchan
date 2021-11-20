@@ -63,7 +63,8 @@ cmdListImp = [(cmdVomit,     ["*vomits*"]       , effectTextRandom, Just "<someo
              ,(cmdYuki,      ["*yuki*"]         , effectText      , Nothing)
              ,(cmdLewds,     [".lewd"]          , effectTextRandom, Just "<someone>")
              ,(cmdEightBall, [".8ball"]         , effectText      , Nothing)
-             ,(cmdNukeMD5,   ["*nuke*"]         , const pure      , Just "<md5>")]
+             ,(cmdNukeMD5,   ["*nuke*"]         , const pure      , Just "<md5>")
+             ,(cmdCut,       ["*cut*"]          , const pure      , Just "<link> <user>")]
 
 cmdListHelp :: [(T.Text, Maybe T.Text)]
 cmdListHelp = [(".bots"            , Nothing)
@@ -81,7 +82,8 @@ cmdListHelp = [(".bots"            , Nothing)
               ,(".lotg"            , Just "<someone>")
               ,(".amysbane"        , Just "<someone>")
               ,("*vomits*"         , Just "<someone>")
-              ,(".lewd"            , Just "<someone>")]
+              ,(".lewd"            , Just "<someone>")
+              ,("*cut*"            , Just "<link> <user>")]
 
 -- The List of all functions pure <> impure
 cmdTotList :: CmdImp m => [(m (Effect m -> m Func), [T.Text], Effect m, Maybe T.Text)]
@@ -131,6 +133,29 @@ cmdHelpText = fold (createHelp (head cmdListHelp) : (fmap createHelps $ drop 1 c
 
 cmdHelp :: (Cmd m, Monad m') => ContFuncPure m m'
 cmdHelp = noticeMsgPlain ("Commands: " <> cmdHelpText)
+
+cmdCut :: CmdImp m => m (Effect m -> m Func)
+cmdCut = do
+  info <- ask
+  shouldDelete info
+  where
+    words = wordMsg . message
+    shouldDelete info
+      | not (isAdmin info) = noticeMsgPlain "Not Admin"
+      | isThr (words info) = executeCut info
+      | otherwise          = noticeMsgPlain "something went wrong"
+
+    executeCut info = do
+      currentVoms <- liftIO $ getUserQuantityOfVomits user channel
+      voms <- liftIO $ nukeVomitsLinkUserFromDb link user channel
+      _ <- liftIO $ traverse shredFile voms
+      _ <- liftIO $ updateUserQuantityOfVomits user channel (currentVoms - (length voms))
+      noticeMsgPlain ("Deleted images")
+      where
+        user    = T.unpack $ (words info) !! 2
+        link    = (words info) !! 1
+        channel = (T.unpack . msgChan . message $ info)
+
 
 cmdNukeMD5 :: CmdImp m => m (Effect m -> m Func)
 cmdNukeMD5 = do
@@ -505,6 +530,9 @@ changeNickFstArg msg
 
 isSnd (_ : _ : _) = True
 isSnd _           = False
+
+isThr (_ : _ : _ : _) = True
+isThr _               = False
 
 frt :: (a, b, c, d) -> d
 frt (_, _, _, d) = d

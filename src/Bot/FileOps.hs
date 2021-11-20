@@ -101,27 +101,32 @@ shredFile path = procStrict "shred" ["-uzn", "64", T.pack path] empty >> return 
 isBanned :: InfoPriv -> MD5 -> Bool
 isBanned info md5 = md5 `elem` (netBans . network $ info)
 
-dwnUsrFileExtension :: MonadIO io => InfoPriv -> PrivMsg -> Text -> Extension -> io ExitCode
-dwnUsrFileExtension info msg url extension = do
-  uniqueURL <- uniqueURL url extension
-  let url' = escapeUrl url
-  let filepath = escapeNick (getUsrFldrT msg) <> uniqueURL
-  ret <- shell ("cd "
-         -- escapeNick fixes bash errors like cd [czar]
-         <> escapeNick (getUsrFldrT msg)
-         <> " && curl -fL --max-filesize 104857600 --range 0-104857600 -o "
-         <> uniqueURL <> " " <> url') empty
-  (_, md5) <- TB.shellStrict (fold ["md5sum ", filepath, " | cut -d ' ' -f 1"]) empty
-  liftIO $ ifBanned (T.unpack filepath) (T.stripEnd . TE.decodeUtf8 $ md5) $ do
-    liftIO $ do
-      addVomit (T.unpack . msgNick $ msg) (T.unpack . msgChan $ msg) (T.unpack . TE.decodeUtf8 $ md5) (T.unpack filepath)
-      succUserQuantityOfVomits (T.unpack . msgNick $ msg) (T.unpack . msgChan $ msg)
-    return ret
+shouldDownload :: T.Text -> Bool
+shouldDownload = not . T.isPrefixOf "*cut*"
 
-  where
-    ifBanned filepath md5 cont
-      | isBanned info md5 = shredFile filepath >> liftIO exitSuccess
-      | otherwise         = cont
+dwnUsrFileExtension :: MonadIO io => InfoPriv -> PrivMsg -> Text -> Extension -> io ExitCode
+dwnUsrFileExtension info msg url extension
+  | (shouldDownload (msgContent msg) == False) = return ExitSuccess
+  | otherwise = do
+      uniqueURL <- uniqueURL url extension
+      let url' = escapeUrl url
+      let filepath = escapeNick (getUsrFldrT msg) <> uniqueURL
+      ret <- shell ("cd "
+                   -- escapeNick fixes bash errors like cd [czar]
+                    <> escapeNick (getUsrFldrT msg)
+                    <> " && curl -fL --max-filesize 104857600 --range 0-104857600 -o "
+                    <> uniqueURL <> " " <> url') empty
+      (_, md5) <- TB.shellStrict (fold ["md5sum ", filepath, " | cut -d ' ' -f 1"]) empty
+      liftIO $ ifBanned (T.unpack filepath) (T.stripEnd . TE.decodeUtf8 $ md5) $ do
+        liftIO $ do
+          addVomit (T.unpack . msgNick $ msg) (T.unpack . msgChan $ msg) (T.unpack . TE.decodeUtf8 $ md5) (T.unpack filepath)
+          succUserQuantityOfVomits (T.unpack . msgNick $ msg) (T.unpack . msgChan $ msg)
+      return ret
+
+        where
+          ifBanned filepath md5 cont
+            | isBanned info md5 = shredFile filepath >> liftIO exitSuccess
+            | otherwise         = cont
 
 -- | 'currentDate' - gets the current unix time stamp
 currentDate :: MonadIO m => m Text
