@@ -16,7 +16,8 @@ module Bot.Database(addUser
                    ,getUserQuantityOfVomits
                    ,getRandomVomit
                    ,genDb
-                   ,fixQuantityOfVomits) where
+                   ,fixQuantityOfVomits
+                   ,nukeVomitsLinkUserFromDb) where
 
 import Database.SQLite.Simple hiding (fold)
 import Database.SQLite.Simple.FromField
@@ -310,6 +311,29 @@ nukeVomitByMD5Fix md5 = retry . withConnection "./data/vomits.db" $
                                         "UPDATE user SET quantity_of_vomits = quantity_of_vomits - 1\
                                         \ WHERE id=:user_id"
                                         [":user_id" := user_id]
+
+nukeVomitsLinkUserFromDb :: T.Text -> Username -> Channel -> IO [String]
+nukeVomitsLinkUserFromDb link user chan = retry . withConnection "./data/vomits.db" $
+  \conn -> do
+    voms <- queryNamed
+          conn
+          "SELECT * FROM vomits\
+          \ WHERE link=:ulink\
+          \ AND user_id=(SELECT id FROM user\
+          \ WHERE channel_id=(SELECT id FROM channels where name=:cname)\
+          \ AND username=:uname);"
+          [":uname" := user, ":ulink" := link, ":cname" := chan] :: IO [DBVomit]
+
+    _ <- executeNamed
+          conn
+          "DELETE FROM vomits\
+          \ WHERE link=:ulink\
+          \ AND user_id=(SELECT id FROM user\
+          \ WHERE channel_id=(SELECT id FROM channels where name=:cname)\
+          \ AND username=:uname);"
+          [":uname" := user, ":ulink" := link, ":cname" := chan]
+
+    return $ vomitPath <$> voms
 
 nukeVomitsOfUserFromDb :: Username -> Channel -> IO ()
 nukeVomitsOfUserFromDb user chan = retry . withConnection "./data/vomits.db" $
