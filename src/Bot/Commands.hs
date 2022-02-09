@@ -243,7 +243,7 @@ publishLink filepath = do
                     (contEffect (Extra {validEffects = effectListLink}))
 
         nsfwStr txt
-          | "nsfw" `T.isSuffixOf` Modifier.unitToText txt =
+          | "-nsfw" `T.isInfixOf` (T.pack filepath) =
             withUnit
               (Modifier.effText "nsfw")
               (`withSet`

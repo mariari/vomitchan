@@ -108,7 +108,7 @@ dwnUsrFileExtension :: MonadIO io => InfoPriv -> PrivMsg -> Text -> Extension ->
 dwnUsrFileExtension info msg url extension
   | (shouldDownload (msgContent msg) == False) = return ExitSuccess
   | otherwise = do
-      uniqueURL <- uniqueURL url extension
+      uniqueURL <- uniqueURL (msgContent msg) url extension
       let url' = escapeUrl url
       let filepath = escapeNick (getUsrFldrT msg) <> uniqueURL
       ret <- shell ("cd "
@@ -139,12 +139,13 @@ dropExtension' file =
     ("", file)   -> file
     (file, _ext) -> T.init file
 
-uniqueURL :: MonadIO m => Text -> Text -> m Text
-uniqueURL url extension = do
+uniqueURL :: MonadIO m => Text -> Text -> Text -> m Text
+uniqueURL msg url extension = do
   time <- currentDate
-  pure $ escapeUrl (T.init time <> "-" <> dropExtension' fileName <> "." <> extension)
+  pure $ escapeUrl (T.init time <> "-" <> dropExtension' fileName <> nsfwEnable <> "." <> extension)
   where
     fileName = last (T.splitOn "/" url)
+    nsfwEnable = if "nsfw" `elem` (T.words msg) then "-nsfw" else ""
 
 
 escapeNick :: Text -> Text
