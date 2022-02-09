@@ -17,7 +17,8 @@ module Bot.Database(addUser
                    ,getRandomVomit
                    ,genDb
                    ,fixQuantityOfVomits
-                   ,nukeVomitsLinkUserFromDb) where
+                   ,nukeVomitsLinkUserFromDb
+                   ,nukeVomitsMD5UserFromDb) where
 
 import Database.SQLite.Simple hiding (fold)
 import Database.SQLite.Simple.FromField
@@ -303,7 +304,7 @@ nukeVomitByMD5Fix md5 = retry . withConnection "./data/vomits.db" $
                 \ WHERE vomit_md5=:md5"
                 [":md5" := md5]
 
-    _ <- traverse (fixVomitCount conn . vomitUserId) voms
+    traverse_ (fixVomitCount conn . vomitUserId) voms
     return $ vomitPath <$> voms
     where
       fixVomitCount conn user_id = executeNamed
@@ -332,6 +333,35 @@ nukeVomitsLinkUserFromDb link user chan = retry . withConnection "./data/vomits.
           \ WHERE channel_id=(SELECT id FROM channels where name=:cname)\
           \ AND username=:uname);"
           [":uname" := user, ":ulink" := link, ":cname" := chan]
+
+    return $ vomitPath <$> voms
+
+nukeVomitsMD5UserFromDb :: T.Text -> Username -> Channel -> IO [String]
+nukeVomitsMD5UserFromDb md5 user chan = do
+  withNewline <- nukeVomitsMD5UserFromDbFix (md5 <> "\n") user chan
+  withoutNewline <- nukeVomitsMD5UserFromDbFix md5 user chan
+  return $ withNewline <> withoutNewline
+
+nukeVomitsMD5UserFromDbFix :: T.Text -> Username -> Channel -> IO [String]
+nukeVomitsMD5UserFromDbFix md5 user chan = retry . withConnection "./data/vomits.db" $
+  \conn -> do
+    voms <- queryNamed
+          conn
+          "SELECT * FROM vomits\
+          \ WHERE vomit_md5=:md5\
+          \ AND user_id=(SELECT id FROM user\
+          \ WHERE channel_id=(SELECT id FROM channels where name=:cname)\
+          \ AND username=:uname);"
+          [":uname" := user, ":md5" := md5, ":cname" := chan] :: IO [DBVomit]
+
+    _ <- executeNamed
+          conn
+          "DELETE FROM vomits\
+          \ WHERE vomit_md5=:md5\
+          \ AND user_id=(SELECT id FROM user\
+          \ WHERE channel_id=(SELECT id FROM channels where name=:cname)\
+          \ AND username=:uname);"
+          [":uname" := user, ":md5" := md5, ":cname" := chan]
 
     return $ vomitPath <$> voms
 

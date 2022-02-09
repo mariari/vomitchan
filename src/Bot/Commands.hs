@@ -145,17 +145,20 @@ cmdCut = do
       | isThr (words info) = executeCut info
       | otherwise          = noticeMsgPlain "something went wrong"
 
-    executeCut info = do
-      currentVoms <- liftIO $ getUserQuantityOfVomits user channel
-      voms <- liftIO $ nukeVomitsLinkUserFromDb link user channel
-      _ <- liftIO $ traverse shredFile voms
-      _ <- liftIO $ updateUserQuantityOfVomits user channel (currentVoms - (length voms))
-      noticeMsgPlain ("Deleted images")
+    executeCut info
+      | "http" `T.isPrefixOf` link = nukeHOF nukeVomitsLinkUserFromDb
+      | otherwise                  = nukeHOF nukeVomitsMD5UserFromDb
+
       where
         user    = T.unpack $ (words info) !! 2
         link    = (words info) !! 1
         channel = (T.unpack . msgChan . message $ info)
-
+        nukeHOF hof = do
+          currentVoms <- liftIO $ getUserQuantityOfVomits user channel
+          voms <- liftIO $ hof link user channel
+          _ <- liftIO $ traverse shredFile voms
+          _ <- liftIO $ updateUserQuantityOfVomits user channel (currentVoms - (length voms))
+          noticeMsgPlain ("Deleted images (" <> T.pack (show . length $ voms) <> ")")
 
 cmdNukeMD5 :: CmdImp m => m (Effect m -> m Func)
 cmdNukeMD5 = do
