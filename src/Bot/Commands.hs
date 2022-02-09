@@ -158,7 +158,7 @@ cmdCut = do
           voms <- liftIO $ hof link user channel
           _ <- liftIO $ traverse shredFile voms
           _ <- liftIO $ updateUserQuantityOfVomits user channel (currentVoms - (length voms))
-          noticeMsgPlain ("Deleted images")
+          noticeMsgPlain ("Deleted images (" <> T.pack (show . length $ voms) <> ")")
 
 cmdNukeMD5 :: CmdImp m => m (Effect m -> m Func)
 cmdNukeMD5 = do
