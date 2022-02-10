@@ -146,8 +146,9 @@ cmdCut = do
       | otherwise          = noticeMsgPlain "something went wrong"
 
     executeCut info
-      | "http" `T.isPrefixOf` link = nukeHOF nukeVomitsLinkUserFromDb
-      | otherwise                  = nukeHOF nukeVomitsMD5UserFromDb
+      | "http://" `T.isPrefixOf` link
+      || "https://"`T.isPrefixOf` link = nukeHOF nukeVomitsLinkUserFromDb
+      | otherwise                     = nukeHOF nukeVomitsMD5UserFromDb
 
       where
         user    = T.unpack $ (words info) !! 2
@@ -217,7 +218,9 @@ cmdYuki :: CmdImp m => ContFunc m
 cmdYuki = modifyYukiState >> privMsgPlain "dame"
 
 publishLink :: CmdImp m => String -> m (Effect m -> m Func)
-publishLink filepath = do
+publishLink filepathNotStripped = do
+  -- TODO :: Hack please fix properly
+  let filepath = filter (/= '\\') filepathNotStripped
   msg <- asks message
   manager <- asks manager
   state <- getChanStateM
@@ -276,7 +279,8 @@ cmdVomit :: CmdImp m => m (Effect m -> m Func)
 cmdVomit = do
   msg      <- asks message
   let newUsr = changeNickFstArg msg
-  filepath <- liftIO $ getRandomVomitPath (T.unpack $ msgNick newUsr) (T.unpack $ msgChan msg)
+  filepath <-
+    liftIO $ getRandomVomitPath (T.unpack $ msgNick newUsr) (T.unpack $ msgChan msg)
   publishLink filepath
 
 -- Joins the first channel in the message if the user is an admin else do nothing
