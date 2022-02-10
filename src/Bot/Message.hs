@@ -83,7 +83,9 @@ respond _ allS (Right priv) server state net manager = f priv
 --- LOGGING -----------------------------------------------------------------------------------
 
 allLogsM :: CmdImp m => Client.Manager -> InfoPriv -> m ()
-allLogsM mnger info = traverse_ (toReaderImp . (. message)) [cmdFldr, cmdLog, cmdLogFile mnger info]
+allLogsM mnger info@(Info priv _ _ _ net _)
+  | usrNick (user priv) `elem` (netIgnore net) = return ()
+  | otherwise                                  = traverse_ (toReaderImp . (. message)) [cmdFldr, cmdLog, cmdLogFile mnger info]
 
 -- Logs any links posted and appends them to the users .log file
 cmdLog :: PrivMsg -> IO ()
