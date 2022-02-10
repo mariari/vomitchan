@@ -26,6 +26,7 @@ data IRCNetwork = IRCNetwork
   , netNick   :: Nick
   , netPass   :: Pass
   , netAdmins :: [Nick]
+  , netIgnore :: [Nick]
   , netBans   :: [MD5]
   , netChans  :: [Chan]
   , netState  :: StateConfig
