@@ -145,7 +145,7 @@ uniqueURL msg url extension = do
   pure $ escapeUrl (T.init time <> "-" <> dropExtension' fileName <> nsfwEnable <> "." <> extension)
   where
     fileName = last (T.splitOn "/" url)
-    nsfwEnable = if "nsfw" `elem` (T.words msg) then "-nsfw" else ""
+    nsfwEnable = if "nsfw" `elem` (T.words . T.toLower $ msg) then "-nsfw" else ""
 
 
 escapeNick :: Text -> Text
