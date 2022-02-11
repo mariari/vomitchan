@@ -64,7 +64,7 @@ data Join  = Join  !UserI !Target         deriving Show
 data CQuit = CQuit !UserI !Content        deriving Show
 
 -- taking no prefixes
-data Ping = Ping Content deriving Show
+newtype Ping = Ping Content deriving Show
 
 data UserI = UserI { usrNick :: !Nick
                    , usrUser :: !(Maybe User)

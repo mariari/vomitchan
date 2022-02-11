@@ -18,7 +18,8 @@ module Bot.Database(addUser
                    ,genDb
                    ,fixQuantityOfVomits
                    ,nukeVomitsLinkUserFromDb
-                   ,nukeVomitsMD5UserFromDb) where
+                   ,nukeVomitsMD5UserFromDb
+                   ,updateNSFW) where
 
 import Database.SQLite.Simple hiding (fold)
 import Database.SQLite.Simple.FromField
@@ -219,6 +220,47 @@ getUserQuantityOfVomits username chan = retry . withConnection "./data/vomits.db
                 \ LIMIT 1;"
                 [":uname" := username, ":cname" := chan] :: IO [DBUser]
     return $ ifEmpty user 0 userQuantityVomit
+
+updateNSFW :: String -> Username -> Channel -> IO Int
+updateNSFW md5 username chan = do
+  withNewline <- updateNSFWFix (md5 <> "\n") username chan
+  withoutNewline <- updateNSFWFix md5 username chan
+  return $ withNewline + withoutNewline
+
+updateNSFWFix :: String -> Username -> Channel -> IO Int
+updateNSFWFix md5 username chan = withConnection "./data/vomits.db" $
+  \conn -> do
+   vomits <- queryNamed
+            conn
+            "SELECT * FROM vomits\
+            \ WHERE user_id=(SELECT id FROM user WHERE username=:uname\
+            \ AND channel_id=(SELECT id FROM channels WHERE name=:cname))\
+            \ AND vomit_md5=:md5"
+            [":uname" := username, ":cname" := chan, ":md5" := md5] :: IO [DBVomit]
+   let paths = vomitPath <$> vomits
+   thrash <- traverse renameToNsfw paths
+   traverse_ (updateFilepath conn) paths
+   return $ length thrash
+
+   where
+     getExtension :: String -> String
+     getExtension = reverse . takeWhile (/= '.') . reverse
+
+     dropExtension :: String -> String
+     dropExtension = reverse . drop 1 . dropWhile (/= '.') . reverse
+
+     newExtension path = let ext      = getExtension path
+                             filename = dropExtension path
+                             in filename <> "-nsfw." <> ext
+
+     renameToNsfw :: String -> IO ()
+     renameToNsfw path = D.renameFile path (newExtension path)
+
+     updateFilepath conn path =
+       executeNamed
+           conn
+           "UPDATE vomits SET filepath=:nfp WHERE filepath=:fp"
+           [":nfp" := newExtension path, ":fp" := path]
 
 getLink :: String -> IO (Maybe String)
 getLink filepath = retry . withConnection "./data/vomits.db" $

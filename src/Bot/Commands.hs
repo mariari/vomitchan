@@ -64,7 +64,8 @@ cmdListImp = [(cmdVomit,     ["*vomits*"]       , effectTextRandom, Just "<someo
              ,(cmdLewds,     [".lewd"]          , effectTextRandom, Just "<someone>")
              ,(cmdEightBall, [".8ball"]         , effectText      , Nothing)
              ,(cmdNukeMD5,   ["*nuke*"]         , const pure      , Just "<md5>")
-             ,(cmdCut,       ["*cut*"]          , const pure      , Just "<link> <user>")]
+             ,(cmdCut,       ["*cut*"]          , const pure      , Just "<link> <user>")
+             ,(cmdSetNSFW,   ["*setNSFW*"]       , const pure      , Just "<md5>")]
 
 cmdListHelp :: [(T.Text, Maybe T.Text)]
 cmdListHelp = [(".bots"            , Nothing)
@@ -83,7 +84,8 @@ cmdListHelp = [(".bots"            , Nothing)
               ,(".amysbane"        , Just "<someone>")
               ,("*vomits*"         , Just "<someone>")
               ,(".lewd"            , Just "<someone>")
-              ,("*cut*"            , Just "<link> <user>")]
+              ,("*cut*"            , Just "<link> <user>")
+              ,("*setNSFW*"        , Just "<md5>")]
 
 -- The List of all functions pure <> impure
 cmdTotList :: CmdImp m => [(m (Effect m -> m Func), [T.Text], Effect m, Maybe T.Text)]
@@ -133,6 +135,24 @@ cmdHelpText = fold (createHelp (head cmdListHelp) : (fmap createHelps $ drop 1 c
 
 cmdHelp :: (Cmd m, Monad m') => ContFuncPure m m'
 cmdHelp = noticeMsgPlain ("Commands: " <> cmdHelpText)
+
+-- | Set NSFW for a specific hash
+cmdSetNSFW :: CmdImp m => m (Effect m -> m Func)
+cmdSetNSFW = do
+  info <- ask
+  shouldUpdate info
+  where
+    shouldUpdate info
+      | isSnd (wordMsg . message $ info) = process info
+      | otherwise = noticeMsgPlain "*setNSFW* <md5>"
+
+      where
+        md5 = (wordMsg . message $ info) !! 1
+        user = T.unpack . msgNick . message $ info
+        channel = T.unpack . msgChan . message $ info
+        process inf = do
+          num <- liftIO $ updateNSFW (T.unpack $ (wordMsg . message) info !! 1) user channel
+          noticeMsgPlain $ T.pack ("Putted nsfw to " <> show num <> " files")
 
 cmdCut :: CmdImp m => m (Effect m -> m Func)
 cmdCut = do
