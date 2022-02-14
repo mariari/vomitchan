@@ -19,7 +19,9 @@ module Bot.Database(addUser
                    ,fixQuantityOfVomits
                    ,nukeVomitsLinkUserFromDb
                    ,nukeVomitsMD5UserFromDb
-                   ,updateNSFW) where
+                   ,updateNSFW
+                   ,updateNSFL
+                   ,checkFilenameMetadata) where
 
 import Database.SQLite.Simple hiding (fold)
 import Database.SQLite.Simple.FromField
@@ -76,9 +78,23 @@ instance FromRow DBVomit where
   fromRow = DBVomit <$> field <*> field <*> field <*> field <*> field
 
 -- Helpers
+checkFilenameMetadata :: T.Text -> T.Text -> Bool
+checkFilenameMetadata = T.isInfixOf
+
 ifEmpty :: [a] -> b -> (a -> b) -> b
 ifEmpty (x:_) _ f = f x
 ifEmpty [] def _  = def
+
+getExtension :: String -> String
+getExtension = reverse . takeWhile (/= '.') . reverse
+
+dropExtensions :: String -> String
+dropExtensions = reverse . drop 1 . dropWhile (/= '.') . reverse
+
+appendToFilename :: String -> String -> String
+appendToFilename path str = let ext      = getExtension path
+                                filename = dropExtensions path
+                                in filename <> str <> "." <> ext
 
 retryGen :: Integer -> Integer -> IO a -> IO a
 retryGen n current action
@@ -222,45 +238,35 @@ getUserQuantityOfVomits username chan = retry . withConnection "./data/vomits.db
     return $ ifEmpty user 0 userQuantityVomit
 
 updateNSFW :: String -> Username -> Channel -> IO Int
-updateNSFW md5 username chan = do
-  withNewline <- updateNSFWFix (md5 <> "\n") username chan
-  withoutNewline <- updateNSFWFix md5 username chan
-  return $ withNewline + withoutNewline
+updateNSFW = updateMetadata "-nsfw"
 
-updateNSFWFix :: String -> Username -> Channel -> IO Int
-updateNSFWFix md5 username chan = withConnection "./data/vomits.db" $
+updateNSFL :: String -> Username -> Channel -> IO Int
+updateNSFL = updateMetadata "-nsfl"
+
+updateMetadata :: String -> String -> Username -> Channel -> IO Int
+updateMetadata meta link username chan = withConnection "./data/vomits.db" $
   \conn -> do
    vomits <- queryNamed
             conn
             "SELECT * FROM vomits\
             \ WHERE user_id=(SELECT id FROM user WHERE username=:uname\
             \ AND channel_id=(SELECT id FROM channels WHERE name=:cname))\
-            \ AND vomit_md5=:md5"
-            [":uname" := username, ":cname" := chan, ":md5" := md5] :: IO [DBVomit]
-   let paths = vomitPath <$> vomits
-   thrash <- traverse renameToNsfw paths
+            \ AND link=:link"
+            [":uname" := username, ":cname" := chan, ":link" := link] :: IO [DBVomit]
+   let paths = filter (not . checkFilenameMetadata (T.pack meta) . T.pack) (vomitPath <$> vomits)
+   thrash <- traverse renameFile paths
    traverse_ (updateFilepath conn) paths
    return $ length thrash
 
    where
-     getExtension :: String -> String
-     getExtension = reverse . takeWhile (/= '.') . reverse
-
-     dropExtension :: String -> String
-     dropExtension = reverse . drop 1 . dropWhile (/= '.') . reverse
-
-     newExtension path = let ext      = getExtension path
-                             filename = dropExtension path
-                             in filename <> "-nsfw." <> ext
-
-     renameToNsfw :: String -> IO ()
-     renameToNsfw path = D.renameFile path (newExtension path)
+     renameFile :: String -> IO ()
+     renameFile path = D.renameFile path (appendToFilename path meta)
 
      updateFilepath conn path =
        executeNamed
            conn
            "UPDATE vomits SET filepath=:nfp WHERE filepath=:fp"
-           [":nfp" := newExtension path, ":fp" := path]
+           [":nfp" := appendToFilename path meta, ":fp" := path]
 
 getLink :: String -> IO (Maybe String)
 getLink filepath = retry . withConnection "./data/vomits.db" $

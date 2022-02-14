@@ -78,6 +78,7 @@ type Extension = Text
 
 -- FUNCTIONS ----------------------------------------------------------------------------------
 
+
 -- Creates a folder of the irc channel and a user inside of it
 createUsrFldr :: PrivMsg -> IO ()
 createUsrFldr msg = do
@@ -102,11 +103,11 @@ isBanned :: InfoPriv -> MD5 -> Bool
 isBanned info md5 = md5 `elem` (netBans . network $ info)
 
 shouldDownload :: T.Text -> Bool
-shouldDownload = not . T.isPrefixOf "*cut*"
+shouldDownload msg = not (T.isPrefixOf "*cut*" msg) && not (T.isPrefixOf ".set-" msg)
 
 dwnUsrFileExtension :: MonadIO io => InfoPriv -> PrivMsg -> Text -> Extension -> io ExitCode
 dwnUsrFileExtension info msg url extension
-  | (shouldDownload (msgContent msg) == False) = return ExitSuccess
+  | shouldDownload (msgContent msg) == False = return ExitSuccess
   | otherwise = do
       uniqueURL <- uniqueURL (msgContent msg) url extension
       let url' = escapeUrl url
@@ -142,11 +143,15 @@ dropExtension' file =
 uniqueURL :: MonadIO m => Text -> Text -> Text -> m Text
 uniqueURL msg url extension = do
   time <- currentDate
-  pure $ escapeUrl (T.init time <> "-" <> dropExtension' fileName <> nsfwEnable <> "." <> extension)
+  pure $ escapeUrl (T.init time <> "-" <> dropExtension' fileName <> nsfwEnable <> nsflEnable <> "." <> extension)
   where
     fileName = last (T.splitOn "/" url)
-    nsfwEnable = if "nsfw" `elem` (T.words . T.toLower $ msg) then "-nsfw" else ""
+    nsfwEnable = metadataEnable "nsfw"
+    nsflEnable = metadataEnable "nsfl"
 
+    metadataEnable str
+      | str `elem` (T.words . T.toLower $ msg) = "-" <> str
+      | otherwise                              = ""
 
 escapeNick :: Text -> Text
 escapeNick  = escape "[" . escape "]"

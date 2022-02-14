@@ -27,6 +27,9 @@ import           Control.Lens
 import           Control.Monad.Reader
 import qualified Data.HashMap.Strict  as M
 import qualified Data.Vector          as V
+import qualified Bot.Modifier as Modifier
+import qualified Bot.Modifier as Modifier
+import Bot.Database (updateNSFW)
 
 --- TYPES -------------------------------------------------------------------------------------
 
@@ -65,7 +68,8 @@ cmdListImp = [(cmdVomit,     ["*vomits*"]       , effectTextRandom, Just "<someo
              ,(cmdEightBall, [".8ball"]         , effectText      , Nothing)
              ,(cmdNukeMD5,   ["*nuke*"]         , const pure      , Just "<md5>")
              ,(cmdCut,       ["*cut*"]          , const pure      , Just "<link> <user>")
-             ,(cmdSetNSFW,   ["*setNSFW*"]       , const pure      , Just "<md5>")]
+             ,(cmdSetNSFW,   [".set-nsfw"]      , const pure      , Just "<link>")
+             ,(cmdSetNSFL,   [".set-nsfl"]      , const pure      , Just "<link>")]
 
 cmdListHelp :: [(T.Text, Maybe T.Text)]
 cmdListHelp = [(".bots"            , Nothing)
@@ -85,7 +89,8 @@ cmdListHelp = [(".bots"            , Nothing)
               ,("*vomits*"         , Just "<someone>")
               ,(".lewd"            , Just "<someone>")
               ,("*cut*"            , Just "<link> <user>")
-              ,("*setNSFW*"        , Just "<md5>")]
+              ,(".set-nsfw"        , Just "<link>")
+              ,(".set-nsfw"        , Just "<link>")]
 
 -- The List of all functions pure <> impure
 cmdTotList :: CmdImp m => [(m (Effect m -> m Func), [T.Text], Effect m, Maybe T.Text)]
@@ -136,23 +141,29 @@ cmdHelpText = fold (createHelp (head cmdListHelp) : (fmap createHelps $ drop 1 c
 cmdHelp :: (Cmd m, Monad m') => ContFuncPure m m'
 cmdHelp = noticeMsgPlain ("Commands: " <> cmdHelpText)
 
--- | Set NSFW for a specific hash
 cmdSetNSFW :: CmdImp m => m (Effect m -> m Func)
-cmdSetNSFW = do
+cmdSetNSFW = cmdSetMetadata "nsfw" updateNSFW
+
+cmdSetNSFL :: CmdImp m => m (Effect m -> m Func)
+cmdSetNSFL = cmdSetMetadata "nsfl" updateNSFL
+
+-- | Set field for a specific link
+cmdSetMetadata :: CmdImp m => String -> (String -> String -> String -> IO Int) -> m (Effect m -> m Func)
+cmdSetMetadata field updater = do
   info <- ask
   shouldUpdate info
   where
     shouldUpdate info
       | isSnd (wordMsg . message $ info) = process info
-      | otherwise = noticeMsgPlain "*setNSFW* <md5>"
+      | otherwise = noticeMsgPlain (".set-" <> T.pack field <> " <link>")
 
       where
         md5 = (wordMsg . message $ info) !! 1
         user = T.unpack . msgNick . message $ info
         channel = T.unpack . msgChan . message $ info
         process inf = do
-          num <- liftIO $ updateNSFW (T.unpack $ (wordMsg . message) info !! 1) user channel
-          noticeMsgPlain $ T.pack ("Putted nsfw to " <> show num <> " files")
+          num <- liftIO $ updater (T.unpack $ (wordMsg . message) info !! 1) user channel
+          noticeMsgPlain $ T.pack ("Putted " <> field <> " to " <> show num <> " files")
 
 cmdCut :: CmdImp m => m (Effect m -> m Func)
 cmdCut = do
@@ -263,7 +274,12 @@ publishLink filepath = do
                     (contEffect (Extra {validEffects = effectListLink}))
 
         nsfwStr txt
-          | "-nsfw" `T.isInfixOf` (T.pack filepath) =
+          | checkFilenameMetadata "-nsfl" (T.pack filepath) =
+            withUnit
+              (Modifier.effText "nsfl")
+              (`withSet`
+                [Modifier.Reverse, Modifier.Color Modifier.LGreen, Modifier.Bold])
+          | checkFilenameMetadata "-nsfw" (T.pack filepath) =
             withUnit
               (Modifier.effText "nsfw")
               (`withSet`
