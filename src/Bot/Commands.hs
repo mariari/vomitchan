@@ -27,9 +27,6 @@ import           Control.Lens
 import           Control.Monad.Reader
 import qualified Data.HashMap.Strict  as M
 import qualified Data.Vector          as V
-import qualified Bot.Modifier as Modifier
-import qualified Bot.Modifier as Modifier
-import Bot.Database (updateNSFW)
 
 --- TYPES -------------------------------------------------------------------------------------
 
