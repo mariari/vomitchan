@@ -87,7 +87,7 @@ cmdListHelp = [(".bots"            , Nothing)
               ,(".lewd"            , Just "<someone>")
               ,("*cut*"            , Just "<link> <user>")
               ,(".set-nsfw"        , Just "<link>")
-              ,(".set-nsfw"        , Just "<link>")]
+              ,(".set-nsfl"        , Just "<link>")]
 
 -- The List of all functions pure <> impure
 cmdTotList :: CmdImp m => [(m (Effect m -> m Func), [T.Text], Effect m, Maybe T.Text)]
