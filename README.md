@@ -20,7 +20,7 @@ An IRC bot written in Haskell.  *cheek pinch*
 - Currently admins are stored in the admins list in Command.hs (will be read from a file later)
 - `.quit` - kills vomitchan from the current server ;-;
 - `.part` - an alias for quit
-- `.quit all` - Kills vomitchan from all servers ;-;
+- `.quit all` - kills vomitchan from all servers ;-;
 - `.join <channel>` - vomitchan joins specified channel
 - `.leave <channel>` - vomitchan leaves the spcified channel
 - `.leave` - vomitchan leaves the current channel
