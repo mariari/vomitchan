@@ -13,8 +13,7 @@ category:            Web
 dependencies:
   - base >= 4.11 && < 5
   - bytestring
-  - crypton
-  - crypton-connection
+  - connection
   - directory >= 1.2.5
   - lens
   - monad-loops
@@ -62,8 +61,7 @@ executables:
       - -with-rtsopts=-N
       - -fwarn-incomplete-patterns
     dependencies:
-      - crypton
-      - crypton-connection
+      - connection
       - lens
       - stm
       - text

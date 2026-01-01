@@ -1,16 +1,14 @@
-resolver: lts-22.27
+resolver: lts-14.19
 
 packages:
 - .
 
 
 extra-deps:
-- stm-containers-1.2.1
-- stm-hamt-1.2.1
-- primitive-extras-0.10.2
-- req-3.13.1
-- crypton-1.0.0
-
+- stm-containers-1.1.0.4
+- stm-hamt-1.2.0.2
+- primitive-extras-0.7.1
+- req-3.8.0
 
 allow-newer: true
 

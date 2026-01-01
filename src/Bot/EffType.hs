@@ -4,7 +4,6 @@
 module Bot.EffType where
 
 import           Control.Monad.Reader
-import           Control.Monad
 import qualified Data.Text            as T
 import qualified Data.Vector          as V
 

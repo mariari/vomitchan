@@ -24,7 +24,6 @@ import qualified Data.Text            as T
 import           Data.Foldable        (fold)
 import           System.Random
 import           Control.Lens
-import           Control.Monad
 import           Control.Monad.Reader
 import qualified Data.HashMap.Strict  as M
 import qualified Data.Vector          as V
