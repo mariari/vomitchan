@@ -33,6 +33,17 @@ newtype StateConfig = StateConfig [(Chan, HashStorage)] deriving (Show, Generic)
 
 fromStateConfig (StateConfig xs) = xs
 
+-- used to generate default aeson instance with lens in tact
+-- wish we had ocaml package open here!
+instance JSON.ToJSON HashStorage where
+  toJSON = JSON.genericToJSON JSON.defaultOptions
+           { JSON.fieldLabelModifier = drop 1 }
+
+instance JSON.FromJSON HashStorage where
+  parseJSON = JSON.genericParseJSON JSON.defaultOptions
+              { JSON.fieldLabelModifier = drop 1 }
+
+
 instance JSON.FromJSON StateConfig
 instance JSON.ToJSON   StateConfig
 
@@ -51,16 +62,6 @@ defaultChanState :: HashStorage
 defaultChanState = toHashStorage True False False False
 
 makeLenses ''HashStorage
-
--- used to generate default aeson instance with lens in tact
--- wish we had ocaml package open here!
-instance JSON.ToJSON HashStorage where
-  toJSON = JSON.genericToJSON JSON.defaultOptions
-           { JSON.fieldLabelModifier = drop 1 }
-
-instance JSON.FromJSON HashStorage where
-  parseJSON = JSON.genericParseJSON JSON.defaultOptions
-              { JSON.fieldLabelModifier = drop 1 }
 
 --  All the Global Variables that make up State
 newtype GlobalState = GlobalState {hash :: M.Map T.Text HashStorage}
