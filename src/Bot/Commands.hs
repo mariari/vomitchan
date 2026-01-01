@@ -322,8 +322,10 @@ cmdJoin :: (Cmd m, Monad m') => ContFuncPure m m'
 cmdJoin = asks join
   where
     join info
-      | isAdmin info && isSnd msg = response ("JOIN", [Modifier.effNonModifiable (msg !! 1)])
-      | otherwise                 = noResponse
+      | not (isAdmin info) || not (isSnd msg) = noResponse
+      | isThr msg = response ("JOIN", [ Modifier.effNonModifiable (msg !! 1)
+                                      , Modifier.effNonModifiable (msg !! 2)])
+      | otherwise = response ("JOIN", [Modifier.effNonModifiable (msg !! 1)])
       where
         msg = wordMsg . message $ info
 

@@ -60,7 +60,7 @@ joinNetwork ctx net = do
     Left ex -> print ex >> return Nothing
     Right con -> do
       passConnect con
-      traverse_ (write con . (,) "JOIN") (netChans net)
+      traverse_ (\chan -> write con ("JOIN" , chanJoinText chan) ) (netChans net)
       return (Just con)
   where
     passConnect con = do
@@ -129,6 +129,11 @@ reconnectNetwork allS ctx network = recurse 1000
             Just mvar -> return (x,mvar)
 
 --- HELPER FUNCTIONS / UNUSED -----------------------------------------------------------------
+
+-- Hacky should punch through options better
+chanJoinText :: Chan -> T.Text
+chanJoinText (name, (Options Nothing)) = name
+chanJoinText (name, (Options (Just key))) = name <> " " <> key
 
 -- finds a network by name and maybe returns it
 findNetwork :: [IRCNetwork] -> Server -> Maybe IRCNetwork
