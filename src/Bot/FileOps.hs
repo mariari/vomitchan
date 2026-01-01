@@ -115,7 +115,7 @@ dwnUsrFileExtension info msg url extension
       ret <- shell ("cd "
                    -- escapeNick fixes bash errors like cd [czar]
                     <> escapeNick (getUsrFldrT msg)
-                    <> " && curl -fL --max-filesize 104857600 --range 0-104857600 -o "
+                    <> " && curl -fL --max-filesize 504857600 --range 0-104857600 -o "
                     <> uniqueURL <> " " <> url') empty
       (_, md5) <- TB.shellStrict (fold ["md5sum ", filepath, " | cut -d ' ' -f 1"]) empty
       liftIO $ ifBanned (T.unpack filepath) (T.stripEnd . TE.decodeUtf8 $ md5) $ do
