@@ -177,10 +177,8 @@ upUsrFile :: (Alternative m, MonadIO m, MonadThrow m, MonadCatch m) => H.Manager
 upUsrFile _ "" = pure ""
 upUsrFile manager t  = do
   res <-  cacheUploader t manager
-    <<|>> lainUpload t manager
-    <<|>> nekoUpload t manager
-    -- <<|>> w1r3Upload t manager
-    -- <<|>> ifyouWorkUpload t manager
+    <<|>> catboxUpload t manager
+    -- <<|>> lainUpload t manager
   let link = (Maybe.fromMaybe "" res)
   liftIO $ updateLink (T.unpack t) (T.unpack link)
   pure link
