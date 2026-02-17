@@ -224,6 +224,14 @@ pomfUploader file url manager = catch work (\ (_ :: SomeException) -> pure Nothi
         Nothing                          -> Nothing
         Just Fail {}                     -> Nothing
 
+
+catboxUpload :: (MonadIO m, MonadThrow m) => T.Text -> H.Manager -> m (Maybe T.Text)
+catboxUpload file _ =
+  check <$> procStrict "curl" ["-F", "reqtype=fileupload", "-F", "fileToUpload=@" <> file, "https://catbox.moe/user/api.php"] empty
+  where check (_,n)
+          | T.isPrefixOf "http" n = Just (T.init n)
+          | otherwise             = Nothing
+
 nekoUpload :: (MonadIO m, MonadThrow m, MonadCatch m) => T.Text -> H.Manager -> m (Maybe T.Text)
 nekoUpload file = pomfUploader file "https://img.neko.airforce/upload.php"
 
