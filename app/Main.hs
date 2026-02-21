@@ -12,6 +12,7 @@ import qualified System.IO.Error     as Error
 import qualified Network.Connection  as Connection
 import qualified Network.HTTP.Client as Client
 import qualified Network.HTTP.Client.TLS as ClientT
+import           Data.Default.Class      (def)
 
 import           Network.Connection(initConnectionContext, Connection(..), HostNotResolved)
 import           Control.Exception
@@ -116,7 +117,7 @@ manager ctx =
   let settings =
         ClientT.mkManagerSettingsContext
           (Just ctx)
-          (Connection.TLSSettingsSimple False False False)
+          (Connection.TLSSettingsSimple False False False def)
           Nothing
   in Client.newManager settings
 
