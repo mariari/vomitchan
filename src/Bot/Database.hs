@@ -244,7 +244,7 @@ updateNSFL :: String -> Username -> Channel -> IO Int
 updateNSFL = updateMetadata "-nsfl"
 
 updateMetadata :: String -> String -> Username -> Channel -> IO Int
-updateMetadata meta link username chan = withConnection "./data/vomits.db" $
+updateMetadata meta link username chan = retry . withConnection "./data/vomits.db" $
   \conn -> do
    vomits <- queryNamed
             conn
