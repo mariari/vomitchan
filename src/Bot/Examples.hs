@@ -18,6 +18,9 @@ module Bot.Examples
   , sampleStateEntries, mkEnv, mockEnv
     -- * Command testing
   , testCmd, testCmdWith
+    -- * Database testing
+  , withTestDb, seedTestDb
+  , module Database.SQLite.Simple
   ) where
 
 import qualified Data.ByteString         as BS
@@ -32,6 +35,8 @@ import           Control.Concurrent.STM  (atomically)
 import           Control.Monad.Reader    (runReaderT)
 import           Data.Foldable           (traverse_)
 
+import Database.SQLite.Simple
+
 import Bot.MessageParser (parseMessage)
 import Bot.MessageType
 import Bot.NetworkType
@@ -40,6 +45,7 @@ import Bot.Modifier
 import Bot.Servers       (initAllServer)
 import Bot.EffType       (Func)
 import Bot.Commands      (runCmd)
+import Bot.Database      (createSchema, addChannelConn, addUserConn, addVomitConn)
 
 --------------------------------------------------------------------------------
 -- Parser examples
@@ -252,3 +258,22 @@ testCmdWith :: [(T.Text, HashStorage)] -> PrivMsg -> IO Func
 testCmdWith entries msg = do
   env <- mkEnv entries
   runReaderT runCmd (env msg)
+
+--------------------------------------------------------------------------------
+-- Database testing
+--------------------------------------------------------------------------------
+
+-- | Run a test action with an in-memory SQLite DB that has the schema ready.
+--
+-- >>> withTestDb $ \conn -> seedTestDb conn >> getUserQuantityOfVomitsConn conn "nick" "#test"
+withTestDb :: (Connection -> IO a) -> IO a
+withTestDb action = withConnection ":memory:" $ \conn -> do
+  createSchema conn
+  action conn
+
+-- | Populate a test DB with sample data.
+seedTestDb :: Connection -> IO ()
+seedTestDb conn = do
+  addChannelConn conn "#test"
+  addUserConn conn "nick" "#test"
+  addVomitConn conn "nick" "#test" "abc123" "/data/logs/#test/nick/file.jpg"

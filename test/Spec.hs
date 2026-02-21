@@ -10,6 +10,7 @@ import Bot.MessageParser (parseMessage)
 import Bot.MessageType
 import Bot.Modifier      (applyEffects, Unit(..), Scope(..), TextUnit(..))
 import Bot.StateType
+import Bot.Database
 
 main :: IO ()
 main = hspec $ do
@@ -18,6 +19,7 @@ main = hspec $ do
   stateSpec
   globalStateSpec
   commandSpec
+  databaseSpec
 
 --------------------------------------------------------------------------------
 -- Parser tests
@@ -120,6 +122,83 @@ commandSpec = describe "Commands" $ do
   it "testCmdWith custom state" $
     testCmdWith [("irc.example.net#test", stateYuki)] (mkMsg ".bots")
       >>= (`shouldSatisfy` isResponse)
+
+--------------------------------------------------------------------------------
+-- Database tests (in-memory SQLite via withTestDb)
+--------------------------------------------------------------------------------
+
+databaseSpec :: Spec
+databaseSpec = describe "Database" $ do
+  it "createSchema creates all 3 tables" $ withTestDb $ \conn -> do
+    tables <- query_ conn
+      "SELECT name FROM sqlite_master WHERE type='table' ORDER BY name;" :: IO [Only String]
+    L.sort (map fromOnly tables) `shouldBe` ["channels", "user", "vomits"]
+
+  it "addChannel + addUser + getUserQuantityOfVomits returns 0" $ withTestDb $ \conn -> do
+    addChannelConn conn "#test"
+    addUserConn conn "nick" "#test"
+    count <- getUserQuantityOfVomitsConn conn "nick" "#test"
+    count `shouldBe` 0
+
+  it "addVomit + succUserQuantityOfVomits increments count" $ withTestDb $ \conn -> do
+    seedTestDb conn
+    succUserQuantityOfVomitsConn conn "nick" "#test"
+    count <- getUserQuantityOfVomitsConn conn "nick" "#test"
+    count `shouldBe` 1
+
+  it "updateLink + getLink round-trip" $ withTestDb $ \conn -> do
+    seedTestDb conn
+    updateLinkConn conn "/data/logs/#test/nick/file.jpg" "https://example.com/file.jpg"
+    link <- getLinkConn conn "/data/logs/#test/nick/file.jpg"
+    link `shouldBe` Just "https://example.com/file.jpg"
+
+  it "getRandomVomit returns inserted vomit" $ withTestDb $ \conn -> do
+    seedTestDb conn
+    voms <- getRandomVomitConn conn "nick" "#test"
+    length voms `shouldBe` 1
+    vomitPath (head voms) `shouldBe` "/data/logs/#test/nick/file.jpg"
+    vomitMD5 (head voms) `shouldBe` "abc123"
+
+  it "nukeVomitByMD5FixConn removes vomit and decrements count" $ withTestDb $ \conn -> do
+    seedTestDb conn
+    succUserQuantityOfVomitsConn conn "nick" "#test"
+    paths <- nukeVomitByMD5FixConn conn "abc123"
+    paths `shouldBe` ["/data/logs/#test/nick/file.jpg"]
+    count <- getUserQuantityOfVomitsConn conn "nick" "#test"
+    count `shouldBe` 0
+
+  it "nukeVomitsOfUserFromDb clears all vomits" $ withTestDb $ \conn -> do
+    seedTestDb conn
+    addVomitConn conn "nick" "#test" "def456" "/data/logs/#test/nick/file2.png"
+    nukeVomitsOfUserFromDbConn conn "nick" "#test"
+    voms <- getRandomVomitConn conn "nick" "#test"
+    voms `shouldBe` []
+
+  it "nukeUserFromDb removes the user" $ withTestDb $ \conn -> do
+    seedTestDb conn
+    nukeVomitsOfUserFromDbConn conn "nick" "#test"
+    nukeUserFromDbConn conn "nick" "#test"
+    count <- getUserQuantityOfVomitsConn conn "nick" "#test"
+    count `shouldBe` 0
+
+  it "fixQuantityOfVomitsConn corrects counts" $ withTestDb $ \conn -> do
+    seedTestDb conn
+    addVomitConn conn "nick" "#test" "def456" "/data/logs/#test/nick/file2.png"
+    -- count is still 0 since we never called succ
+    fixQuantityOfVomitsConn conn
+    count <- getUserQuantityOfVomitsConn conn "nick" "#test"
+    count `shouldBe` 2
+
+  it "getRouletteVomit works across users" $ withTestDb $ \conn -> do
+    seedTestDb conn
+    succUserQuantityOfVomitsConn conn "nick" "#test"
+    addUserConn conn "alice" "#test"
+    addVomitConn conn "alice" "#test" "xyz789" "/data/logs/#test/alice/pic.jpg"
+    succUserQuantityOfVomitsConn conn "alice" "#test"
+    path <- getRouletteVomitConn conn "#test"
+    path `shouldSatisfy` (not . null)
+
+-- Helpers
 
 isResponse, isNoResponse :: Response a -> Bool
 isResponse (Response _) = True

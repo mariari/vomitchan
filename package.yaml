@@ -83,3 +83,4 @@ tests:
     dependencies:
       - vomitchan
       - hspec
+      - sqlite-simple
