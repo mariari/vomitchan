@@ -62,6 +62,7 @@ import Control.Exception
 import Control.Monad
 
 import           Data.Foldable
+import           Data.Maybe         (listToMaybe)
 import qualified Data.Text          as T
 import qualified Data.Text.Encoding as TE
 
@@ -69,7 +70,6 @@ import           Turtle       hiding (FilePath, fold)
 import qualified Turtle.Bytes as TB
 
 import qualified System.Directory as D
-import qualified System.Random    as R
 
 type Username = String
 type Channel  = String
@@ -116,10 +116,6 @@ dbPath = "./data/vomits.db"
 -- Helpers
 checkFilenameMetadata :: T.Text -> T.Text -> Bool
 checkFilenameMetadata = T.isInfixOf
-
-ifEmpty :: [a] -> b -> (a -> b) -> b
-ifEmpty (x:_) _ f = f x
-ifEmpty [] def _  = def
 
 getExtension :: String -> String
 getExtension = reverse . takeWhile (/= '.') . reverse
@@ -300,7 +296,7 @@ getUserQuantityOfVomitsConn conn username chan = do
               \ AND channel_id=(SELECT id FROM channels WHERE name=:cname)\
               \ LIMIT 1;"
               [":uname" := username, ":cname" := chan] :: IO [DBUser]
-  return $ ifEmpty user 0 userQuantityVomit
+  return $ maybe 0 userQuantityVomit (listToMaybe user)
 
 getUserQuantityOfVomits :: Username -> Channel -> IO Int
 getUserQuantityOfVomits username chan = retry . withConnection dbPath $
@@ -343,7 +339,7 @@ getLinkConn conn filepath = do
               conn
               "SELECT * FROM vomits WHERE filepath=:path LIMIT 1;"
               [":path" := filepath] :: IO [DBVomit]
-  return $ ifEmpty vom Nothing vomitLink
+  return $ vomitLink =<< listToMaybe vom
 
 getLink :: String -> IO (Maybe String)
 getLink filepath = retry . withConnection dbPath $
@@ -366,22 +362,14 @@ getRandomVomit user chan = retry . withConnection dbPath $
 
 getRandomVomitPathConn :: Connection -> Username -> Channel -> IO String
 getRandomVomitPathConn conn user chan = do
-  vomOff <- queryNamed
-              conn
-              "SELECT COUNT(*) FROM vomits\
-              \ WHERE user_id=(SELECT id FROM user WHERE username=:uname\
-              \ AND channel_id=(SELECT id FROM channels WHERE name=:cname));"
-              [":uname" := user, ":cname" := chan] :: IO [Count]
-  let (Count maxNum) = ifEmpty vomOff (Count 1) id
-  select <- R.randomRIO (0,  maxNum - 1)
   vom <- queryNamed
               conn
               "SELECT * FROM vomits\
               \ WHERE user_id=(SELECT id FROM user WHERE username=:uname\
               \ AND channel_id=(SELECT id FROM channels WHERE name=:cname))\
-              \ LIMIT 1 OFFSET :off;"
-              [":uname" := user, ":cname" := chan, ":off" := select] :: IO [DBVomit]
-  return $ ifEmpty vom "" vomitPath
+              \ ORDER BY RANDOM() LIMIT 1;"
+              [":uname" := user, ":cname" := chan] :: IO [DBVomit]
+  return $ maybe "" vomitPath (listToMaybe vom)
 
 getRandomVomitPath :: Username-> Channel-> IO String
 getRandomVomitPath user chan = retry . withConnection dbPath $
@@ -389,24 +377,15 @@ getRandomVomitPath user chan = retry . withConnection dbPath $
 
 getRouletteVomitConn :: Connection -> Channel -> IO String
 getRouletteVomitConn conn chan = do
-  vomOff  <- queryNamed
-              conn
-              "SELECT Count(*) FROM vomits\
-              \ WHERE user_id IN (SELECT id FROM user\
-              \ WHERE channel_id=(SELECT id FROM channels WHERE name=:cname)\
-              \ AND quantity_of_vomits>=1)"
-              [":cname" := chan] :: IO [Count]
-  let (Count maxNum) = ifEmpty vomOff (Count 1) id
-  select <- R.randomRIO (0, maxNum - 1)
   vom  <- queryNamed
               conn
               "SELECT * FROM vomits\
               \ WHERE user_id IN (SELECT id FROM user\
               \ WHERE channel_id=(SELECT id FROM channels WHERE name=:cname)\
               \ AND quantity_of_vomits>=1)\
-              \ LIMIT 1 OFFSET :off;"
-              [":cname" := chan, ":off" := select] :: IO [DBVomit]
-  return $ ifEmpty vom "" vomitPath
+              \ ORDER BY RANDOM() LIMIT 1;"
+              [":cname" := chan] :: IO [DBVomit]
+  return $ maybe "" vomitPath (listToMaybe vom)
 
 getRouletteVomit :: Channel -> IO String
 getRouletteVomit chan = retry . withConnection dbPath $
