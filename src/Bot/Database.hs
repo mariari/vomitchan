@@ -19,7 +19,6 @@ module Bot.Database(
   , genDb
   -- * Channels
   , addChannelConn
-  , addChannel
   -- * Users
   , addUserConn
   , addUser
@@ -30,9 +29,7 @@ module Bot.Database(
   , updateUserQuantityOfVomitsConn
   , updateUserQuantityOfVomits
   , fixQuantityOfVomitsConn
-  , fixQuantityOfVomits
   , nukeUserFromDbConn
-  , nukeUserFromDb
   -- * Vomits
   , addVomitConn
   , addVomit
@@ -41,21 +38,17 @@ module Bot.Database(
   , updateLinkConn
   , updateLink
   , getRandomVomitConn
-  , getRandomVomit
   , getRandomVomitPathConn
   , getRandomVomitPath
   , getRouletteVomitConn
   , getRouletteVomit
   , nukeVomitByMD5FixConn
-  , nukeVomitByMD5Fix
   , nukeVomitByMD5
   , nukeVomitsLinkUserFromDbConn
   , nukeVomitsLinkUserFromDb
   , nukeVomitsMD5UserFromDbFixConn
-  , nukeVomitsMD5UserFromDbFix
   , nukeVomitsMD5UserFromDb
   , nukeVomitsOfUserFromDbConn
-  , nukeVomitsOfUserFromDb
   -- * Metadata
   , updateNSFW
   , updateNSFL
