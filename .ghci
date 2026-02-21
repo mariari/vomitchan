@@ -1,0 +1,9 @@
+:set prompt "vomit> "
+:set prompt-cont "     | "
+:set -XOverloadedStrings
+:set -haddock
+import Bot.Examples
+import Bot.MessageParser (parseMessage)
+import Bot.MessageType
+import Bot.Modifier
+import Bot.StateType

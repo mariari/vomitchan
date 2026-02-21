@@ -75,3 +75,11 @@ executables:
       - hashable
       - sqlite-simple
       - exceptions
+
+tests:
+  vomitchan-test:
+    source-dirs: test
+    main: Spec.hs
+    dependencies:
+      - vomitchan
+      - hspec

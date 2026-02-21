@@ -53,7 +53,7 @@ data HashStorage = HashStorage
                  , _mute   :: !Bool
                  , _fleecy :: !Bool
                  , _yuki   :: !Bool
-                 } deriving (Show, Generic)
+                 } deriving (Show, Eq, Ord, Generic)
 
 -- Generates HashStorage
 toHashStorage = HashStorage
