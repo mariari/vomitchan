@@ -313,7 +313,7 @@ updateNSFL :: String -> Username -> Channel -> IO Int
 updateNSFL = updateMetadata "-nsfl"
 
 updateMetadata :: String -> String -> Username -> Channel -> IO Int
-updateMetadata meta link username chan = withConnection dbPath $
+updateMetadata meta link username chan = retry . withConnection dbPath $
   \conn -> do
    vomits <- queryNamed
             conn
