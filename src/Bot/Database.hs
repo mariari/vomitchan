@@ -63,6 +63,7 @@ import Control.Monad
 
 import           Data.Foldable
 import           Data.Maybe         (listToMaybe)
+import           Data.String        (IsString)
 import qualified Data.Text          as T
 import qualified Data.Text.Encoding as TE
 
@@ -135,6 +136,9 @@ retryGen n current action
 
 retry :: IO a -> IO a
 retry = retryGen 5 0
+
+withNewlineHack :: (IsString s, Semigroup s) => (s -> IO [a]) -> s -> IO [a]
+withNewlineHack f md5 = (<>) <$> f (md5 <> "\n") <*> f md5
 
 -- Schema
 
@@ -361,15 +365,8 @@ getRandomVomit user chan = retry . withConnection dbPath $
   \conn -> getRandomVomitConn conn user chan
 
 getRandomVomitPathConn :: Connection -> Username -> Channel -> IO String
-getRandomVomitPathConn conn user chan = do
-  vom <- queryNamed
-              conn
-              "SELECT * FROM vomits\
-              \ WHERE user_id=(SELECT id FROM user WHERE username=:uname\
-              \ AND channel_id=(SELECT id FROM channels WHERE name=:cname))\
-              \ ORDER BY RANDOM() LIMIT 1;"
-              [":uname" := user, ":cname" := chan] :: IO [DBVomit]
-  return $ maybe "" vomitPath (listToMaybe vom)
+getRandomVomitPathConn conn user chan =
+  maybe "" vomitPath . listToMaybe <$> getRandomVomitConn conn user chan
 
 getRandomVomitPath :: Username-> Channel-> IO String
 getRandomVomitPath user chan = retry . withConnection dbPath $
@@ -393,29 +390,22 @@ getRouletteVomit chan = retry . withConnection dbPath $
 
 
 nukeVomitByMD5 :: String -> IO [String]
-nukeVomitByMD5 md5 = do
-  withNewline <- nukeVomitByMD5Fix $ md5 <> "\n"
-  withoutNewline <- nukeVomitByMD5Fix md5
-  return $ withNewline <> withoutNewline
+nukeVomitByMD5 = withNewlineHack nukeVomitByMD5Fix
+
+nukeVomitsWhere :: Connection -> Query -> [NamedParam] -> IO [DBVomit]
+nukeVomitsWhere conn whereClause params = do
+  voms <- queryNamed conn ("SELECT * FROM vomits WHERE " <> whereClause) params
+  _ <- executeNamed conn ("DELETE FROM vomits WHERE " <> whereClause) params
+  return voms
 
 nukeVomitByMD5FixConn :: Connection -> String -> IO [String]
 nukeVomitByMD5FixConn conn md5 = do
-  voms <- queryNamed
-              conn
-              "SELECT * FROM vomits\
-              \ WHERE vomit_md5=:md5"
-              [":md5" := md5] :: IO [DBVomit]
-  _ <- executeNamed
-              conn
-              "DELETE FROM vomits\
-              \ WHERE vomit_md5=:md5"
-              [":md5" := md5]
-
+  voms <- nukeVomitsWhere conn "vomit_md5=:md5" [":md5" := md5]
   traverse_ (fixVomitCount conn . vomitUserId) voms
   return $ vomitPath <$> voms
   where
-    fixVomitCount conn user_id = executeNamed
-                                      conn
+    fixVomitCount conn' user_id = executeNamed
+                                      conn'
                                       "UPDATE user SET quantity_of_vomits = quantity_of_vomits - 1\
                                       \ WHERE id=:user_id"
                                       [":user_id" := user_id]
@@ -425,58 +415,30 @@ nukeVomitByMD5Fix md5 = retry . withConnection dbPath $
   \conn -> nukeVomitByMD5FixConn conn md5
 
 nukeVomitsLinkUserFromDbConn :: Connection -> T.Text -> Username -> Channel -> IO [String]
-nukeVomitsLinkUserFromDbConn conn link user chan = do
-  voms <- queryNamed
-        conn
-        "SELECT * FROM vomits\
-        \ WHERE link=:ulink\
-        \ AND user_id=(SELECT id FROM user\
-        \ WHERE channel_id=(SELECT id FROM channels where name=:cname)\
-        \ AND username=:uname);"
-        [":uname" := user, ":ulink" := link, ":cname" := chan] :: IO [DBVomit]
-
-  _ <- executeNamed
-        conn
-        "DELETE FROM vomits\
-        \ WHERE link=:ulink\
-        \ AND user_id=(SELECT id FROM user\
-        \ WHERE channel_id=(SELECT id FROM channels where name=:cname)\
-        \ AND username=:uname);"
-        [":uname" := user, ":ulink" := link, ":cname" := chan]
-
-  return $ vomitPath <$> voms
+nukeVomitsLinkUserFromDbConn conn link user chan =
+  fmap vomitPath <$> nukeVomitsWhere conn
+    "link=:ulink\
+    \ AND user_id=(SELECT id FROM user\
+    \ WHERE channel_id=(SELECT id FROM channels where name=:cname)\
+    \ AND username=:uname);"
+    [":uname" := user, ":ulink" := link, ":cname" := chan]
 
 nukeVomitsLinkUserFromDb :: T.Text -> Username -> Channel -> IO [String]
 nukeVomitsLinkUserFromDb link user chan = retry . withConnection dbPath $
   \conn -> nukeVomitsLinkUserFromDbConn conn link user chan
 
 nukeVomitsMD5UserFromDb :: T.Text -> Username -> Channel -> IO [String]
-nukeVomitsMD5UserFromDb md5 user chan = do
-  withNewline <- nukeVomitsMD5UserFromDbFix (md5 <> "\n") user chan
-  withoutNewline <- nukeVomitsMD5UserFromDbFix md5 user chan
-  return $ withNewline <> withoutNewline
+nukeVomitsMD5UserFromDb md5 user chan =
+  withNewlineHack (\m -> nukeVomitsMD5UserFromDbFix m user chan) md5
 
 nukeVomitsMD5UserFromDbFixConn :: Connection -> T.Text -> Username -> Channel -> IO [String]
-nukeVomitsMD5UserFromDbFixConn conn md5 user chan = do
-  voms <- queryNamed
-        conn
-        "SELECT * FROM vomits\
-        \ WHERE vomit_md5=:md5\
-        \ AND user_id=(SELECT id FROM user\
-        \ WHERE channel_id=(SELECT id FROM channels where name=:cname)\
-        \ AND username=:uname);"
-        [":uname" := user, ":md5" := md5, ":cname" := chan] :: IO [DBVomit]
-
-  _ <- executeNamed
-        conn
-        "DELETE FROM vomits\
-        \ WHERE vomit_md5=:md5\
-        \ AND user_id=(SELECT id FROM user\
-        \ WHERE channel_id=(SELECT id FROM channels where name=:cname)\
-        \ AND username=:uname);"
-        [":uname" := user, ":md5" := md5, ":cname" := chan]
-
-  return $ vomitPath <$> voms
+nukeVomitsMD5UserFromDbFixConn conn md5 user chan =
+  fmap vomitPath <$> nukeVomitsWhere conn
+    "vomit_md5=:md5\
+    \ AND user_id=(SELECT id FROM user\
+    \ WHERE channel_id=(SELECT id FROM channels where name=:cname)\
+    \ AND username=:uname);"
+    [":uname" := user, ":md5" := md5, ":cname" := chan]
 
 nukeVomitsMD5UserFromDbFix :: T.Text -> Username -> Channel -> IO [String]
 nukeVomitsMD5UserFromDbFix md5 user chan = retry . withConnection dbPath $
