@@ -71,19 +71,22 @@ respond s _    (Left err)   _erver _tate _ _manager =
   appendError err s >> print err >> return NoResponse
 respond _ allS (Right priv) server state net manager = f priv
   where
-    f (PRIVMSG priv)     = runReaderT (allLogsM manager (information priv manager) >> runCmd) (information priv manager)
-    f (NOTICE priv)      = processNotice priv (runReaderT (allLogsM manager (information priv manager)>> runCmd) (information priv manager))
-    f (TOPICCHANGE priv) = NoResponse <$ runReaderT (allLogsM manager (information priv manager)) (information priv manager)
+    f (PRIVMSG priv)     = run priv
+    f (NOTICE priv)      = processNotice priv (run priv)
+    f (TOPICCHANGE priv) = NoResponse <$ runReaderT (log priv) (information priv)
     f (PING (Ping s))    = return $ Response ("PONG", [Modifier.effNonModifiable s])
     f _                  = return NoResponse
 
-    information :: PrivMsg -> Client.Manager -> InfoPriv
-    information priv mng = Info priv server state mng net allS
+    information :: PrivMsg -> InfoPriv
+    information priv = Info priv server state manager net allS
+
+    log priv = allLogsM (information priv)
+    run priv = runReaderT (log priv >> runCmd) (information priv)
 
 --- LOGGING -----------------------------------------------------------------------------------
 
-allLogsM :: CmdImp m => Client.Manager -> InfoPriv -> m ()
-allLogsM mnger info@(Info priv _ _ _ net _)
+allLogsM :: CmdImp m => InfoPriv -> m ()
+allLogsM info@(Info priv _ _ mnger net _)
   | usrNick (user priv) `elem` (netIgnore net) = return ()
   | otherwise                                  = traverse_ (toReaderImp . (. message)) [cmdFldr, cmdLog, cmdLogFile mnger info]
 
