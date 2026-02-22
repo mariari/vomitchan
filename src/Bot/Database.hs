@@ -2,58 +2,65 @@
 {-# LANGUAGE ScopedTypeVariables #-}
 
 module Bot.Database(
-  -- * Original API (unchanged signatures)
-    addUser
-  , addVomit
-  , addChannel
-  , updateLink
-  , updateUserQuantityOfVomits
-  , succUserQuantityOfVomits
-  , getLink
-  , getRandomVomitPath
-  , getRouletteVomit
-  , nukeVomitByMD5
-  , nukeUserFromDb
-  , nukeVomitsOfUserFromDb
-  , getUserQuantityOfVomits
-  , getRandomVomit
-  , genDb
-  , fixQuantityOfVomits
-  , nukeVomitsLinkUserFromDb
-  , nukeVomitsMD5UserFromDb
-  , updateNSFW
-  , updateNSFL
-  , checkFilenameMetadata
-  -- * Testable variants (take Connection as first arg)
-  , createSchema
-  , addUserConn
-  , addVomitConn
-  , addChannelConn
-  , updateLinkConn
-  , updateUserQuantityOfVomitsConn
-  , succUserQuantityOfVomitsConn
-  , getLinkConn
-  , getRandomVomitPathConn
-  , getRouletteVomitConn
-  , nukeUserFromDbConn
-  , nukeVomitsOfUserFromDbConn
-  , getUserQuantityOfVomitsConn
-  , getRandomVomitConn
-  , fixQuantityOfVomitsConn
-  , nukeVomitsLinkUserFromDbConn
-  , nukeVomitsMD5UserFromDbFixConn
-  , nukeVomitByMD5FixConn
   -- * Types
+    Count(..)
+  , DBChannel(..)
   , DBUser(..)
   , DBVomit(..)
-  , DBChannel(..)
-  , Count(..)
   , Username
   , Channel
   -- * Connection helpers
   , withDb
   -- * Constants
   , dbPath
+  -- * Helpers
+  , checkFilenameMetadata
+  -- * Schema
+  , createSchema
+  -- * Migration
+  , genDb
+  -- * Channels
+  , addChannelConn
+  , addChannel
+  -- * Users
+  , addUserConn
+  , addUser
+  , getUserQuantityOfVomitsConn
+  , getUserQuantityOfVomits
+  , succUserQuantityOfVomitsConn
+  , succUserQuantityOfVomits
+  , updateUserQuantityOfVomitsConn
+  , updateUserQuantityOfVomits
+  , fixQuantityOfVomitsConn
+  , fixQuantityOfVomits
+  , nukeUserFromDbConn
+  , nukeUserFromDb
+  -- * Vomits
+  , addVomitConn
+  , addVomit
+  , getLinkConn
+  , getLink
+  , updateLinkConn
+  , updateLink
+  , getRandomVomitConn
+  , getRandomVomit
+  , getRandomVomitPathConn
+  , getRandomVomitPath
+  , getRouletteVomitConn
+  , getRouletteVomit
+  , nukeVomitByMD5FixConn
+  , nukeVomitByMD5Fix
+  , nukeVomitByMD5
+  , nukeVomitsLinkUserFromDbConn
+  , nukeVomitsLinkUserFromDb
+  , nukeVomitsMD5UserFromDbFixConn
+  , nukeVomitsMD5UserFromDbFix
+  , nukeVomitsMD5UserFromDb
+  , nukeVomitsOfUserFromDbConn
+  , nukeVomitsOfUserFromDb
+  -- * Metadata
+  , updateNSFW
+  , updateNSFL
   ) where
 
 import Database.SQLite.Simple hiding (fold)
@@ -73,6 +80,8 @@ import           Turtle       hiding (FilePath, fold)
 import qualified Turtle.Bytes as TB
 
 import qualified System.Directory as D
+
+--- TYPES ---------------------------------------------------------------------------
 
 type Username = String
 type Channel  = String
@@ -111,12 +120,13 @@ instance FromRow DBUser where
 instance FromRow DBVomit where
   fromRow = DBVomit <$> field <*> field <*> field <*> field <*> field
 
--- Constants
+--- CONSTANTS -----------------------------------------------------------------------
 
 dbPath :: FilePath
 dbPath = "./data/vomits.db"
 
--- Helpers
+--- HELPERS -------------------------------------------------------------------------
+
 checkFilenameMetadata :: T.Text -> T.Text -> Bool
 checkFilenameMetadata = T.isInfixOf
 
@@ -145,7 +155,7 @@ withDb = retry . withConnection dbPath
 withNewlineHack :: (IsString s, Semigroup s) => (s -> IO [a]) -> s -> IO [a]
 withNewlineHack f md5 = (<>) <$> f (md5 <> "\n") <*> f md5
 
--- Schema
+--- SCHEMA --------------------------------------------------------------------------
 
 createSchema :: Connection -> IO ()
 createSchema conn = do
@@ -168,7 +178,7 @@ createSchema conn = do
     \  link text,\
     \ FOREIGN KEY (user_id) REFERENCES user (id));"
 
--- Db functions
+--- MIGRATION -----------------------------------------------------------------------
 
 genDb :: IO ()
 genDb = do
@@ -182,23 +192,22 @@ genDb = do
       let users = zip users_ directories
       vomits <- traverse generator ((\(names, chan) -> (\name -> (name, chan, "./data/logs/" <> chan <> "/" <> name)) <$> names) =<< users)
 
-      _ <- traverse addChannel directories
-      _ <- traverse usersAdd users
-      _ <- traverse vomitAdd vomits
-      _ <- traverse fixQuantity vomits
-      return ()
+      traverse_ addChannel directories
+      traverse_ usersAdd users
+      traverse_ vomitAdd vomits
+      traverse_ fixQuantity vomits
 
       where
         usersAdd :: ([FilePath], FilePath) -> IO ()
-        usersAdd (xs, x) = traverse (flip addUser x) xs >> return ()
+        usersAdd (xs, x) = traverse_ (flip addUser x) xs
 
         vomitAdd :: (FilePath, FilePath, [FilePath]) -> IO ()
-        vomitAdd (name, chan, paths) = do
-          traverse (\x -> do
+        vomitAdd (name, chan, paths) =
+          traverse_ (\x -> do
                        unless ("Links.log" `T.isSuffixOf` (T.pack x)) $ do
                          (_, md5) <- TB.shellStrict (fold ["md5sum '", T.pack x, "' | cut -d ' ' -f 1"]) empty
                          addVomit name chan (T.unpack . T.stripEnd . TE.decodeUtf8 $ md5) x
-                   ) paths >> return ()
+                   ) paths
 
         fixQuantity :: (FilePath, FilePath, [FilePath]) -> IO ()
         fixQuantity (name, chan, paths) = updateUserQuantityOfVomits name chan
@@ -209,7 +218,7 @@ genDb = do
           vomits <- D.listDirectory dir
           return (name, chan, ((("./data/logs/" <> chan <> "/" <> name <> "/") <>) <$> vomits))
 
--- Conn variants + wrappers
+--- CHANNELS ------------------------------------------------------------------------
 
 addChannelConn :: Connection -> Channel -> IO ()
 addChannelConn conn chan =
@@ -218,15 +227,10 @@ addChannelConn conn chan =
       "INSERT OR IGNORE INTO channels (name) VALUES (:cname)"
       [":cname" := chan]
 
-fixQuantityOfVomits :: IO ()
-fixQuantityOfVomits = retry . withConnection dbPath $
-  \conn ->
-    execute_
-        conn
-        "UPDATE user SET quantity_of_vomits=(SELECT COUNT(*) FROM vomits WHERE user.id = vomits.user_id)"
-
 addChannel :: Channel -> IO ()
 addChannel chan = withDb $ \conn -> addChannelConn conn chan
+
+--- USERS ---------------------------------------------------------------------------
 
 addUserConn :: Connection -> Username -> Channel -> IO ()
 addUserConn conn user chan = do
@@ -240,38 +244,18 @@ addUserConn conn user chan = do
 addUser :: Username -> Channel -> IO ()
 addUser user chan = withDb $ \conn -> addUserConn conn user chan
 
-addVomitConn :: Connection -> Username -> Channel -> String -> String -> IO ()
-addVomitConn conn nick chan md5 filepath =
-  executeNamed
-      conn
-      "INSERT INTO vomits (filepath, vomit_md5, user_id, link)\
-      \ VALUES (:filepath, :md5, (SELECT id FROM user WHERE username=:uname\
-      \ AND channel_id=(SELECT id FROM channels where name=:cname)),\
-      \ (SELECT link FROM vomits WHERE vomit_md5=:md5))"
-      [":filepath" := filepath, ":md5" := md5, ":uname" := nick, ":cname" := chan]
+getUserQuantityOfVomitsConn :: Connection -> Username -> Channel -> IO Int
+getUserQuantityOfVomitsConn conn username chan = do
+  user <- queryNamed
+              conn
+              "SELECT * FROM user WHERE username=:uname\
+              \ AND channel_id=(SELECT id FROM channels WHERE name=:cname)\
+              \ LIMIT 1;"
+              [":uname" := username, ":cname" := chan] :: IO [DBUser]
+  return $ maybe 0 userQuantityVomit (listToMaybe user)
 
-addVomit :: Username -> Channel -> String -> String -> IO ()
-addVomit nick chan md5 filepath = withDb $ \conn -> addVomitConn conn nick chan md5 filepath
-
-fixQuantityOfVomitsConn :: Connection -> IO ()
-fixQuantityOfVomitsConn conn =
-  execute_
-      conn
-      "UPDATE user SET quantity_of_vomits=(SELECT COUNT(md5) FROM vomits WHERE user.id = vomit.id)"
-
-fixQuantityOfVomits :: IO ()
-fixQuantityOfVomits = withDb fixQuantityOfVomitsConn
-
-updateLinkConn :: Connection -> String -> String -> IO ()
-updateLinkConn conn filepath link =
-  executeNamed
-      conn
-      "UPDATE vomits SET link=:link WHERE vomit_md5=(SELECT vomit_md5 FROM vomits\
-      \ WHERE filepath=:path)"
-      [":link" := link, ":path" := filepath]
-
-updateLink :: String -> String -> IO ()
-updateLink filepath link = withDb $ \conn -> updateLinkConn conn filepath link
+getUserQuantityOfVomits :: Username -> Channel -> IO Int
+getUserQuantityOfVomits username chan = withDb $ \conn -> getUserQuantityOfVomitsConn conn username chan
 
 succUserQuantityOfVomitsConn :: Connection -> Username -> Channel -> IO ()
 succUserQuantityOfVomitsConn conn user chan =
@@ -297,49 +281,41 @@ updateUserQuantityOfVomitsConn conn user chan new =
 updateUserQuantityOfVomits :: Username -> Channel -> Int -> IO ()
 updateUserQuantityOfVomits user chan new = withDb $ \conn -> updateUserQuantityOfVomitsConn conn user chan new
 
-getUserQuantityOfVomitsConn :: Connection -> Username -> Channel -> IO Int
-getUserQuantityOfVomitsConn conn username chan = do
-  user <- queryNamed
-              conn
-              "SELECT * FROM user WHERE username=:uname\
-              \ AND channel_id=(SELECT id FROM channels WHERE name=:cname)\
-              \ LIMIT 1;"
-              [":uname" := username, ":cname" := chan] :: IO [DBUser]
-  return $ maybe 0 userQuantityVomit (listToMaybe user)
+fixQuantityOfVomitsConn :: Connection -> IO ()
+fixQuantityOfVomitsConn conn =
+  execute_
+      conn
+      "UPDATE user SET quantity_of_vomits=(SELECT COUNT(*) FROM vomits WHERE user.id = vomits.user_id)"
 
-getUserQuantityOfVomits :: Username -> Channel -> IO Int
-getUserQuantityOfVomits username chan = withDb $ \conn -> getUserQuantityOfVomitsConn conn username chan
+fixQuantityOfVomits :: IO ()
+fixQuantityOfVomits = withDb fixQuantityOfVomitsConn
 
-updateNSFW :: String -> Username -> Channel -> IO Int
-updateNSFW = updateMetadata "-nsfw"
+nukeUserFromDbConn :: Connection -> Username -> Channel -> IO ()
+nukeUserFromDbConn conn user chan =
+  executeNamed
+      conn
+      "DELETE FROM user\
+      \ WHERE username=:uname\
+      \ AND channel_id=(SELECT id FROM channels WHERE name=:cname);"
+      [":uname" := user, ":cname" := chan]
 
-updateNSFL :: String -> Username -> Channel -> IO Int
-updateNSFL = updateMetadata "-nsfl"
+nukeUserFromDb :: Username -> Channel -> IO ()
+nukeUserFromDb user chan = withDb $ \conn -> nukeUserFromDbConn conn user chan
 
-updateMetadata :: String -> String -> Username -> Channel -> IO Int
-updateMetadata meta link username chan = retry . withConnection dbPath $
-  \conn -> do
-   vomits <- queryNamed
-            conn
-            "SELECT * FROM vomits\
-            \ WHERE user_id=(SELECT id FROM user WHERE username=:uname\
-            \ AND channel_id=(SELECT id FROM channels WHERE name=:cname))\
-            \ AND link=:link"
-            [":uname" := username, ":cname" := chan, ":link" := link] :: IO [DBVomit]
-   let paths = filter (not . checkFilenameMetadata (T.pack meta) . T.pack) (vomitPath <$> vomits)
-   thrash <- traverse renameFile paths
-   traverse_ (updateFilepath conn) paths
-   return $ length thrash
+--- VOMITS --------------------------------------------------------------------------
 
-   where
-     renameFile :: String -> IO ()
-     renameFile path = D.renameFile path (appendToFilename path meta)
+addVomitConn :: Connection -> Username -> Channel -> String -> String -> IO ()
+addVomitConn conn nick chan md5 filepath =
+  executeNamed
+      conn
+      "INSERT INTO vomits (filepath, vomit_md5, user_id, link)\
+      \ VALUES (:filepath, :md5, (SELECT id FROM user WHERE username=:uname\
+      \ AND channel_id=(SELECT id FROM channels where name=:cname)),\
+      \ (SELECT link FROM vomits WHERE vomit_md5=:md5))"
+      [":filepath" := filepath, ":md5" := md5, ":uname" := nick, ":cname" := chan]
 
-     updateFilepath conn path =
-       executeNamed
-           conn
-           "UPDATE vomits SET filepath=:nfp WHERE filepath=:fp"
-           [":nfp" := appendToFilename path meta, ":fp" := path]
+addVomit :: Username -> Channel -> String -> String -> IO ()
+addVomit nick chan md5 filepath = withDb $ \conn -> addVomitConn conn nick chan md5 filepath
 
 getLinkConn :: Connection -> String -> IO (Maybe String)
 getLinkConn conn filepath = do
@@ -351,6 +327,17 @@ getLinkConn conn filepath = do
 
 getLink :: String -> IO (Maybe String)
 getLink filepath = withDb $ \conn -> getLinkConn conn filepath
+
+updateLinkConn :: Connection -> String -> String -> IO ()
+updateLinkConn conn filepath link =
+  executeNamed
+      conn
+      "UPDATE vomits SET link=:link WHERE vomit_md5=(SELECT vomit_md5 FROM vomits\
+      \ WHERE filepath=:path)"
+      [":link" := link, ":path" := filepath]
+
+updateLink :: String -> String -> IO ()
+updateLink filepath link = withDb $ \conn -> updateLinkConn conn filepath link
 
 getRandomVomitConn :: Connection -> Username -> Channel -> IO [DBVomit]
 getRandomVomitConn conn user chan = do
@@ -387,7 +374,6 @@ getRouletteVomitConn conn chan = do
 
 getRouletteVomit :: Channel -> IO String
 getRouletteVomit chan = withDb $ \conn -> getRouletteVomitConn conn chan
-
 
 nukeVomitByMD5 :: String -> IO [String]
 nukeVomitByMD5 = withNewlineHack nukeVomitByMD5Fix
@@ -454,14 +440,35 @@ nukeVomitsOfUserFromDbConn conn user chan =
 nukeVomitsOfUserFromDb :: Username -> Channel -> IO ()
 nukeVomitsOfUserFromDb user chan = withDb $ \conn -> nukeVomitsOfUserFromDbConn conn user chan
 
-nukeUserFromDbConn :: Connection -> Username -> Channel -> IO ()
-nukeUserFromDbConn conn user chan =
-  executeNamed
-      conn
-      "DELETE FROM user\
-      \ WHERE username=:uname\
-      \ AND channel_id=(SELECT id FROM channels WHERE name=:cname);"
-      [":uname" := user, ":cname" := chan]
+--- METADATA ------------------------------------------------------------------------
 
-nukeUserFromDb :: Username -> Channel -> IO ()
-nukeUserFromDb user chan = withDb $ \conn -> nukeUserFromDbConn conn user chan
+updateNSFW :: String -> Username -> Channel -> IO Int
+updateNSFW = updateMetadata "-nsfw"
+
+updateNSFL :: String -> Username -> Channel -> IO Int
+updateNSFL = updateMetadata "-nsfl"
+
+updateMetadata :: String -> String -> Username -> Channel -> IO Int
+updateMetadata meta link username chan = retry . withConnection dbPath $
+  \conn -> do
+   vomits <- queryNamed
+            conn
+            "SELECT * FROM vomits\
+            \ WHERE user_id=(SELECT id FROM user WHERE username=:uname\
+            \ AND channel_id=(SELECT id FROM channels WHERE name=:cname))\
+            \ AND link=:link"
+            [":uname" := username, ":cname" := chan, ":link" := link] :: IO [DBVomit]
+   let paths = filter (not . checkFilenameMetadata (T.pack meta) . T.pack) (vomitPath <$> vomits)
+   thrash <- traverse renameFile paths
+   traverse_ (updateFilepath conn) paths
+   return $ length thrash
+
+   where
+     renameFile :: String -> IO ()
+     renameFile path = D.renameFile path (appendToFilename path meta)
+
+     updateFilepath conn path =
+       executeNamed
+           conn
+           "UPDATE vomits SET filepath=:nfp WHERE filepath=:fp"
+           [":nfp" := appendToFilename path meta, ":fp" := path]
