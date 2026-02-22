@@ -110,17 +110,15 @@ dwnUsrFileExtension info msg url extension
   | shouldDownload (msgContent msg) == False = return ExitSuccess
   | otherwise = do
       uniqueURL <- uniqueURL (msgContent msg) url extension
-      let url' = escapeUrl url
-      let filepath = escapeNick (getUsrFldrT msg) <> uniqueURL
-      ret <- shell ("cd "
-                   -- escapeNick fixes bash errors like cd [czar]
-                    <> escapeNick (getUsrFldrT msg)
-                    <> " && curl -fL --max-filesize 504857600 --range 0-104857600 -o "
-                    <> uniqueURL <> " " <> url') empty
-      (_, md5) <- TB.shellStrict (fold ["md5sum ", filepath, " | cut -d ' ' -f 1"]) empty
-      liftIO $ ifBanned (T.unpack filepath) (T.stripEnd . TE.decodeUtf8 $ md5) $ do
+      let filepath = getUsrFldrT msg <> uniqueURL
+      ret <- proc "curl"
+                  ["-fL", "--max-filesize", "504857600", "--range", "0-104857600"
+                  , "-o", filepath, url] empty
+      (_, md5Out) <- TB.procStrict "md5sum" [filepath] empty
+      let md5 = T.stripEnd . TE.decodeUtf8 . BS.takeWhile (/= 0x20) $ md5Out
+      liftIO $ ifBanned (T.unpack filepath) md5 $ do
         liftIO $ do
-          addVomit (T.unpack . msgNick $ msg) (T.unpack . msgChan $ msg) (T.unpack . TE.decodeUtf8 $ md5) (T.unpack filepath)
+          addVomit (T.unpack . msgNick $ msg) (T.unpack . msgChan $ msg) (T.unpack md5) (T.unpack filepath)
           succUserQuantityOfVomits (T.unpack . msgNick $ msg) (T.unpack . msgChan $ msg)
       return ret
 
@@ -143,7 +141,7 @@ dropExtension' file =
 uniqueURL :: MonadIO m => Text -> Text -> Text -> m Text
 uniqueURL msg url extension = do
   time <- currentDate
-  pure $ escapeUrl (T.init time <> "-" <> dropExtension' fileName <> nsfwEnable <> nsflEnable <> "." <> extension)
+  pure $ T.init time <> "-" <> dropExtension' fileName <> nsfwEnable <> nsflEnable <> "." <> extension
   where
     fileName = last (T.splitOn "/" url)
     nsfwEnable = metadataEnable "nsfw"
@@ -152,18 +150,6 @@ uniqueURL msg url extension = do
     metadataEnable str
       | str `elem` (T.words . T.toLower $ msg) = "-" <> str
       | otherwise                              = ""
-
-escapeNick :: Text -> Text
-escapeNick  = escape "[" . escape "]"
-
-escape str =
-  T.intercalate ("\\" <> str) . T.splitOn str
-
-escapeUrl :: Text -> Text
-escapeUrl = escape "&"
-
-escapeComma :: Text -> Text
-escapeComma = escape ","
 
 -- this probably exists as <|> somehow, but it does not do the proper thing without the lift
 (<<|>>) :: Monad m => m (Maybe a) -> m (Maybe a) -> m (Maybe a)
