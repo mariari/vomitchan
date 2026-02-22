@@ -176,7 +176,7 @@ fixQuantityOfVomits = retry . withConnection "./data/vomits.db" $
   \conn ->
     execute_
         conn
-        "UPDATE user SET quantity_of_vomits=(SELECT COUNT(md5) FROM vomits WHERE user.id = vomit.id)"
+        "UPDATE user SET quantity_of_vomits=(SELECT COUNT(*) FROM vomits WHERE user.id = vomits.user_id)"
 
 addChannel :: Channel -> IO ()
 addChannel chan = retry . withConnection "./data/vomits.db" $
