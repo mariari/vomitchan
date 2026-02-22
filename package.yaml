@@ -1,5 +1,5 @@
 name:                vomitchan
-version:             0.1.0.0
+version:             0.2.0.0
 synopsis:            IRC bot written in Haskell
 description:         Please see README.md
 homepage:            https://gitla.in/nymphet/vomitchan
