@@ -71,3 +71,12 @@ executables:
       - stm-containers
       - list-t
       - hashable
+
+tests:
+  vomitchan-test:
+    source-dirs: test
+    main: Spec.hs
+    other-modules: []
+    dependencies:
+      - vomitchan
+      - hspec

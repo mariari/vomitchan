@@ -1,0 +1,4 @@
+:set prompt "vomit> "
+:set prompt-cont "     | "
+:set -XOverloadedStrings
+:set -haddock
