@@ -67,6 +67,7 @@ import           Data.Foldable
 import           Data.Maybe         (listToMaybe)
 import           Data.String        (IsString)
 import qualified Data.Text          as T
+import qualified Data.ByteString    as BS
 import qualified Data.Text.Encoding as TE
 
 import           Turtle       hiding (FilePath, fold)
@@ -198,8 +199,9 @@ genDb = do
         vomitAdd (name, chan, paths) =
           traverse_ (\x -> do
                        unless ("Links.log" `T.isSuffixOf` (T.pack x)) $ do
-                         (_, md5) <- TB.shellStrict (fold ["md5sum '", T.pack x, "' | cut -d ' ' -f 1"]) empty
-                         addVomit name chan (T.unpack . T.stripEnd . TE.decodeUtf8 $ md5) x
+                         (_, md5Out) <- TB.procStrict "md5sum" [T.pack x] empty
+                         let md5 = T.stripEnd . TE.decodeUtf8 . BS.takeWhile (/= 0x20) $ md5Out
+                         addVomit name chan (T.unpack md5) x
                    ) paths
 
         fixQuantity :: (FilePath, FilePath, [FilePath]) -> IO ()
