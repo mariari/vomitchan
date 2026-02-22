@@ -64,16 +64,10 @@ executables:
       - -with-rtsopts=-N
       - -fwarn-incomplete-patterns
     dependencies:
-      - crypton
       - crypton-connection
-      - lens
       - stm
       - text
-      - utf8-string
-      - vector
       - vomitchan
       - stm-containers
       - list-t
       - hashable
-      - sqlite-simple
-      - exceptions
