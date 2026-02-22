@@ -50,6 +50,8 @@ module Bot.Database(
   , Count(..)
   , Username
   , Channel
+  -- * Connection helpers
+  , withDb
   -- * Constants
   , dbPath
   ) where
@@ -136,6 +138,9 @@ retryGen n current action
 retry :: IO a -> IO a
 retry = retryGen 5 0
 
+withDb :: (Connection -> IO a) -> IO a
+withDb = retry . withConnection dbPath
+
 -- Schema
 
 createSchema :: Connection -> IO ()
@@ -217,8 +222,7 @@ fixQuantityOfVomits = retry . withConnection dbPath $
         "UPDATE user SET quantity_of_vomits=(SELECT COUNT(*) FROM vomits WHERE user.id = vomits.user_id)"
 
 addChannel :: Channel -> IO ()
-addChannel chan = retry . withConnection dbPath $
-  \conn -> addChannelConn conn chan
+addChannel chan = withDb $ \conn -> addChannelConn conn chan
 
 addUserConn :: Connection -> Username -> Channel -> IO ()
 addUserConn conn user chan = do
@@ -230,8 +234,7 @@ addUserConn conn user chan = do
       [":uname" := user, ":cname" := chan]
 
 addUser :: Username -> Channel -> IO ()
-addUser user chan = retry . withConnection dbPath $
-  \conn -> addUserConn conn user chan
+addUser user chan = withDb $ \conn -> addUserConn conn user chan
 
 addVomitConn :: Connection -> Username -> Channel -> String -> String -> IO ()
 addVomitConn conn nick chan md5 filepath =
@@ -244,8 +247,7 @@ addVomitConn conn nick chan md5 filepath =
       [":filepath" := filepath, ":md5" := md5, ":uname" := nick, ":cname" := chan]
 
 addVomit :: Username -> Channel -> String -> String -> IO ()
-addVomit nick chan md5 filepath = retry . withConnection dbPath $
-  \conn -> addVomitConn conn nick chan md5 filepath
+addVomit nick chan md5 filepath = withDb $ \conn -> addVomitConn conn nick chan md5 filepath
 
 fixQuantityOfVomitsConn :: Connection -> IO ()
 fixQuantityOfVomitsConn conn =
@@ -254,8 +256,7 @@ fixQuantityOfVomitsConn conn =
       "UPDATE user SET quantity_of_vomits=(SELECT COUNT(md5) FROM vomits WHERE user.id = vomit.id)"
 
 fixQuantityOfVomits :: IO ()
-fixQuantityOfVomits = retry . withConnection dbPath $
-  \conn -> fixQuantityOfVomitsConn conn
+fixQuantityOfVomits = withDb fixQuantityOfVomitsConn
 
 updateLinkConn :: Connection -> String -> String -> IO ()
 updateLinkConn conn filepath link =
@@ -266,8 +267,7 @@ updateLinkConn conn filepath link =
       [":link" := link, ":path" := filepath]
 
 updateLink :: String -> String -> IO ()
-updateLink filepath link = retry . withConnection dbPath $
-  \conn -> updateLinkConn conn filepath link
+updateLink filepath link = withDb $ \conn -> updateLinkConn conn filepath link
 
 succUserQuantityOfVomitsConn :: Connection -> Username -> Channel -> IO ()
 succUserQuantityOfVomitsConn conn user chan =
@@ -279,8 +279,7 @@ succUserQuantityOfVomitsConn conn user chan =
       [":uname" := user, ":cname" := chan]
 
 succUserQuantityOfVomits :: Username -> Channel -> IO ()
-succUserQuantityOfVomits user chan = retry . withConnection dbPath $
-  \conn -> succUserQuantityOfVomitsConn conn user chan
+succUserQuantityOfVomits user chan = withDb $ \conn -> succUserQuantityOfVomitsConn conn user chan
 
 updateUserQuantityOfVomitsConn :: Connection -> Username -> Channel -> Int -> IO ()
 updateUserQuantityOfVomitsConn conn user chan new =
@@ -292,8 +291,7 @@ updateUserQuantityOfVomitsConn conn user chan new =
       [":voms" := new, ":uname" := user, ":cname" := chan]
 
 updateUserQuantityOfVomits :: Username -> Channel -> Int -> IO ()
-updateUserQuantityOfVomits user chan new = retry . withConnection dbPath $
-  \conn -> updateUserQuantityOfVomitsConn conn user chan new
+updateUserQuantityOfVomits user chan new = withDb $ \conn -> updateUserQuantityOfVomitsConn conn user chan new
 
 getUserQuantityOfVomitsConn :: Connection -> Username -> Channel -> IO Int
 getUserQuantityOfVomitsConn conn username chan = do
@@ -306,8 +304,7 @@ getUserQuantityOfVomitsConn conn username chan = do
   return $ maybe 0 userQuantityVomit (listToMaybe user)
 
 getUserQuantityOfVomits :: Username -> Channel -> IO Int
-getUserQuantityOfVomits username chan = retry . withConnection dbPath $
-  \conn -> getUserQuantityOfVomitsConn conn username chan
+getUserQuantityOfVomits username chan = withDb $ \conn -> getUserQuantityOfVomitsConn conn username chan
 
 updateNSFW :: String -> Username -> Channel -> IO Int
 updateNSFW = updateMetadata "-nsfw"
@@ -349,8 +346,7 @@ getLinkConn conn filepath = do
   return $ vomitLink =<< listToMaybe vom
 
 getLink :: String -> IO (Maybe String)
-getLink filepath = retry . withConnection dbPath $
-  \conn -> getLinkConn conn filepath
+getLink filepath = withDb $ \conn -> getLinkConn conn filepath
 
 getRandomVomitConn :: Connection -> Username -> Channel -> IO [DBVomit]
 getRandomVomitConn conn user chan = do
@@ -364,8 +360,7 @@ getRandomVomitConn conn user chan = do
   return vom
 
 getRandomVomit :: Username-> Channel-> IO [DBVomit]
-getRandomVomit user chan = retry . withConnection dbPath $
-  \conn -> getRandomVomitConn conn user chan
+getRandomVomit user chan = withDb $ \conn -> getRandomVomitConn conn user chan
 
 getRandomVomitPathConn :: Connection -> Username -> Channel -> IO String
 getRandomVomitPathConn conn user chan = do
@@ -379,8 +374,7 @@ getRandomVomitPathConn conn user chan = do
   return $ maybe "" vomitPath (listToMaybe vom)
 
 getRandomVomitPath :: Username-> Channel-> IO String
-getRandomVomitPath user chan = retry . withConnection dbPath $
-  \conn -> getRandomVomitPathConn conn user chan
+getRandomVomitPath user chan = withDb $ \conn -> getRandomVomitPathConn conn user chan
 
 getRouletteVomitConn :: Connection -> Channel -> IO String
 getRouletteVomitConn conn chan = do
@@ -395,8 +389,7 @@ getRouletteVomitConn conn chan = do
   return $ maybe "" vomitPath (listToMaybe vom)
 
 getRouletteVomit :: Channel -> IO String
-getRouletteVomit chan = retry . withConnection dbPath $
-  \conn -> getRouletteVomitConn conn chan
+getRouletteVomit chan = withDb $ \conn -> getRouletteVomitConn conn chan
 
 
 nukeVomitByMD5 :: String -> IO [String]
@@ -428,8 +421,7 @@ nukeVomitByMD5FixConn conn md5 = do
                                       [":user_id" := user_id]
 
 nukeVomitByMD5Fix :: String -> IO [String]
-nukeVomitByMD5Fix md5 = retry . withConnection dbPath $
-  \conn -> nukeVomitByMD5FixConn conn md5
+nukeVomitByMD5Fix md5 = withDb $ \conn -> nukeVomitByMD5FixConn conn md5
 
 nukeVomitsLinkUserFromDbConn :: Connection -> T.Text -> Username -> Channel -> IO [String]
 nukeVomitsLinkUserFromDbConn conn link user chan = do
@@ -454,8 +446,7 @@ nukeVomitsLinkUserFromDbConn conn link user chan = do
   return $ vomitPath <$> voms
 
 nukeVomitsLinkUserFromDb :: T.Text -> Username -> Channel -> IO [String]
-nukeVomitsLinkUserFromDb link user chan = retry . withConnection dbPath $
-  \conn -> nukeVomitsLinkUserFromDbConn conn link user chan
+nukeVomitsLinkUserFromDb link user chan = withDb $ \conn -> nukeVomitsLinkUserFromDbConn conn link user chan
 
 nukeVomitsMD5UserFromDb :: T.Text -> Username -> Channel -> IO [String]
 nukeVomitsMD5UserFromDb md5 user chan = do
@@ -486,8 +477,7 @@ nukeVomitsMD5UserFromDbFixConn conn md5 user chan = do
   return $ vomitPath <$> voms
 
 nukeVomitsMD5UserFromDbFix :: T.Text -> Username -> Channel -> IO [String]
-nukeVomitsMD5UserFromDbFix md5 user chan = retry . withConnection dbPath $
-  \conn -> nukeVomitsMD5UserFromDbFixConn conn md5 user chan
+nukeVomitsMD5UserFromDbFix md5 user chan = withDb $ \conn -> nukeVomitsMD5UserFromDbFixConn conn md5 user chan
 
 nukeVomitsOfUserFromDbConn :: Connection -> Username -> Channel -> IO ()
 nukeVomitsOfUserFromDbConn conn user chan =
@@ -500,8 +490,7 @@ nukeVomitsOfUserFromDbConn conn user chan =
       [":uname" := user, ":cname" := chan]
 
 nukeVomitsOfUserFromDb :: Username -> Channel -> IO ()
-nukeVomitsOfUserFromDb user chan = retry . withConnection dbPath $
-  \conn -> nukeVomitsOfUserFromDbConn conn user chan
+nukeVomitsOfUserFromDb user chan = withDb $ \conn -> nukeVomitsOfUserFromDbConn conn user chan
 
 nukeUserFromDbConn :: Connection -> Username -> Channel -> IO ()
 nukeUserFromDbConn conn user chan =
@@ -513,5 +502,4 @@ nukeUserFromDbConn conn user chan =
       [":uname" := user, ":cname" := chan]
 
 nukeUserFromDb :: Username -> Channel -> IO ()
-nukeUserFromDb user chan = retry . withConnection dbPath $
-  \conn -> nukeUserFromDbConn conn user chan
+nukeUserFromDb user chan = withDb $ \conn -> nukeUserFromDbConn conn user chan
