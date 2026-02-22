@@ -145,7 +145,7 @@ uniqueURL msg url extension = do
   time <- currentDate
   pure $ escapeUrl (T.init time <> "-" <> dropExtension' fileName <> nsfwEnable <> nsflEnable <> "." <> extension)
   where
-    fileName = last (T.splitOn "/" url)
+    fileName = T.takeWhileEnd (/= '/') url
     nsfwEnable = metadataEnable "nsfw"
     nsflEnable = metadataEnable "nsfl"
 
@@ -162,9 +162,6 @@ escape str =
 escapeUrl :: Text -> Text
 escapeUrl = escape "&"
 
-escapeComma :: Text -> Text
-escapeComma = escape ","
-
 -- this probably exists as <|> somehow, but it does not do the proper thing without the lift
 (<<|>>) :: Monad m => m (Maybe a) -> m (Maybe a) -> m (Maybe a)
 (<<|>>) x y = do
@@ -178,7 +175,6 @@ upUsrFile _ "" = pure ""
 upUsrFile manager t  = do
   res <-  cacheUploader t manager
     <<|>> catboxUpload t manager
-    -- <<|>> lainUpload t manager
   let link = (Maybe.fromMaybe "" res)
   liftIO $ updateLink (T.unpack t) (T.unpack link)
   pure link
