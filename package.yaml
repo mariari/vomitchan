@@ -51,6 +51,8 @@ default-extensions:
 
 library:
   source-dirs: src
+  ghc-options:
+    - -Wno-x-partial
 
 executables:
   vomitchan-exe:
