@@ -43,6 +43,7 @@ dependencies:
   - http-client-tls
   - http-types
   - exceptions
+  - data-default-class
 
 default-extensions:
   - OverloadedStrings

@@ -19,6 +19,7 @@ import           Data.Text.Encoding     (encodeUtf8)
 import           Data.Foldable          (traverse_)
 
 import qualified Network.Connection as C
+import           Data.Default.Class  (def)
 
 import           Control.Monad           (when)
 import           Control.Exception       (try, SomeException)
@@ -53,7 +54,7 @@ joinNetwork ctx net = do
        . C.connectTo ctx
        $ C.ConnectionParams { C.connectionHostname  = T.unpack $ netServer net
                             , C.connectionPort      = fromIntegral $ netPort net
-                            , C.connectionUseSecure = Just $ C.TLSSettingsSimple False False True
+                            , C.connectionUseSecure = Just $ C.TLSSettingsSimple False False True def
                             , C.connectionUseSocks  = Nothing
                             } :: IO (Either SomeException C.Connection)
   case con of
