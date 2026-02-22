@@ -99,7 +99,7 @@ appendToFilename path str = let ext      = getExtension path
 retryGen :: Integer -> Integer -> IO a -> IO a
 retryGen n current action
   | current >= n = throw RetryException
-  | otherwise     = action `catch` (\(_ :: SomeException) -> threadDelay 10000 >> retryGen n (current + 1) action)
+  | otherwise     = action `catch` (\(_ :: SQLError) -> threadDelay 10000 >> retryGen n (current + 1) action)
 
 retry :: IO a -> IO a
 retry = retryGen 5 0
