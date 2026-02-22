@@ -99,11 +99,11 @@ cmdLog = traverse_ . appendLog <*> linLn
 
 -- Downloads any file and saves it to the user folder
 cmdLogFile :: Client.Manager -> InfoPriv -> PrivMsg -> IO ()
-cmdLogFile manager info = traverse_ . dwnfile (Just manager) info <*> allImg
+cmdLogFile manager info = traverse_ . dwnfile manager info <*> allImg
   where
     allImg = allLinks
 
-dwnfile :: MonadIO m => Maybe Client.Manager -> InfoPriv -> PrivMsg -> Text -> m ()
+dwnfile :: MonadIO m => Client.Manager -> InfoPriv -> PrivMsg -> Text -> m ()
 dwnfile manager info msg link = do
   extension <- getFileType link manager
   case extension of
@@ -119,7 +119,7 @@ cmdFldr = createUsrFldr
 allLinks :: PrivMsg -> [T.Text]
 allLinks = (cmdWbPg >>=) . specWord
 
-getFileType :: MonadIO m => T.Text -> Maybe Client.Manager -> m (Maybe T.Text)
+getFileType :: MonadIO m => T.Text -> Client.Manager -> m (Maybe T.Text)
 getFileType link manager = do
   mime <- getMimeType link manager
   pure $ case mime of
@@ -129,7 +129,7 @@ getFileType link manager = do
       , y `S.member` cmdAllS ->
         --
         Just y
-      | y <- last (T.splitOn "." link)
+      | (y:_) <- reverse (T.splitOn "." link)
       , y `S.member` S.fromList cmdMisc
       && getSubtypeFromMime (TE.decodeUtf8 extension) /= "html"  ->
         --
@@ -150,18 +150,17 @@ processNotice priv process
 
 -- todo ∷ pass the connection context from main to this
 -- this eats another 16 MB of ram, due to using Req's one
-getMimeType :: MonadIO m => Text -> Maybe Client.Manager -> m (Maybe BS.ByteString)
+getMimeType :: MonadIO m => Text -> Client.Manager -> m (Maybe BS.ByteString)
 getMimeType link altMngr =
   liftIO $
     Exception.catch
-      (Req.runReq Req.defaultHttpConfig { Req.httpConfigAltManager = altMngr} $ do
+      (Req.runReq Req.defaultHttpConfig { Req.httpConfigAltManager = Just altMngr} $ do
           uri <- URI.mkURI link
-          let Just t = Req.useURI uri
-          case t of
-            Right x ->
-              response <$> uncurry reqHead x
-            Left x ->
-              response <$> uncurry reqHead x)
+          case Req.useURI uri of
+            Nothing -> pure Nothing
+            Just t  -> case t of
+              Right x -> response <$> uncurry reqHead x
+              Left x  -> response <$> uncurry reqHead x)
       (\ (e :: Exception.SomeException) -> do
           print e
           pure Nothing)
