@@ -190,6 +190,38 @@ cacheUploader file manager = catch work (\ (_ :: SomeException) -> pure Nothing)
           response <- H.httpNoBody req manager
           return $ isOK (H.responseStatus response) (T.pack link)
 
+-- UPLOAD SERVICES -----------------------------------------------------------------------------
+--
+-- upUsrFile tries the cache first, then delegates to the configured uploader.
+-- uploaderFor reads UploadConfig and dispatches:
+--   catbox  -> catboxUpload (curl, userhash secret)
+--   neko    -> nekoUpload   (pomf: img.neko.airforce)
+--   lain    -> lainUpload   (pomf: pomf.lain.la)
+--   other   -> pomfSecretUpload (pomf: custom URL, with secret + uploader fields)
+
+uploaderFor :: (MonadIO m, MonadThrow m, MonadCatch m) => IRCNetwork -> T.Text -> T.Text -> H.Manager -> m (Maybe T.Text)
+uploaderFor net nick = case netUpload net of
+  Nothing  -> \f m -> catboxUpload Nothing f m
+  Just cfg ->
+    case uploadService cfg of
+      "catbox" -> catboxUpload (uploadSecret cfg)
+      "neko"   -> \f m -> nekoUpload f m
+      "lain"   -> \f m -> lainUpload f m
+      _        -> pomfSecretUpload (uploadSecret cfg) nick (uploadUrl cfg)
+
+-- Catbox (curl-based, userhash secret for account-linked uploads)
+catboxUpload :: (MonadIO m, MonadThrow m) => Maybe T.Text -> T.Text -> H.Manager -> m (Maybe T.Text)
+catboxUpload secret file _ =
+  check <$> procStrict "curl" (
+    ["-F", "reqtype=fileupload", "-F", "fileToUpload=@" <> file]
+    <> maybe [] (\s -> ["-F", "userhash=" <> s]) secret
+    <> ["https://catbox.moe/user/api.php"]
+  ) empty
+  where check (_,n)
+          | T.isPrefixOf "http" n = Just n
+          | otherwise             = Nothing
+
+-- Pomf-compatible uploaders (HTTP multipart, JSON response)
 filePart :: T.Text -> MFD.Part
 filePart file = MFD.partFileSource "files[]" (T.unpack file)
 
@@ -213,7 +245,7 @@ decodePomfUrl msg = case JSON.decodeStrict (LBS.toStrict msg) of
 pomfUpload :: (MonadIO m, MonadThrow m, MonadCatch m) => [MFD.Part] -> String -> T.Text -> H.Manager -> m (Maybe T.Text)
 pomfUpload extras url file manager = catch work (\(_ :: SomeException) -> pure Nothing)
   where
-  work = decodePomfUrl <$> postParts url (filePart file : extras) manager
+    work = decodePomfUrl <$> postParts url (filePart file : extras) manager
 
 pomfUploader :: (MonadIO m, MonadThrow m, MonadCatch m) => T.Text -> String -> H.Manager -> m (Maybe T.Text)
 pomfUploader file url = pomfUpload [] url file
@@ -221,26 +253,6 @@ pomfUploader file url = pomfUpload [] url file
 pomfSecretUpload :: (MonadIO m, MonadThrow m, MonadCatch m) => Maybe T.Text -> T.Text -> T.Text -> T.Text -> H.Manager -> m (Maybe T.Text)
 pomfSecretUpload secret uploader url =
   pomfUpload (secretPart secret <> uploaderPart uploader) (T.unpack ("POST " <> url))
-
-catboxUpload :: (MonadIO m, MonadThrow m) => Maybe T.Text -> T.Text -> H.Manager -> m (Maybe T.Text)
-catboxUpload secret file _ =
-  check <$> procStrict "curl" (
-    ["-F", "reqtype=fileupload", "-F", "fileToUpload=@" <> file]
-    <> maybe [] (\s -> ["-F", "userhash=" <> s]) secret
-    <> ["https://catbox.moe/user/api.php"]
-  ) empty
-  where check (_,n)
-          | T.isPrefixOf "http" n = Just n
-          | otherwise             = Nothing
-
-uploaderFor :: (MonadIO m, MonadThrow m, MonadCatch m) => IRCNetwork -> T.Text -> T.Text -> H.Manager -> m (Maybe T.Text)
-uploaderFor net nick = case netUpload net of
-  Nothing  -> \f m -> catboxUpload Nothing f m
-  Just cfg -> case uploadService cfg of
-    "catbox" -> catboxUpload (uploadSecret cfg)
-    "neko"   -> \f m -> nekoUpload f m
-    "lain"   -> \f m -> lainUpload f m
-    _        -> pomfSecretUpload (uploadSecret cfg) nick (uploadUrl cfg)
 
 nekoUpload :: (MonadIO m, MonadThrow m, MonadCatch m) => T.Text -> H.Manager -> m (Maybe T.Text)
 nekoUpload file = pomfUploader file "https://img.neko.airforce/upload.php"

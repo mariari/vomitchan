@@ -92,11 +92,21 @@ This file should look like the following:
       , "netIgnore" : ["mariari"]
       , "netBans"   : ["4ed600d4c9f69bcaf14540e887c75bbe"]
       , "netState"  : []
+      , "netUpload" : {"uploadService" : "catbox",
+                        "uploadSecret"  : "your_userhash_here",
+                        "uploadUrl"     : "https://catbox.moe/user/api.php"}
     }
 ]
 ```
 
-Omitting `netUpload` defaults to catbox with no secret. Supported `uploadService` values: `"catbox"`, `"neko"`, `"lain"`, or any pomf-compatible URL. For catbox, `uploadSecret` is the userhash for account-linked uploads. For pomf-compatible services, it is sent as a `secret` form field.
+Omitting `netUpload` defaults to anonymous catbox uploads. Upload services:
+
+| `uploadService` | What it does | `uploadSecret` meaning |
+|-----------------|-------------|----------------------|
+| `"catbox"` | Uploads to catbox.moe | Your catbox userhash (account-linked uploads) |
+| `"neko"` | Uploads to img.neko.airforce | Not used |
+| `"lain"` | Uploads to pomf.lain.la | Not used |
+| anything else | Uploads to `uploadUrl` as a pomf-compatible service | Sent as a `secret` form field |
 
 ## Running
 The bot can be started within ghci by running `stack ghci` in the project directory. Once at the prompt, run the `main` function.
