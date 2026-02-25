@@ -159,9 +159,9 @@ uniqueURL msg url extension = do
     Nothing -> y
     Just v -> pure (Just v)
 
-upUsrFile :: (Alternative m, MonadIO m, MonadThrow m, MonadCatch m) => H.Manager -> Text -> m Text
-upUsrFile _ "" = pure ""
-upUsrFile manager t  = do
+upUsrFile :: (Alternative m, MonadIO m, MonadThrow m, MonadCatch m) => Maybe T.Text -> H.Manager -> Text -> m Text
+upUsrFile _ _ "" = pure ""
+upUsrFile _secret manager t  = do
   res <-  cacheUploader t manager
     <<|>> catboxUpload t manager
   let link = (Maybe.fromMaybe "" res)
