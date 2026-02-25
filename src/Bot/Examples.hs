@@ -113,6 +113,7 @@ sampleNetwork = IRCNetwork
   , netBans   = []
   , netChans  = [("#test", Options Nothing)]
   , netState  = StateConfig [("#test", defaultChanState)]
+  , netUpload = Nothing
   }
 
 --------------------------------------------------------------------------------
