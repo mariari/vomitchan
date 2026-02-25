@@ -64,7 +64,7 @@ import Control.Exception
 import Control.Monad
 
 import           Data.Foldable
-import           Data.Maybe         (listToMaybe)
+import           Data.Maybe         (fromMaybe, listToMaybe)
 import           Data.String        (IsString)
 import qualified Data.Text          as T
 import qualified Data.ByteString    as BS
@@ -355,19 +355,19 @@ getRandomVomitPathConn conn user chan =
 getRandomVomitPath :: Username-> Channel-> IO String
 getRandomVomitPath user chan = withDb $ \conn -> getRandomVomitPathConn conn user chan
 
-getRouletteVomitConn :: Connection -> Channel -> IO String
+getRouletteVomitConn :: Connection -> Channel -> IO (String, String)
 getRouletteVomitConn conn chan = do
-  vom  <- queryNamed
+  result <- queryNamed
               conn
-              "SELECT * FROM vomits\
-              \ WHERE user_id IN (SELECT id FROM user\
-              \ WHERE channel_id=(SELECT id FROM channels WHERE name=:cname)\
-              \ AND quantity_of_vomits>=1)\
+              "SELECT v.filepath, u.username FROM vomits v\
+              \ JOIN user u ON v.user_id = u.id\
+              \ WHERE u.channel_id=(SELECT id FROM channels WHERE name=:cname)\
+              \ AND u.quantity_of_vomits>=1\
               \ ORDER BY RANDOM() LIMIT 1;"
-              [":cname" := chan] :: IO [DBVomit]
-  return $ maybe "" vomitPath (listToMaybe vom)
+              [":cname" := chan] :: IO [(String, String)]
+  return $ fromMaybe ("", "") (listToMaybe result)
 
-getRouletteVomit :: Channel -> IO String
+getRouletteVomit :: Channel -> IO (String, String)
 getRouletteVomit chan = withDb $ \conn -> getRouletteVomitConn conn chan
 
 nukeVomitByMD5 :: String -> IO [String]

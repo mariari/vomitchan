@@ -195,8 +195,9 @@ databaseSpec = describe "Database" $ do
     addUserConn conn "alice" "#test"
     addVomitConn conn "alice" "#test" "xyz789" "/data/logs/#test/alice/pic.jpg"
     succUserQuantityOfVomitsConn conn "alice" "#test"
-    path <- getRouletteVomitConn conn "#test"
+    (path, nick) <- getRouletteVomitConn conn "#test"
     path `shouldSatisfy` (not . null)
+    nick `shouldSatisfy` (`elem` ["nick", "alice"])
 
 -- Helpers
 
