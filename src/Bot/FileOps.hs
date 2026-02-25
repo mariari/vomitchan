@@ -14,7 +14,8 @@ module Bot.FileOps (
   pathFldrNoLog,
   shredFile,
   nekoUpload,
-  toroUpload
+  pomfSecretUpload,
+  uploaderFor
 ) where
 --- IMPORTS -----------------------------------------------------------------------------------
 import qualified Data.Text            as T
@@ -27,6 +28,7 @@ import qualified Data.Aeson           as JSON
 import qualified Data.Aeson.TH        as TH
 import           Data.List
 import           Data.Foldable        (fold)
+import           Data.Maybe           (fromMaybe)
 
 import           Turtle       hiding (FilePath, fold)
 import qualified Turtle.Bytes as TB
@@ -160,11 +162,11 @@ uniqueURL msg url extension = do
     Nothing -> y
     Just v -> pure (Just v)
 
-upUsrFile :: (Alternative m, MonadIO m, MonadThrow m, MonadCatch m) => Maybe T.Text -> H.Manager -> Text -> m Text
+upUsrFile :: (Alternative m, MonadIO m, MonadThrow m, MonadCatch m) => (T.Text -> H.Manager -> m (Maybe T.Text)) -> H.Manager -> Text -> m Text
 upUsrFile _ _ "" = pure ""
-upUsrFile secret manager t  = do
+upUsrFile upload manager t  = do
   res <-  cacheUploader t manager
-    <<|>> toroUpload secret t manager
+    <<|>> upload t manager
   let link = (Maybe.fromMaybe "" res)
   liftIO $ updateLink (T.unpack t) (T.unpack link)
   pure link
@@ -188,46 +190,69 @@ cacheUploader file manager = catch work (\ (_ :: SomeException) -> pure Nothing)
           response <- H.httpNoBody req manager
           return $ isOK (H.responseStatus response) (T.pack link)
 
-multiPartFileUpload :: (MonadIO m, MonadThrow m) => T.Text -> String -> T.Text -> H.Manager -> m (LBS.ByteString)
-multiPartFileUpload input link file manager = do
-  let part = MFD.partFileSource input (T.unpack file)
-  initialReq <- H.parseRequest link
-  req <- MFD.formDataBody [part] initialReq
-  msg <- liftIO $ H.httpLbs req manager
-  return $ H.responseBody msg
+-- UPLOAD SERVICES -----------------------------------------------------------------------------
+--
+-- upUsrFile tries the cache first, then delegates to the configured uploader.
+-- uploaderFor reads UploadConfig and dispatches:
+--   catbox  -> catboxUpload (curl, userhash secret)
+--   neko    -> nekoUpload   (pomf: img.neko.airforce)
+--   lain    -> lainUpload   (pomf: pomf.lain.la)
+--   other   -> pomfSecretUpload (pomf: custom URL, with secret + uploader fields)
 
-pomfUploader :: (MonadIO m, MonadThrow m, MonadCatch m) => T.Text -> String -> H.Manager -> m (Maybe T.Text)
-pomfUploader file url manager = catch work (\ (_ :: SomeException) -> pure Nothing)
-  where
-  work = do
-    msg <- multiPartFileUpload "files[]" url file manager
-    pure $
-      case JSON.decodeStrict (LBS.toStrict msg) of
-        Just Pomf {files = Fm {url} : _} -> Just url
-        Just Pomf {files = []}           -> Nothing
-        Nothing                          -> Nothing
-        Just Fail {}                     -> Nothing
+uploaderFor :: (MonadIO m, MonadThrow m, MonadCatch m) => IRCNetwork -> T.Text -> T.Text -> H.Manager -> m (Maybe T.Text)
+uploaderFor net nick = case netUpload net of
+  Nothing  -> \f m -> catboxUpload Nothing f m
+  Just cfg ->
+    case uploadService cfg of
+      "catbox" -> catboxUpload (uploadSecret cfg)
+      "neko"   -> \f m -> nekoUpload f m
+      "lain"   -> \f m -> lainUpload f m
+      _        -> pomfSecretUpload (uploadSecret cfg) nick (uploadUrl cfg)
 
-
-catboxUpload :: (MonadIO m, MonadThrow m) => T.Text -> H.Manager -> m (Maybe T.Text)
-catboxUpload file _ =
-  check <$> procStrict "curl" ["-F", "reqtype=fileupload", "-F", "fileToUpload=@" <> file, "https://catbox.moe/user/api.php"] empty
+-- Catbox (curl-based, userhash secret for account-linked uploads)
+catboxUpload :: (MonadIO m, MonadThrow m) => Maybe T.Text -> T.Text -> H.Manager -> m (Maybe T.Text)
+catboxUpload secret file _ =
+  check <$> procStrict "curl" (
+    ["-F", "reqtype=fileupload", "-F", "fileToUpload=@" <> file]
+    <> maybe [] (\s -> ["-F", "userhash=" <> s]) secret
+    <> ["https://catbox.moe/user/api.php"]
+  ) empty
   where check (_,n)
           | T.isPrefixOf "http" n = Just n
           | otherwise             = Nothing
 
-toroUpload :: (MonadIO m, MonadThrow m, MonadCatch m) => Maybe T.Text -> T.Text -> H.Manager -> m (Maybe T.Text)
-toroUpload secret file manager = catch work (\(_ :: SomeException) -> pure Nothing)
+-- Pomf-compatible uploaders (HTTP multipart, JSON response)
+filePart :: T.Text -> MFD.Part
+filePart file = MFD.partFileSource "files[]" (T.unpack file)
+
+secretPart :: Maybe T.Text -> [MFD.Part]
+secretPart = maybe [] (\s -> [MFD.partBS "secret" (TE.encodeUtf8 s)])
+
+uploaderPart :: T.Text -> [MFD.Part]
+uploaderPart name = [MFD.partBS "uploader" (TE.encodeUtf8 name)]
+
+postParts :: (MonadIO m, MonadThrow m) => String -> [MFD.Part] -> H.Manager -> m LBS.ByteString
+postParts url parts manager = do
+  initialReq <- H.parseRequest url
+  req <- MFD.formDataBody parts initialReq
+  H.responseBody <$> liftIO (H.httpLbs req manager)
+
+decodePomfUrl :: LBS.ByteString -> Maybe T.Text
+decodePomfUrl msg = case JSON.decodeStrict (LBS.toStrict msg) of
+  Just Pomf {files = Fm {url} : _} -> Just url
+  _                                -> Nothing
+
+pomfUpload :: (MonadIO m, MonadThrow m, MonadCatch m) => [MFD.Part] -> String -> T.Text -> H.Manager -> m (Maybe T.Text)
+pomfUpload extras url file manager = catch work (\(_ :: SomeException) -> pure Nothing)
   where
-  work = do
-    let filePart   = MFD.partFileSource "files[]" (T.unpack file)
-        secretPart = maybe [] (\s -> [MFD.partBS "secret" (TE.encodeUtf8 s)]) secret
-    initialReq <- H.parseRequest "POST http://127.0.0.1:4000/upload.php"
-    req <- MFD.formDataBody (filePart : secretPart) initialReq
-    msg <- liftIO $ H.httpLbs req manager
-    pure $ case JSON.decodeStrict (LBS.toStrict (H.responseBody msg)) of
-      Just Pomf {files = Fm {url} : _} -> Just url
-      _                                -> Nothing
+    work = decodePomfUrl <$> postParts url (filePart file : extras) manager
+
+pomfUploader :: (MonadIO m, MonadThrow m, MonadCatch m) => T.Text -> String -> H.Manager -> m (Maybe T.Text)
+pomfUploader file url = pomfUpload [] url file
+
+pomfSecretUpload :: (MonadIO m, MonadThrow m, MonadCatch m) => Maybe T.Text -> T.Text -> T.Text -> T.Text -> H.Manager -> m (Maybe T.Text)
+pomfSecretUpload secret uploader url =
+  pomfUpload (secretPart secret <> uploaderPart uploader) (T.unpack ("POST " <> url))
 
 nekoUpload :: (MonadIO m, MonadThrow m, MonadCatch m) => T.Text -> H.Manager -> m (Maybe T.Text)
 nekoUpload file = pomfUploader file "https://img.neko.airforce/upload.php"
