@@ -18,8 +18,15 @@ module Bot.Examples
   , sampleStateEntries, mkEnv, mockEnv
     -- * Command testing
   , testCmd, testCmdWith
-    -- * Database testing
-  , withTestDb, seedTestDb
+    -- * Upload examples
+  , exPomfSuccess, exPomfEmpty, exPomfFail, exPomfGarbage
+  , exSecretParts, exUploaderParts
+    -- * Database examples
+    -- $db-examples
+  , withTestDb
+  , exDbSetup, exDbAddVomit, exDbLinkVomit, exDbAddSecondUser
+  , exDbFixCounts, exDbNukeMD5, exDbNukeUser
+  , allUsers, allVomits
   , module Database.SQLite.Simple
   ) where
 
@@ -45,7 +52,10 @@ import Bot.Modifier
 import Bot.Servers       (initAllServer)
 import Bot.EffType       (Func)
 import Bot.Commands      (runCmd)
-import Bot.Database      (createSchema, addChannelConn, addUserConn, addVomitConn)
+import qualified Network.HTTP.Client.MultipartFormData as MFD
+
+import Bot.FileOps       (decodePomfUrl, secretPart, uploaderPart)
+import Bot.Database
 
 --------------------------------------------------------------------------------
 -- Parser examples
@@ -109,6 +119,7 @@ sampleNetwork = IRCNetwork
   , netBans   = []
   , netChans  = [("#test", Options Nothing)]
   , netState  = StateConfig [("#test", defaultChanState)]
+  , netUpload = Nothing
   }
 
 --------------------------------------------------------------------------------
@@ -260,20 +271,149 @@ testCmdWith entries msg = do
   runReaderT runCmd (env msg)
 
 --------------------------------------------------------------------------------
--- Database testing
+-- Upload examples
 --------------------------------------------------------------------------------
 
--- | Run a test action with an in-memory SQLite DB that has the schema ready.
+-- | Successful pomf response — extracts the URL.
 --
--- >>> withTestDb $ \conn -> seedTestDb conn >> getUserQuantityOfVomitsConn conn "nick" "#test"
+-- >>> exPomfSuccess
+-- Just "https://example.com/abc.png"
+exPomfSuccess :: Maybe T.Text
+exPomfSuccess = decodePomfUrl
+  "{\"success\":true,\"files\":[{\"hash\":\"abc\",\"name\":\"abc.png\",\"url\":\"https://example.com/abc.png\",\"size\":1234}]}"
+
+-- | Pomf response with empty files list.
+--
+-- >>> exPomfEmpty
+-- Nothing
+exPomfEmpty :: Maybe T.Text
+exPomfEmpty = decodePomfUrl "{\"success\":true,\"files\":[]}"
+
+-- | Pomf error response.
+--
+-- >>> exPomfFail
+-- Nothing
+exPomfFail :: Maybe T.Text
+exPomfFail = decodePomfUrl
+  "{\"success\":false,\"errorcode\":400,\"description\":\"bad request\"}"
+
+-- | Garbage input.
+--
+-- >>> exPomfGarbage
+-- Nothing
+exPomfGarbage :: Maybe T.Text
+exPomfGarbage = decodePomfUrl "not json"
+
+-- | Secret part produces one form field when present, none when absent.
+--
+-- >>> length (exSecretParts Nothing)
+-- 0
+-- >>> length (exSecretParts (Just "my-secret"))
+-- 1
+exSecretParts :: Maybe T.Text -> [MFD.Part]
+exSecretParts = secretPart
+
+-- | Uploader part always produces one form field.
+--
+-- >>> length (exUploaderParts "nick")
+-- 1
+exUploaderParts :: T.Text -> [MFD.Part]
+exUploaderParts = uploaderPart
+
+--------------------------------------------------------------------------------
+-- Database examples
+--------------------------------------------------------------------------------
+
+-- $db-examples
+--
+-- Each example is standalone — it sets up its own prerequisites internally.
+-- Run any of them in GHCi with 'withTestDb':
+--
+-- >>> withTestDb $ \c -> exDbAddVomit c >> allVomits c
+-- [DBVomit {vomitId = 1, vomitPath = "./data/logs/#test/nick/file.jpg", ...}]
+--
+-- >>> withTestDb $ \c -> exDbAddSecondUser c >> allUsers c
+-- [DBUser {..., userName = "nick", ...}, DBUser {..., userName = "alice", ...}]
+
+-- | Run an action with a fresh in-memory SQLite DB (schema already created).
 withTestDb :: (Connection -> IO a) -> IO a
 withTestDb action = withConnection ":memory:" $ \conn -> do
   createSchema conn
   action conn
 
--- | Populate a test DB with sample data.
-seedTestDb :: Connection -> IO ()
-seedTestDb conn = do
+-- | Create a channel and a user.
+--
+-- >>> withTestDb $ \c -> exDbSetup c >> getUserQuantityOfVomitsConn c "nick" "#test"
+-- 0
+exDbSetup :: Connection -> IO ()
+exDbSetup conn = do
   addChannelConn conn "#test"
   addUserConn conn "nick" "#test"
-  addVomitConn conn "nick" "#test" "abc123" "/data/logs/#test/nick/file.jpg"
+
+-- | Download a file — add a vomit record and bump the count.
+--
+-- >>> withTestDb $ \c -> exDbAddVomit c >> allVomits c
+-- [DBVomit {vomitId = 1, vomitPath = "./data/logs/#test/nick/file.jpg", vomitMD5 = "abc123", ...}]
+exDbAddVomit :: Connection -> IO ()
+exDbAddVomit conn = do
+  exDbSetup conn
+  addVomitConn conn "nick" "#test" "abc123" "./data/logs/#test/nick/file.jpg"
+  succUserQuantityOfVomitsConn conn "nick" "#test"
+
+-- | Cache an upload link on a vomit.
+--
+-- >>> withTestDb $ \c -> exDbLinkVomit c >> getLinkConn c "./data/logs/#test/nick/file.jpg"
+-- Just "https://example.com/file.jpg"
+exDbLinkVomit :: Connection -> IO ()
+exDbLinkVomit conn = do
+  exDbAddVomit conn
+  updateLinkConn conn "./data/logs/#test/nick/file.jpg" "https://example.com/file.jpg"
+
+-- | A second user joins and posts a file.
+--
+-- >>> withTestDb $ \c -> exDbAddSecondUser c >> allUsers c
+-- [DBUser {..., userName = "nick", ...}, DBUser {..., userName = "alice", ...}]
+exDbAddSecondUser :: Connection -> IO ()
+exDbAddSecondUser conn = do
+  exDbAddVomit conn
+  addUserConn conn "alice" "#test"
+  addVomitConn conn "alice" "#test" "xyz789" "./data/logs/#test/alice/pic.png"
+  succUserQuantityOfVomitsConn conn "alice" "#test"
+
+-- | Simulate a drifted count — add a vomit without bumping, then fix.
+--
+-- >>> withTestDb $ \c -> exDbFixCounts c >> getUserQuantityOfVomitsConn c "nick" "#test"
+-- 2
+exDbFixCounts :: Connection -> IO ()
+exDbFixCounts conn = do
+  exDbAddVomit conn
+  addVomitConn conn "nick" "#test" "def456" "./data/logs/#test/nick/file2.png"
+  -- count is now wrong (1, should be 2) — fix it
+  fixQuantityOfVomitsConn conn
+
+-- | Nuke a vomit by its md5 hash — returns the deleted file paths.
+--
+-- >>> withTestDb $ \c -> exDbNukeMD5 c
+-- ["./data/logs/#test/nick/file.jpg"]
+exDbNukeMD5 :: Connection -> IO [String]
+exDbNukeMD5 conn = do
+  exDbAddVomit conn
+  nukeVomitByMD5FixConn conn "abc123"
+
+-- | Remove a user entirely — vomits first, then the user record.
+--
+-- >>> withTestDb $ \c -> exDbNukeUser c >> allUsers c
+-- []
+exDbNukeUser :: Connection -> IO ()
+exDbNukeUser conn = do
+  exDbAddVomit conn
+  nukeVomitsOfUserFromDbConn conn "nick" "#test"
+  nukeUserFromDbConn conn "nick" "#test"
+
+-- | Dump all users in the DB — handy for inspecting state between steps.
+allUsers :: Connection -> IO [DBUser]
+allUsers conn = query_ conn "SELECT * FROM user" :: IO [DBUser]
+
+-- | Dump all vomits in the DB.
+allVomits :: Connection -> IO [DBVomit]
+allVomits conn = query_ conn "SELECT * FROM vomits" :: IO [DBVomit]

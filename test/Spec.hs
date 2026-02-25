@@ -10,7 +10,7 @@ import Bot.MessageParser (parseMessage)
 import Bot.MessageType
 import Bot.Modifier      (applyEffects, Unit(..), Scope(..), TextUnit(..))
 import Bot.StateType
-import Bot.Database
+import Bot.Database      (getUserQuantityOfVomitsConn, getLinkConn, getRouletteVomitConn, DBVomit(..))
 
 main :: IO ()
 main = hspec $ do
@@ -19,6 +19,7 @@ main = hspec $ do
   stateSpec
   globalStateSpec
   commandSpec
+  uploadSpec
   databaseSpec
 
 --------------------------------------------------------------------------------
@@ -124,7 +125,34 @@ commandSpec = describe "Commands" $ do
       >>= (`shouldSatisfy` isResponse)
 
 --------------------------------------------------------------------------------
--- Database tests (in-memory SQLite via withTestDb)
+-- Upload tests (pure, no network)
+--------------------------------------------------------------------------------
+
+uploadSpec :: Spec
+uploadSpec = describe "Upload" $ do
+  it "decodePomfUrl extracts URL from success response" $
+    exPomfSuccess `shouldBe` Just "https://example.com/abc.png"
+
+  it "decodePomfUrl returns Nothing on empty files" $
+    exPomfEmpty `shouldBe` Nothing
+
+  it "decodePomfUrl returns Nothing on error response" $
+    exPomfFail `shouldBe` Nothing
+
+  it "decodePomfUrl returns Nothing on garbage" $
+    exPomfGarbage `shouldBe` Nothing
+
+  it "secretPart produces no parts when absent" $
+    length (exSecretParts Nothing) `shouldBe` 0
+
+  it "secretPart produces one part when present" $
+    length (exSecretParts (Just "s")) `shouldBe` 1
+
+  it "uploaderPart produces one part" $
+    length (exUploaderParts "nick") `shouldBe` 1
+
+--------------------------------------------------------------------------------
+-- Database tests
 --------------------------------------------------------------------------------
 
 databaseSpec :: Spec
@@ -134,69 +162,49 @@ databaseSpec = describe "Database" $ do
       "SELECT name FROM sqlite_master WHERE type='table' ORDER BY name;" :: IO [Only String]
     L.sort (map fromOnly tables) `shouldBe` ["channels", "user", "vomits"]
 
-  it "addChannel + addUser + getUserQuantityOfVomits returns 0" $ withTestDb $ \conn -> do
-    addChannelConn conn "#test"
-    addUserConn conn "nick" "#test"
-    count <- getUserQuantityOfVomitsConn conn "nick" "#test"
-    count `shouldBe` 0
+  it "setup creates user with zero vomits" $ withTestDb $ \conn -> do
+    exDbSetup conn
+    getUserQuantityOfVomitsConn conn "nick" "#test" >>= (`shouldBe` 0)
 
-  it "addVomit + succUserQuantityOfVomits increments count" $ withTestDb $ \conn -> do
-    seedTestDb conn
-    succUserQuantityOfVomitsConn conn "nick" "#test"
-    count <- getUserQuantityOfVomitsConn conn "nick" "#test"
-    count `shouldBe` 1
-
-  it "updateLink + getLink round-trip" $ withTestDb $ \conn -> do
-    seedTestDb conn
-    updateLinkConn conn "/data/logs/#test/nick/file.jpg" "https://example.com/file.jpg"
-    link <- getLinkConn conn "/data/logs/#test/nick/file.jpg"
-    link `shouldBe` Just "https://example.com/file.jpg"
-
-  it "getRandomVomit returns inserted vomit" $ withTestDb $ \conn -> do
-    seedTestDb conn
-    voms <- getRandomVomitConn conn "nick" "#test"
+  it "addVomit increments count and stores file" $ withTestDb $ \conn -> do
+    exDbAddVomit conn
+    getUserQuantityOfVomitsConn conn "nick" "#test" >>= (`shouldBe` 1)
+    voms <- allVomits conn
     length voms `shouldBe` 1
-    vomitPath (head voms) `shouldBe` "/data/logs/#test/nick/file.jpg"
-    vomitMD5 (head voms) `shouldBe` "abc123"
+    vomitMD5 (L.head voms) `shouldBe` "abc123"
 
-  it "nukeVomitByMD5FixConn removes vomit and decrements count" $ withTestDb $ \conn -> do
-    seedTestDb conn
-    succUserQuantityOfVomitsConn conn "nick" "#test"
-    paths <- nukeVomitByMD5FixConn conn "abc123"
-    paths `shouldBe` ["/data/logs/#test/nick/file.jpg"]
-    count <- getUserQuantityOfVomitsConn conn "nick" "#test"
-    count `shouldBe` 0
+  it "linkVomit caches the URL" $ withTestDb $ \conn -> do
+    exDbLinkVomit conn
+    getLinkConn conn "./data/logs/#test/nick/file.jpg"
+      >>= (`shouldBe` Just "https://example.com/file.jpg")
 
-  it "nukeVomitsOfUserFromDb clears all vomits" $ withTestDb $ \conn -> do
-    seedTestDb conn
-    addVomitConn conn "nick" "#test" "def456" "/data/logs/#test/nick/file2.png"
-    nukeVomitsOfUserFromDbConn conn "nick" "#test"
-    voms <- getRandomVomitConn conn "nick" "#test"
-    voms `shouldBe` []
+  it "fixCounts corrects a drifted count" $ withTestDb $ \conn -> do
+    exDbFixCounts conn
+    getUserQuantityOfVomitsConn conn "nick" "#test" >>= (`shouldBe` 2)
+    allVomits conn >>= ((`shouldBe` 2) . length)
 
-  it "nukeUserFromDb removes the user" $ withTestDb $ \conn -> do
-    seedTestDb conn
-    nukeVomitsOfUserFromDbConn conn "nick" "#test"
-    nukeUserFromDbConn conn "nick" "#test"
-    count <- getUserQuantityOfVomitsConn conn "nick" "#test"
-    count `shouldBe` 0
-
-  it "fixQuantityOfVomitsConn corrects counts" $ withTestDb $ \conn -> do
-    seedTestDb conn
-    addVomitConn conn "nick" "#test" "def456" "/data/logs/#test/nick/file2.png"
-    -- count is still 0 since we never called succ
-    fixQuantityOfVomitsConn conn
-    count <- getUserQuantityOfVomitsConn conn "nick" "#test"
-    count `shouldBe` 2
-
-  it "getRouletteVomit works across users" $ withTestDb $ \conn -> do
-    seedTestDb conn
-    succUserQuantityOfVomitsConn conn "nick" "#test"
-    addUserConn conn "alice" "#test"
-    addVomitConn conn "alice" "#test" "xyz789" "/data/logs/#test/alice/pic.jpg"
-    succUserQuantityOfVomitsConn conn "alice" "#test"
-    path <- getRouletteVomitConn conn "#test"
+  it "roulette picks from multiple users" $ withTestDb $ \conn -> do
+    exDbAddSecondUser conn
+    allUsers conn >>= ((`shouldBe` 2) . length)
+    (path, _) <- getRouletteVomitConn conn "#test"
     path `shouldSatisfy` (not . null)
+
+  it "nukeMD5 removes vomit and decrements count" $ withTestDb $ \conn -> do
+    paths <- exDbNukeMD5 conn
+    paths `shouldBe` ["./data/logs/#test/nick/file.jpg"]
+    getUserQuantityOfVomitsConn conn "nick" "#test" >>= (`shouldBe` 0)
+    allVomits conn >>= (`shouldBe` [])
+
+  it "nukeUser removes user and all their vomits" $ withTestDb $ \conn -> do
+    exDbNukeUser conn
+    allUsers conn >>= (`shouldBe` [])
+    allVomits conn >>= (`shouldBe` [])
+
+  it "getRouletteVomit returns path and nick" $ withTestDb $ \conn -> do
+    exDbAddSecondUser conn
+    (path, nick) <- getRouletteVomitConn conn "#test"
+    path `shouldSatisfy` (not . null)
+    nick `shouldSatisfy` (`elem` ["nick", "alice"])
 
 -- Helpers
 
