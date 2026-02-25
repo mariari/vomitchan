@@ -158,7 +158,8 @@ databaseSpec = describe "Database" $ do
   it "roulette picks from multiple users" $ withTestDb $ \conn -> do
     exDbAddSecondUser conn
     allUsers conn >>= ((`shouldBe` 2) . length)
-    getRouletteVomitConn conn "#test" >>= (`shouldSatisfy` (not . null))
+    (path, _) <- getRouletteVomitConn conn "#test"
+    path `shouldSatisfy` (not . null)
 
   it "nukeMD5 removes vomit and decrements count" $ withTestDb $ \conn -> do
     paths <- exDbNukeMD5 conn
@@ -170,6 +171,12 @@ databaseSpec = describe "Database" $ do
     exDbNukeUser conn
     allUsers conn >>= (`shouldBe` [])
     allVomits conn >>= (`shouldBe` [])
+
+  it "getRouletteVomit returns path and nick" $ withTestDb $ \conn -> do
+    exDbAddSecondUser conn
+    (path, nick) <- getRouletteVomitConn conn "#test"
+    path `shouldSatisfy` (not . null)
+    nick `shouldSatisfy` (`elem` ["nick", "alice"])
 
 -- Helpers
 
