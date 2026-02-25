@@ -23,16 +23,17 @@ data ChanOptions =
   Options {chanKey :: Maybe T.Text }
   deriving (Show, Generic)
 data IRCNetwork = IRCNetwork
-  { netServer :: Server
-  , netPort   :: Port
-  , netSSL    :: Bool
-  , netNick   :: Nick
-  , netPass   :: Pass
-  , netAdmins :: [Nick]
-  , netIgnore :: [Nick]
-  , netBans   :: [MD5]
-  , netChans  :: [Chan]
-  , netState  :: StateConfig
+  { netServer       :: Server
+  , netPort         :: Port
+  , netSSL          :: Bool
+  , netNick         :: Nick
+  , netPass         :: Pass
+  , netAdmins       :: [Nick]
+  , netIgnore       :: [Nick]
+  , netBans         :: [MD5]
+  , netChans        :: [Chan]
+  , netState        :: StateConfig
+  , netUploadSecret :: Maybe T.Text
   } deriving (Show, Generic)
 
 -- allow encoding to/from JSON
