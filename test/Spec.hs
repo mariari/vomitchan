@@ -19,6 +19,7 @@ main = hspec $ do
   stateSpec
   globalStateSpec
   commandSpec
+  uploadSpec
   databaseSpec
 
 --------------------------------------------------------------------------------
@@ -124,7 +125,34 @@ commandSpec = describe "Commands" $ do
       >>= (`shouldSatisfy` isResponse)
 
 --------------------------------------------------------------------------------
--- Database tests — runs the example narrative, checking state between steps
+-- Upload tests (pure, no network)
+--------------------------------------------------------------------------------
+
+uploadSpec :: Spec
+uploadSpec = describe "Upload" $ do
+  it "decodePomfUrl extracts URL from success response" $
+    exPomfSuccess `shouldBe` Just "https://example.com/abc.png"
+
+  it "decodePomfUrl returns Nothing on empty files" $
+    exPomfEmpty `shouldBe` Nothing
+
+  it "decodePomfUrl returns Nothing on error response" $
+    exPomfFail `shouldBe` Nothing
+
+  it "decodePomfUrl returns Nothing on garbage" $
+    exPomfGarbage `shouldBe` Nothing
+
+  it "secretPart produces no parts when absent" $
+    length (exSecretParts Nothing) `shouldBe` 0
+
+  it "secretPart produces one part when present" $
+    length (exSecretParts (Just "s")) `shouldBe` 1
+
+  it "uploaderPart produces one part" $
+    length (exUploaderParts "nick") `shouldBe` 1
+
+--------------------------------------------------------------------------------
+-- Database tests
 --------------------------------------------------------------------------------
 
 databaseSpec :: Spec
