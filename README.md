@@ -77,6 +77,9 @@ This file should look like the following:
                                            "mute"   : false,
                                            "fleecy" : true,
                                            "yuki"   : false}]]
+      , "netUpload" : {"uploadService" : "toro",
+                        "uploadSecret"  : "my-secret",
+                        "uploadUrl"     : "http://127.0.0.1:4000/upload.php"}
     },
 
     { "netServer"   : "other"
@@ -93,10 +96,35 @@ This file should look like the following:
 ]
 ```
 
+Omitting `netUpload` defaults to catbox with no secret. Supported `uploadService` values: `"catbox"`, `"neko"`, `"lain"`, or any pomf-compatible URL. For catbox, `uploadSecret` is the userhash for account-linked uploads. For pomf-compatible services, it is sent as a `secret` form field.
+
 ## Running
 The bot can be started within ghci by running `stack ghci` in the project directory. Once at the prompt, run the `main` function.
 `stack build` should also create an executable that can be started with `stack exec vomitchan-exe`
 
+## Architecture
+
+```
+app/Main.hs              -- startup: genDb, init state/servers/connections
+src/Bot/
+  MessageParser.hs       -- attoparsec: ByteString -> Either String Command
+  Message.hs             -- dispatch hub: parses command, routes PRIVMSG/NOTICE/PING
+  Commands.hs            -- command dispatch, runs in ReaderT InfoPriv IO
+  EffType.hs             -- Func = Response (Action, Modifier.T), CmdImp constraint
+  State.hs               -- STM-based channel state, key = server <> channel
+  StateType.hs           -- HashStorage (dream/mute/fleecy/yuki), GlobalState
+  Database.hs            -- SQLite via sqlite-simple, *Conn variants for testability
+  FileOps.hs             -- file downloads, uploads (catbox/pomf/neko/lain), user folders
+  Modifier.hs            -- IRC text effects (bold/italic/color), closure-based
+  NetworkType.hs         -- IRCNetwork, UploadConfig, ChanOptions
+  Network.hs             -- IRC connection handling
+  Servers.hs             -- multi-server management
+  Socket.hs              -- raw socket/TLS I/O
+  MessageType.hs         -- PrivMsg, UserI, Info types
+  Examples.hs            -- sample data, mock env, DB examples for GHCi and tests
+  Misc.hs                -- small utilities
+test/Spec.hs             -- hspec suite
+```
+
 ## Planned Features
-- Versioning
 - Per-channel rate limiting, to prevent spam
