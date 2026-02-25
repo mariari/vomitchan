@@ -18,6 +18,9 @@ module Bot.Examples
   , sampleStateEntries, mkEnv, mockEnv
     -- * Command testing
   , testCmd, testCmdWith
+    -- * Upload examples
+  , exPomfSuccess, exPomfEmpty, exPomfFail, exPomfGarbage
+  , exSecretParts, exUploaderParts
     -- * Database testing
   , withTestDb, seedTestDb
   , module Database.SQLite.Simple
@@ -45,6 +48,9 @@ import Bot.Modifier
 import Bot.Servers       (initAllServer)
 import Bot.EffType       (Func)
 import Bot.Commands      (runCmd)
+import qualified Network.HTTP.Client.MultipartFormData as MFD
+
+import Bot.FileOps       (decodePomfUrl, secretPart, uploaderPart)
 import Bot.Database      (createSchema, addChannelConn, addUserConn, addVomitConn)
 
 --------------------------------------------------------------------------------
@@ -259,6 +265,56 @@ testCmdWith :: [(T.Text, HashStorage)] -> PrivMsg -> IO Func
 testCmdWith entries msg = do
   env <- mkEnv entries
   runReaderT runCmd (env msg)
+
+--------------------------------------------------------------------------------
+-- Upload examples
+--------------------------------------------------------------------------------
+
+-- | Successful pomf response — extracts the URL.
+--
+-- >>> exPomfSuccess
+-- Just "https://example.com/abc.png"
+exPomfSuccess :: Maybe T.Text
+exPomfSuccess = decodePomfUrl
+  "{\"success\":true,\"files\":[{\"hash\":\"abc\",\"name\":\"abc.png\",\"url\":\"https://example.com/abc.png\",\"size\":1234}]}"
+
+-- | Pomf response with empty files list.
+--
+-- >>> exPomfEmpty
+-- Nothing
+exPomfEmpty :: Maybe T.Text
+exPomfEmpty = decodePomfUrl "{\"success\":true,\"files\":[]}"
+
+-- | Pomf error response.
+--
+-- >>> exPomfFail
+-- Nothing
+exPomfFail :: Maybe T.Text
+exPomfFail = decodePomfUrl
+  "{\"success\":false,\"errorcode\":400,\"description\":\"bad request\"}"
+
+-- | Garbage input.
+--
+-- >>> exPomfGarbage
+-- Nothing
+exPomfGarbage :: Maybe T.Text
+exPomfGarbage = decodePomfUrl "not json"
+
+-- | Secret part produces one form field when present, none when absent.
+--
+-- >>> length (exSecretParts Nothing)
+-- 0
+-- >>> length (exSecretParts (Just "my-secret"))
+-- 1
+exSecretParts :: Maybe T.Text -> [MFD.Part]
+exSecretParts = secretPart
+
+-- | Uploader part always produces one form field.
+--
+-- >>> length (exUploaderParts "nick")
+-- 1
+exUploaderParts :: T.Text -> [MFD.Part]
+exUploaderParts = uploaderPart
 
 --------------------------------------------------------------------------------
 -- Database testing
