@@ -222,25 +222,26 @@ catboxUpload secret file _ =
           | T.isPrefixOf "http" n = Just n
           | otherwise             = Nothing
 
-pomfSecretUpload :: (MonadIO m, MonadThrow m, MonadCatch m) => Maybe T.Text -> T.Text -> T.Text -> H.Manager -> m (Maybe T.Text)
-pomfSecretUpload secret url file manager = catch work (\(_ :: SomeException) -> pure Nothing)
+pomfSecretUpload :: (MonadIO m, MonadThrow m, MonadCatch m) => Maybe T.Text -> T.Text -> T.Text -> T.Text -> H.Manager -> m (Maybe T.Text)
+pomfSecretUpload secret uploader url file manager = catch work (\(_ :: SomeException) -> pure Nothing)
   where
   work = do
-    let filePart   = MFD.partFileSource "files[]" (T.unpack file)
-        secretPart = maybe [] (\s -> [MFD.partBS "secret" (TE.encodeUtf8 s)]) secret
+    let filePart     = MFD.partFileSource "files[]" (T.unpack file)
+        secretPart   = maybe [] (\s -> [MFD.partBS "secret" (TE.encodeUtf8 s)]) secret
+        uploaderPart = [MFD.partBS "uploader" (TE.encodeUtf8 uploader)]
     initialReq <- H.parseRequest (T.unpack ("POST " <> url))
-    req <- MFD.formDataBody (filePart : secretPart) initialReq
+    req <- MFD.formDataBody (filePart : secretPart <> uploaderPart) initialReq
     msg <- liftIO $ H.httpLbs req manager
     pure $ case JSON.decodeStrict (LBS.toStrict (H.responseBody msg)) of
       Just Pomf {files = Fm {url} : _} -> Just url
       _                                -> Nothing
 
-uploaderFor :: (MonadIO m, MonadThrow m, MonadCatch m) => IRCNetwork -> T.Text -> H.Manager -> m (Maybe T.Text)
-uploaderFor net = case fromMaybe "catbox" (netUploader net) of
+uploaderFor :: (MonadIO m, MonadThrow m, MonadCatch m) => IRCNetwork -> T.Text -> T.Text -> H.Manager -> m (Maybe T.Text)
+uploaderFor net nick = case fromMaybe "catbox" (netUploader net) of
   "catbox" -> catboxUpload secret
   "neko"   -> \f m -> nekoUpload f m
   "lain"   -> \f m -> lainUpload f m
-  _        -> pomfSecretUpload secret url
+  _        -> pomfSecretUpload secret nick url
   where
     secret = netUploadSecret net
     url    = fromMaybe "http://127.0.0.1:4000/upload.php" (netUploadUrl net)

@@ -246,13 +246,13 @@ cmdFleecy = modifyFleecyState >> privMsgPlain "dame"
 cmdYuki :: CmdImp m => ContFunc m
 cmdYuki = modifyYukiState >> privMsgPlain "dame"
 
-publishLink :: CmdImp m => String -> m (Effect m -> m Func)
-publishLink filepathNotStripped = do
+publishLink :: CmdImp m => T.Text -> String -> m (Effect m -> m Func)
+publishLink nick filepathNotStripped = do
   -- TODO :: Hack please fix properly
   let filepath = filter (/= '\\') filepathNotStripped
   msg <- asks message
   manager <- asks manager
-  upload <- asks (uploaderFor . network)
+  upload <- asks (\info -> uploaderFor (network info) nick)
   state <- getChanStateM
   pure $ \contEffect -> do
     let
@@ -307,16 +307,18 @@ cmdRoulette :: CmdImp m => m (Effect m -> m Func)
 cmdRoulette = do
   msg      <- asks message
   filepath <- liftIO $ getRouletteVomit (T.unpack $ msgChan msg)
-  publishLink filepath
+  let nick = nickFromPath filepath
+  publishLink nick filepath
 
 -- | Vomits up a colorful rainbow if vomitchan is asleep else it just vomits up red with no link
 cmdVomit :: CmdImp m => m (Effect m -> m Func)
 cmdVomit = do
   msg      <- asks message
   let newUsr = changeNickFstArg msg
+      nick   = msgNick newUsr
   filepath <-
-    liftIO $ getRandomVomitPath (T.unpack $ msgNick newUsr) (T.unpack $ msgChan msg)
-  publishLink filepath
+    liftIO $ getRandomVomitPath (T.unpack nick) (T.unpack $ msgChan msg)
+  publishLink nick filepath
 
 -- Joins the first channel in the message if the user is an admin else do nothing
 cmdJoin :: (Cmd m, Monad m') => ContFuncPure m m'
@@ -427,6 +429,13 @@ dryEffect text =
 heartify = undefined
 
 --- HELPER FUNCTIONS --------------------------------------------------------------------------
+
+-- | Extract the nick from a vomit filepath like ./data/logs/<chan>/<nick>/file
+nickFromPath :: String -> T.Text
+nickFromPath path =
+  case drop 3 (T.splitOn "/" (T.pack path)) of
+    nick : _ -> nick
+    _        -> "anonymous"
 
 -- | checks if the user is an admin
 isAdmin :: InfoPriv -> Bool
