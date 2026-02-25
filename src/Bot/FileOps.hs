@@ -190,26 +190,37 @@ cacheUploader file manager = catch work (\ (_ :: SomeException) -> pure Nothing)
           response <- H.httpNoBody req manager
           return $ isOK (H.responseStatus response) (T.pack link)
 
-multiPartFileUpload :: (MonadIO m, MonadThrow m) => T.Text -> String -> T.Text -> H.Manager -> m (LBS.ByteString)
-multiPartFileUpload input link file manager = do
-  let part = MFD.partFileSource input (T.unpack file)
-  initialReq <- H.parseRequest link
-  req <- MFD.formDataBody [part] initialReq
-  msg <- liftIO $ H.httpLbs req manager
-  return $ H.responseBody msg
+filePart :: T.Text -> MFD.Part
+filePart file = MFD.partFileSource "files[]" (T.unpack file)
+
+secretPart :: Maybe T.Text -> [MFD.Part]
+secretPart = maybe [] (\s -> [MFD.partBS "secret" (TE.encodeUtf8 s)])
+
+uploaderPart :: T.Text -> [MFD.Part]
+uploaderPart name = [MFD.partBS "uploader" (TE.encodeUtf8 name)]
+
+postParts :: (MonadIO m, MonadThrow m) => String -> [MFD.Part] -> H.Manager -> m LBS.ByteString
+postParts url parts manager = do
+  initialReq <- H.parseRequest url
+  req <- MFD.formDataBody parts initialReq
+  H.responseBody <$> liftIO (H.httpLbs req manager)
+
+decodePomfUrl :: LBS.ByteString -> Maybe T.Text
+decodePomfUrl msg = case JSON.decodeStrict (LBS.toStrict msg) of
+  Just Pomf {files = Fm {url} : _} -> Just url
+  _                                -> Nothing
+
+pomfUpload :: (MonadIO m, MonadThrow m, MonadCatch m) => [MFD.Part] -> String -> T.Text -> H.Manager -> m (Maybe T.Text)
+pomfUpload extras url file manager = catch work (\(_ :: SomeException) -> pure Nothing)
+  where
+  work = decodePomfUrl <$> postParts url (filePart file : extras) manager
 
 pomfUploader :: (MonadIO m, MonadThrow m, MonadCatch m) => T.Text -> String -> H.Manager -> m (Maybe T.Text)
-pomfUploader file url manager = catch work (\ (_ :: SomeException) -> pure Nothing)
-  where
-  work = do
-    msg <- multiPartFileUpload "files[]" url file manager
-    pure $
-      case JSON.decodeStrict (LBS.toStrict msg) of
-        Just Pomf {files = Fm {url} : _} -> Just url
-        Just Pomf {files = []}           -> Nothing
-        Nothing                          -> Nothing
-        Just Fail {}                     -> Nothing
+pomfUploader file url = pomfUpload [] url file
 
+pomfSecretUpload :: (MonadIO m, MonadThrow m, MonadCatch m) => Maybe T.Text -> T.Text -> T.Text -> T.Text -> H.Manager -> m (Maybe T.Text)
+pomfSecretUpload secret uploader url =
+  pomfUpload (secretPart secret <> uploaderPart uploader) (T.unpack ("POST " <> url))
 
 catboxUpload :: (MonadIO m, MonadThrow m) => Maybe T.Text -> T.Text -> H.Manager -> m (Maybe T.Text)
 catboxUpload secret file _ =
@@ -221,20 +232,6 @@ catboxUpload secret file _ =
   where check (_,n)
           | T.isPrefixOf "http" n = Just n
           | otherwise             = Nothing
-
-pomfSecretUpload :: (MonadIO m, MonadThrow m, MonadCatch m) => Maybe T.Text -> T.Text -> T.Text -> T.Text -> H.Manager -> m (Maybe T.Text)
-pomfSecretUpload secret uploader url file manager = catch work (\(_ :: SomeException) -> pure Nothing)
-  where
-  work = do
-    let filePart     = MFD.partFileSource "files[]" (T.unpack file)
-        secretPart   = maybe [] (\s -> [MFD.partBS "secret" (TE.encodeUtf8 s)]) secret
-        uploaderPart = [MFD.partBS "uploader" (TE.encodeUtf8 uploader)]
-    initialReq <- H.parseRequest (T.unpack ("POST " <> url))
-    req <- MFD.formDataBody (filePart : secretPart <> uploaderPart) initialReq
-    msg <- liftIO $ H.httpLbs req manager
-    pure $ case JSON.decodeStrict (LBS.toStrict (H.responseBody msg)) of
-      Just Pomf {files = Fm {url} : _} -> Just url
-      _                                -> Nothing
 
 uploaderFor :: (MonadIO m, MonadThrow m, MonadCatch m) => IRCNetwork -> T.Text -> T.Text -> H.Manager -> m (Maybe T.Text)
 uploaderFor net nick = case fromMaybe "catbox" (netUploader net) of

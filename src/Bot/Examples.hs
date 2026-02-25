@@ -107,8 +107,11 @@ sampleNetwork = IRCNetwork
   , netAdmins = ["nick@host"]
   , netIgnore = []
   , netBans   = []
-  , netChans  = [("#test", Options Nothing)]
-  , netState  = StateConfig [("#test", defaultChanState)]
+  , netChans        = [("#test", Options Nothing)]
+  , netState        = StateConfig [("#test", defaultChanState)]
+  , netUploadSecret = Nothing
+  , netUploader     = Nothing
+  , netUploadUrl    = Nothing
   }
 
 --------------------------------------------------------------------------------
