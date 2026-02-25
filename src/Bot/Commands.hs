@@ -305,9 +305,9 @@ publishLink nick filepathNotStripped = do
 -- | Vomit but random
 cmdRoulette :: CmdImp m => m (Effect m -> m Func)
 cmdRoulette = do
-  msg      <- asks message
-  filepath <- liftIO $ getRouletteVomit (T.unpack $ msgChan msg)
-  publishLink (msgNick msg) filepath
+  msg            <- asks message
+  (filepath, nick) <- liftIO $ getRouletteVomit (T.unpack $ msgChan msg)
+  publishLink (T.pack nick) filepath
 
 -- | Vomits up a colorful rainbow if vomitchan is asleep else it just vomits up red with no link
 cmdVomit :: CmdImp m => m (Effect m -> m Func)
