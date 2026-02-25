@@ -28,7 +28,7 @@ import qualified Data.Aeson           as JSON
 import qualified Data.Aeson.TH        as TH
 import           Data.List
 import           Data.Foldable        (fold)
-import           Data.Maybe           (fromMaybe)
+
 
 import           Turtle       hiding (FilePath, fold)
 import qualified Turtle.Bytes as TB
@@ -252,7 +252,7 @@ pomfUploader file url = pomfUpload [] url file
 
 pomfSecretUpload :: (MonadIO m, MonadThrow m, MonadCatch m) => Maybe T.Text -> T.Text -> T.Text -> T.Text -> H.Manager -> m (Maybe T.Text)
 pomfSecretUpload secret uploader url =
-  pomfUpload (secretPart secret <> uploaderPart uploader) (T.unpack ("POST " <> url))
+  pomfUpload (secretPart secret <> uploaderPart uploader) (T.unpack url)
 
 nekoUpload :: (MonadIO m, MonadThrow m, MonadCatch m) => T.Text -> H.Manager -> m (Maybe T.Text)
 nekoUpload file = pomfUploader file "https://img.neko.airforce/upload.php"
