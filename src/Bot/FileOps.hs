@@ -234,14 +234,13 @@ catboxUpload secret file _ =
           | otherwise             = Nothing
 
 uploaderFor :: (MonadIO m, MonadThrow m, MonadCatch m) => IRCNetwork -> T.Text -> T.Text -> H.Manager -> m (Maybe T.Text)
-uploaderFor net nick = case fromMaybe "catbox" (netUploader net) of
-  "catbox" -> catboxUpload secret
-  "neko"   -> \f m -> nekoUpload f m
-  "lain"   -> \f m -> lainUpload f m
-  _        -> pomfSecretUpload secret nick url
-  where
-    secret = netUploadSecret net
-    url    = fromMaybe "http://127.0.0.1:4000/upload.php" (netUploadUrl net)
+uploaderFor net nick = case netUpload net of
+  Nothing  -> \f m -> catboxUpload Nothing f m
+  Just cfg -> case uploadService cfg of
+    "catbox" -> catboxUpload (uploadSecret cfg)
+    "neko"   -> \f m -> nekoUpload f m
+    "lain"   -> \f m -> lainUpload f m
+    _        -> pomfSecretUpload (uploadSecret cfg) nick (uploadUrl cfg)
 
 nekoUpload :: (MonadIO m, MonadThrow m, MonadCatch m) => T.Text -> H.Manager -> m (Maybe T.Text)
 nekoUpload file = pomfUploader file "https://img.neko.airforce/upload.php"

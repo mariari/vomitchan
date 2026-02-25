@@ -22,25 +22,32 @@ type Chan    = (T.Text, ChanOptions)
 data ChanOptions =
   Options {chanKey :: Maybe T.Text }
   deriving (Show, Generic)
+data UploadConfig = UploadConfig
+  { uploadSecret  :: Maybe T.Text
+  , uploadService :: T.Text
+  , uploadUrl     :: T.Text
+  } deriving (Show, Generic)
+
 data IRCNetwork = IRCNetwork
-  { netServer       :: Server
-  , netPort         :: Port
-  , netSSL          :: Bool
-  , netNick         :: Nick
-  , netPass         :: Pass
-  , netAdmins       :: [Nick]
-  , netIgnore       :: [Nick]
-  , netBans         :: [MD5]
-  , netChans        :: [Chan]
-  , netState        :: StateConfig
-  , netUploadSecret :: Maybe T.Text
-  , netUploader     :: Maybe T.Text
-  , netUploadUrl    :: Maybe T.Text
+  { netServer :: Server
+  , netPort   :: Port
+  , netSSL    :: Bool
+  , netNick   :: Nick
+  , netPass   :: Pass
+  , netAdmins :: [Nick]
+  , netIgnore :: [Nick]
+  , netBans   :: [MD5]
+  , netChans  :: [Chan]
+  , netState  :: StateConfig
+  , netUpload :: Maybe UploadConfig
   } deriving (Show, Generic)
 
 -- allow encoding to/from JSON
 instance JSON.FromJSON ChanOptions
 instance JSON.ToJSON ChanOptions
+
+instance JSON.FromJSON UploadConfig
+instance JSON.ToJSON UploadConfig
 
 instance JSON.FromJSON IRCNetwork
 instance JSON.ToJSON IRCNetwork
