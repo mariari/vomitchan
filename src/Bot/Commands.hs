@@ -252,7 +252,7 @@ publishLink filepathNotStripped = do
   let filepath = filter (/= '\\') filepathNotStripped
   msg <- asks message
   manager <- asks manager
-  secret <- asks (netUploadSecret . network)
+  upload <- asks (uploaderFor . network)
   state <- getChanStateM
   pure $ \contEffect -> do
     let
@@ -266,7 +266,7 @@ publishLink filepathNotStripped = do
 
         -- checks if there is a file to upload!
         fileCheck :: Maybe String -> IO T.Text
-        fileCheck = maybe (return "") (upUsrFile secret manager . T.pack)
+        fileCheck = maybe (return "") (upUsrFile upload manager . T.pack)
 
         randApply numLength randSeed =
           withUnitM (Modifier.effText (T.pack (randVom numLength randSeed)))

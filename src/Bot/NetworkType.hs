@@ -34,6 +34,8 @@ data IRCNetwork = IRCNetwork
   , netChans        :: [Chan]
   , netState        :: StateConfig
   , netUploadSecret :: Maybe T.Text
+  , netUploader     :: Maybe T.Text
+  , netUploadUrl    :: Maybe T.Text
   } deriving (Show, Generic)
 
 -- allow encoding to/from JSON
