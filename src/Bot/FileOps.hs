@@ -13,7 +13,8 @@ module Bot.FileOps (
   getRandomUsrFldr,
   pathFldrNoLog,
   shredFile,
-  nekoUpload
+  nekoUpload,
+  toroUpload
 ) where
 --- IMPORTS -----------------------------------------------------------------------------------
 import qualified Data.Text            as T
@@ -214,6 +215,19 @@ catboxUpload file _ =
   where check (_,n)
           | T.isPrefixOf "http" n = Just n
           | otherwise             = Nothing
+
+toroUpload :: (MonadIO m, MonadThrow m, MonadCatch m) => Maybe T.Text -> T.Text -> H.Manager -> m (Maybe T.Text)
+toroUpload secret file manager = catch work (\(_ :: SomeException) -> pure Nothing)
+  where
+  work = do
+    let filePart   = MFD.partFileSource "files[]" (T.unpack file)
+        secretPart = maybe [] (\s -> [MFD.partBS "secret" (TE.encodeUtf8 s)]) secret
+    initialReq <- H.parseRequest "POST http://127.0.0.1:4000/upload.php"
+    req <- MFD.formDataBody (filePart : secretPart) initialReq
+    msg <- liftIO $ H.httpLbs req manager
+    pure $ case JSON.decodeStrict (LBS.toStrict (H.responseBody msg)) of
+      Just Pomf {files = Fm {url} : _} -> Just url
+      _                                -> Nothing
 
 nekoUpload :: (MonadIO m, MonadThrow m, MonadCatch m) => T.Text -> H.Manager -> m (Maybe T.Text)
 nekoUpload file = pomfUploader file "https://img.neko.airforce/upload.php"
