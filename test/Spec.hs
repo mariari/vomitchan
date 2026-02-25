@@ -171,6 +171,12 @@ databaseSpec = describe "Database" $ do
     allUsers conn >>= (`shouldBe` [])
     allVomits conn >>= (`shouldBe` [])
 
+  it "getRouletteVomit returns path and nick" $ withTestDb $ \conn -> do
+    exDbAddSecondUser conn
+    (path, nick) <- getRouletteVomitConn conn "#test"
+    path `shouldSatisfy` (not . null)
+    nick `shouldSatisfy` (`elem` ["nick", "alice"])
+
 -- Helpers
 
 isResponse, isNoResponse :: Response a -> Bool
