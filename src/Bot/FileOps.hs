@@ -13,9 +13,13 @@ module Bot.FileOps (
   getRandomUsrFldr,
   pathFldrNoLog,
   shredFile,
-  nekoUpload,
+  -- * Upload services
+  uploaderFor,
+  decodePomfUrl,
+  secretPart,
+  uploaderPart,
   pomfSecretUpload,
-  uploaderFor
+  nekoUpload
 ) where
 --- IMPORTS -----------------------------------------------------------------------------------
 import qualified Data.Text            as T
