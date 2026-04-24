@@ -1,9 +1,16 @@
 {-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE RankNTypes #-}
 
 --- MODULE DEFINITION -------------------------------------------------------------------------
 module Bot.Commands (
   runCmd,
   specWord,
+  -- * Command table
+  Cmd(..),
+  Shared(..),
+  CmdHeader(..),
+  cmds,
+  isOnVomitMessage,
 ) where
 --- IMPORTS -----------------------------------------------------------------------------------
 import           Bot.FileOps
@@ -18,10 +25,9 @@ import qualified Bot.Modifier    as Modifier
 
 import Data.Char           (chr)
 import Control.Applicative ((<|>))
-import Data.Maybe          (fromMaybe)
+import Data.Maybe          (mapMaybe)
 
 import qualified Data.Text            as T
-import           Data.Foldable        (fold)
 import           System.Random
 import           Control.Lens
 import           Control.Monad
@@ -42,101 +48,123 @@ effectList =
   V.fromList
     [Modifier.Txt " ", Modifier.MonoSpace, Modifier.Strikethrough, Modifier.None]
   <> effectListLink
+
+-- | Pure, introspectable metadata of a command. No monadic baggage — can
+-- be projected from any 'Cmd' without instantiating the action's monad.
+data CmdHeader = CmdHeader
+  { aliases :: [T.Text]
+  , help    :: Maybe T.Text
+  }
+
+-- | The data every command carries, category-independent. Capability
+-- (whether a command actually uses IO) is enforced at the per-function
+-- type signatures of 'cmdRun' pure commands declare
+-- '(CmdPure m, Monad m') => ContFuncPure m m'' at their definition,
+-- and fit this 'CmdImp'-weaker slot by subsumption.
+data Shared = Shared
+  { cmdHeader :: CmdHeader
+  , cmdEffect :: forall m. CmdImp m => Effect m
+  , cmdRun    :: forall m. CmdImp m => m (Effect m -> m Func)
+  }
+
+-- | A command, tagged by category.
+--
+--   * 'OnVomit' :: operates on an already-ingested vomit. Messages
+--                 matching an 'OnVomit' alias skip the auto-ingest
+--                 log pipeline so we don't HEAD a URL we have no
+--                 intent to fetch.
+--   * 'Regular' :: everything else.
+data Cmd
+  = OnVomit { shrd :: Shared }
+  | Regular { shrd :: Shared }
+
+-- | Convenience accessor: go through 'shrd' to the header in one step.
+header :: Cmd -> CmdHeader
+header = cmdHeader . shrd
+
 --- DATA --------------------------------------------------------------------------------------
 
--- list of all Pure functions
-cmdList :: (Cmd m, CmdImp m') => [(ContFuncPure m m', [T.Text], Effect m', Maybe T.Text)]
-cmdList = [(cmdBots, [".bots", ".bot vomitchan"], effectText, Nothing)
-          ,(cmdSrc,  [".source vomitchan"]      , effectText, Nothing)
-          ,(cmdHelp, [".help vomitchan"]        , effectText, Nothing)
-          ,(cmdQuit, [".quit"]                  , const pure, Nothing)
-          ,(cmdJoin, [".join"]                  , const pure, Nothing)
-          ,(cmdPart, [".leave", ".part"]        , const pure, Nothing)
-          ,(cmdLotg, [".lotg"]                  , effectText, Just "<someone>")
-          ,(cmdBane, [".amysbane"]              , effectText, Just "<someone>")]
+-- | Single source of truth. Everything downstream (dispatch, help text,
+-- skip-ingest classification) derives from this list.
+cmds :: [Cmd]
+cmds =
+  [ Regular (Shared (CmdHeader [".bots", ".bot vomitchan"] Nothing)                effectText       cmdBots)
+  , Regular (Shared (CmdHeader [".source vomitchan"]       Nothing)                effectText       cmdSrc)
+  , Regular (Shared (CmdHeader [".help vomitchan"]         Nothing)                effectText       cmdHelp)
+  , Regular (Shared (CmdHeader [".quit"]                   Nothing)                (const pure)     cmdQuit)
+  , Regular (Shared (CmdHeader [".join"]                   Nothing)                (const pure)     cmdJoin)
+  , Regular (Shared (CmdHeader [".leave", ".part"]         Nothing)                (const pure)     cmdPart)
+  , Regular (Shared (CmdHeader [".lotg"]                   (Just "<someone>"))     effectText       cmdLotg)
+  , Regular (Shared (CmdHeader [".amysbane"]               (Just "<someone>"))     effectText       cmdBane)
+  , Regular (Shared (CmdHeader ["*vomits*"]                (Just "<someone>"))     effectTextRandom cmdVomit)
+  , Regular (Shared (CmdHeader ["*roulette*"]              Nothing)                effectTextRandom cmdRoulette)
+  , Regular (Shared (CmdHeader ["*cheek pinch*"]           Nothing)                effectText       cmdDream)
+  , Regular (Shared (CmdHeader ["*step*"]                  Nothing)                effectText       cmdFleecy)
+  , Regular (Shared (CmdHeader ["*yuki*"]                  Nothing)                effectText       cmdYuki)
+  , Regular (Shared (CmdHeader [".lewd"]                   (Just "<someone>"))     effectTextRandom cmdLewds)
+  , Regular (Shared (CmdHeader [".8ball"]                  Nothing)                effectText       cmdEightBall)
+  , OnVomit (Shared (CmdHeader ["*nuke*"]                  (Just "<md5>"))         (const pure)     cmdNukeMD5)
+  , OnVomit (Shared (CmdHeader ["*cut*"]                   (Just "<link> <user>")) (const pure)     cmdCut)
+  , OnVomit (Shared (CmdHeader [".set-nsfw"]               (Just "<link>"))        (const pure)     cmdSetNSFW)
+  , OnVomit (Shared (CmdHeader [".set-nsfl"]               (Just "<link>"))        (const pure)     cmdSetNSFL)
+  ]
 
--- List of all Impure functions
-cmdListImp :: CmdImp m => [(ContFunc m, [T.Text], Effect m, Maybe T.Text)]
-cmdListImp = [(cmdVomit,     ["*vomits*"]       , effectTextRandom, Just "<someone>")
-             ,(cmdRoulette,  ["*roulette*"]     , effectTextRandom, Nothing)
-             ,(cmdDream,     ["*cheek pinch*"]  , effectText      , Nothing)
-             ,(cmdFleecy,    ["*step*"]         , effectText      , Nothing)
-             ,(cmdYuki,      ["*yuki*"]         , effectText      , Nothing)
-             ,(cmdLewds,     [".lewd"]          , effectTextRandom, Just "<someone>")
-             ,(cmdEightBall, [".8ball"]         , effectText      , Nothing)
-             ,(cmdNukeMD5,   ["*nuke*"]         , const pure      , Just "<md5>")
-             ,(cmdCut,       ["*cut*"]          , const pure      , Just "<link> <user>")
-             ,(cmdSetNSFW,   [".set-nsfw"]      , const pure      , Just "<link>")
-             ,(cmdSetNSFL,   [".set-nsfl"]      , const pure      , Just "<link>")]
+-- | Dispatch map keyed by alias.
+cmdMap :: M.HashMap T.Text Cmd
+cmdMap = M.fromList [(a, c) | c <- cmds, a <- aliases (header c)]
 
-cmdListHelp :: [(T.Text, Maybe T.Text)]
-cmdListHelp = [(".bots"            , Nothing)
-              ,(".source vomitchan", Nothing)
-              ,(".help vomitchan"  , Nothing)
-              ,(".quit"            , Nothing)
-              ,(".join"            , Nothing)
-              ,(".leave"           , Nothing)
-              ,(".8ball"           , Nothing)
-              ,("*roulette*"       , Nothing)
-              ,("*cheek pinch*"    , Nothing)
-              ,("*step*"           , Nothing)
-              ,("*yuki*"           , Nothing)
-              ,("*roulette*"       , Nothing)
-              ,(".lotg"            , Just "<someone>")
-              ,(".amysbane"        , Just "<someone>")
-              ,("*vomits*"         , Just "<someone>")
-              ,(".lewd"            , Just "<someone>")
-              ,("*cut*"            , Just "<link> <user>")
-              ,(".set-nsfw"        , Just "<link>")
-              ,(".set-nsfw"        , Just "<link>")]
-
--- The List of all functions pure <> impure
-cmdTotList :: CmdImp m => [(m (Effect m -> m Func), [T.Text], Effect m, Maybe T.Text)]
-cmdTotList = cmdList <> cmdListImp
-
-
--- the Map of all functions that are pure and impure
-cmdMapList :: CmdImp m => M.HashMap T.Text (m Func)
-cmdMapList = M.fromList $ cmdTotList >>= f
-  where
-    f (cfn, aliasList, eff, _) = zip aliasList (repeat (cfn >>= ($ eff)))
 -- FUNCTIONS ----------------------------------------------------------------------------------
+
+-- | Run a matched command with its effect already applied.
+dispatchCmd :: CmdImp m => Cmd -> m Func
+dispatchCmd c = let s = shrd c in ($ cmdEffect s) =<< cmdRun s
+
+-- | Does this message invoke an 'OnVomit' command (i.e. its link/md5
+-- argument points at something we've already ingested)? Used by the
+-- logging layer to skip the download pipeline for these commands.
+isOnVomitMessage :: T.Text -> Bool
+isOnVomitMessage msg = any match cmds
+  where
+    match (OnVomit s) = any (`T.isPrefixOf` msg) (aliases (cmdHeader s))
+    match _           = False
 
 -- only 1 space is allowed in a command at this point
 -- returns a corresponding command function from a message
 runCmd :: CmdImp m => m Func
 runCmd = do
   msg <- asks message
-  fromMaybe (return NoResponse) (lookup (split msg))
+  maybe (return NoResponse) dispatchCmd (lookup (split msg))
   where
     split  msg         = T.split (== ' ') (msgContent msg)
-    lookup (x : y : _) = lookup [x] <|> lookup [x <> " " <> y]
-    lookup [x]         = M.lookup x cmdMapList
+    lookup (x : y : _) = M.lookup x cmdMap <|> M.lookup (x <> " " <> y) cmdMap
+    lookup [x]         = M.lookup x cmdMap
     lookup []          = Nothing
 
 --- COMMAND FUNCTIONS -------------------------------------------------------------------------
 
 -- print bot info
-cmdBots :: (Cmd m, Monad m') => ContFuncPure m m'
+cmdBots :: (CmdPure m, Monad m') => ContFuncPure m m'
 cmdBots =
   noticeMsgPlain "I am a queasy bot written in Haskell by MrDetonia and mariari"
 
 -- print source link
-cmdSrc :: (Cmd m, Monad m') => ContFuncPure m m'
+cmdSrc :: (CmdPure m, Monad m') => ContFuncPure m m'
 cmdSrc = noticeMsgPlain "[Haskell] https://github.com/mariari/vomitchan"
 
--- prints help information
--- TODO: Store command info in cmdList and generate this text on the fly
+-- | Prints help information. Derived from the command table.
 cmdHelpText :: T.Text
-cmdHelpText = fold (createHelp (head cmdListHelp) : (fmap createHelps $ drop 1 cmdListHelp))
-  where createHelps (cmd, Just help) = fold [", (", cmd, " ", help, ")"]
-        createHelps (cmd, Nothing)   = fold [", (", cmd, ")"]
+cmdHelpText = T.intercalate ", " (fmap render entries)
+  where
+    entries = mapMaybe firstAliasWithHelp cmds
+    firstAliasWithHelp c = case aliases h of
+      []    -> Nothing
+      (a:_) -> Just (a, help h)
+      where h = header c
+    render (a, Just  d) = "(" <> a <> " " <> d <> ")"
+    render (a, Nothing) = "(" <> a <> ")"
 
-        createHelp (cmd, Just help) = fold ["(", cmd, " ", help, ")"]
-        createHelp (cmd, Nothing)   = fold ["(", cmd, ")"]
 
-
-cmdHelp :: (Cmd m, Monad m') => ContFuncPure m m'
+cmdHelp :: (CmdPure m, Monad m') => ContFuncPure m m'
 cmdHelp = noticeMsgPlain ("Commands: " <> cmdHelpText)
 
 cmdSetNSFW :: CmdImp m => m (Effect m -> m Func)
@@ -210,7 +238,7 @@ cmdNukeMD5 = do
           noticeMsgPlain ("Deleted " <> (T.pack . show . length $ files) <> " files")
 
 -- quit
-cmdQuit :: (Cmd m, Monad m') => ContFuncPure m m'
+cmdQuit :: (CmdPure m, Monad m') => ContFuncPure m m'
 cmdQuit = asks shouldQuit
   where
     shouldQuit info
@@ -319,7 +347,7 @@ cmdVomit = do
   publishLink (msgNick newUsr) filepath
 
 -- Joins the first channel in the message if the user is an admin else do nothing
-cmdJoin :: (Cmd m, Monad m') => ContFuncPure m m'
+cmdJoin :: (CmdPure m, Monad m') => ContFuncPure m m'
 cmdJoin = asks join
   where
     join info
@@ -331,7 +359,7 @@ cmdJoin = asks join
         msg = wordMsg . message $ info
 
 -- Leaves the first channel in the message if the user is an admin else do nothing
-cmdPart :: (Cmd m, Monad m') => ContFuncPure m m'
+cmdPart :: (CmdPure m, Monad m') => ContFuncPure m m'
 cmdPart = asks part
   where
     part info
@@ -359,11 +387,11 @@ cmdTarget f = do
       let target = T.tail target'
       privMsgPlain (f target)
 
-cmdLotg :: (Cmd m, Monad m') => ContFuncPure m m'
+cmdLotg :: (CmdPure m, Monad m') => ContFuncPure m m'
 cmdLotg =
   cmdTarget (\target -> "May the Luck of the Grasshopper be with you always, " <> target)
 
-cmdBane :: (Cmd m, Monad m') => ContFuncPure m m'
+cmdBane :: (CmdPure m, Monad m') => ContFuncPure m m'
 cmdBane = do
   cmdTarget (\target -> "The elder priest tentacles to tentacle "
                      <> target
@@ -481,7 +509,7 @@ specWord :: PrivMsg -> T.Text -> [T.Text]
 specWord msg search = filter (search `T.isPrefixOf`) (wordMsg msg)
 
 -- Drops the command message [.lewd *vomits*]... send *command* messages via T.tail msg
-drpMsg :: Cmd m => T.Text -> m T.Text
+drpMsg :: CmdPure m => T.Text -> m T.Text
 drpMsg bk = asks (snd . T.breakOn bk . msgContent . message)
 
 -- composes the format that the final send message will be
@@ -578,11 +606,7 @@ isSnd _           = False
 isThr (_ : _ : _ : _) = True
 isThr _               = False
 
-frt :: (a, b, c, d) -> d
-frt (_, _, _, d) = d
-
 -- converts a message into a list containing a list of the contents based on words
 wordMsg :: PrivMsg -> [T.Text]
 wordMsg = T.words . msgContent
-
 
