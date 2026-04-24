@@ -13,8 +13,8 @@ import Bot.StateType
 import Bot.Modifier as Modifier
 
 -- type of all command functions
-type Cmd m    = MonadReader InfoPriv m
-type CmdImp m = (Cmd m, MonadIO m)
+type CmdPure m = MonadReader InfoPriv m
+type CmdImp m  = (CmdPure m, MonadIO m)
 type Func     = Response (Action, Modifier.T)
 
 -- | @Action@ is the Action of the Text

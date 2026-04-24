@@ -45,7 +45,7 @@ effectList =
 --- DATA --------------------------------------------------------------------------------------
 
 -- list of all Pure functions
-cmdList :: (Cmd m, CmdImp m') => [(ContFuncPure m m', [T.Text], Effect m', Maybe T.Text)]
+cmdList :: (CmdPure m, CmdImp m') => [(ContFuncPure m m', [T.Text], Effect m', Maybe T.Text)]
 cmdList = [(cmdBots, [".bots", ".bot vomitchan"], effectText, Nothing)
           ,(cmdSrc,  [".source vomitchan"]      , effectText, Nothing)
           ,(cmdHelp, [".help vomitchan"]        , effectText, Nothing)
@@ -117,12 +117,12 @@ runCmd = do
 --- COMMAND FUNCTIONS -------------------------------------------------------------------------
 
 -- print bot info
-cmdBots :: (Cmd m, Monad m') => ContFuncPure m m'
+cmdBots :: (CmdPure m, Monad m') => ContFuncPure m m'
 cmdBots =
   noticeMsgPlain "I am a queasy bot written in Haskell by MrDetonia and mariari"
 
 -- print source link
-cmdSrc :: (Cmd m, Monad m') => ContFuncPure m m'
+cmdSrc :: (CmdPure m, Monad m') => ContFuncPure m m'
 cmdSrc = noticeMsgPlain "[Haskell] https://github.com/mariari/vomitchan"
 
 -- prints help information
@@ -136,7 +136,7 @@ cmdHelpText = fold (createHelp (head cmdListHelp) : (fmap createHelps $ drop 1 c
         createHelp (cmd, Nothing)   = fold ["(", cmd, ")"]
 
 
-cmdHelp :: (Cmd m, Monad m') => ContFuncPure m m'
+cmdHelp :: (CmdPure m, Monad m') => ContFuncPure m m'
 cmdHelp = noticeMsgPlain ("Commands: " <> cmdHelpText)
 
 cmdSetNSFW :: CmdImp m => m (Effect m -> m Func)
@@ -210,7 +210,7 @@ cmdNukeMD5 = do
           noticeMsgPlain ("Deleted " <> (T.pack . show . length $ files) <> " files")
 
 -- quit
-cmdQuit :: (Cmd m, Monad m') => ContFuncPure m m'
+cmdQuit :: (CmdPure m, Monad m') => ContFuncPure m m'
 cmdQuit = asks shouldQuit
   where
     shouldQuit info
@@ -319,7 +319,7 @@ cmdVomit = do
   publishLink (msgNick newUsr) filepath
 
 -- Joins the first channel in the message if the user is an admin else do nothing
-cmdJoin :: (Cmd m, Monad m') => ContFuncPure m m'
+cmdJoin :: (CmdPure m, Monad m') => ContFuncPure m m'
 cmdJoin = asks join
   where
     join info
@@ -331,7 +331,7 @@ cmdJoin = asks join
         msg = wordMsg . message $ info
 
 -- Leaves the first channel in the message if the user is an admin else do nothing
-cmdPart :: (Cmd m, Monad m') => ContFuncPure m m'
+cmdPart :: (CmdPure m, Monad m') => ContFuncPure m m'
 cmdPart = asks part
   where
     part info
@@ -359,11 +359,11 @@ cmdTarget f = do
       let target = T.tail target'
       privMsgPlain (f target)
 
-cmdLotg :: (Cmd m, Monad m') => ContFuncPure m m'
+cmdLotg :: (CmdPure m, Monad m') => ContFuncPure m m'
 cmdLotg =
   cmdTarget (\target -> "May the Luck of the Grasshopper be with you always, " <> target)
 
-cmdBane :: (Cmd m, Monad m') => ContFuncPure m m'
+cmdBane :: (CmdPure m, Monad m') => ContFuncPure m m'
 cmdBane = do
   cmdTarget (\target -> "The elder priest tentacles to tentacle "
                      <> target
@@ -481,7 +481,7 @@ specWord :: PrivMsg -> T.Text -> [T.Text]
 specWord msg search = filter (search `T.isPrefixOf`) (wordMsg msg)
 
 -- Drops the command message [.lewd *vomits*]... send *command* messages via T.tail msg
-drpMsg :: Cmd m => T.Text -> m T.Text
+drpMsg :: CmdPure m => T.Text -> m T.Text
 drpMsg bk = asks (snd . T.breakOn bk . msgContent . message)
 
 -- composes the format that the final send message will be
