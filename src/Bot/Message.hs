@@ -97,11 +97,12 @@ cmdLog = traverse_ . appendLog <*> linLn
     linLn = fmap (<> "\n") . allLinks
 
 
--- Downloads any file and saves it to the user folder
+-- Downloads any file and saves it to the user folder. Skipped for
+-- 'OnVomit' commands (*cut*, .set-*, *nuke*).
 cmdLogFile :: Client.Manager -> InfoPriv -> PrivMsg -> IO ()
-cmdLogFile manager info = traverse_ . dwnfile manager info <*> allImg
-  where
-    allImg = allLinks
+cmdLogFile manager info priv
+  | isOnVomitMessage (msgContent priv) = pure ()
+  | otherwise                          = traverse_ (dwnfile manager info priv) (allLinks priv)
 
 dwnfile :: MonadIO m => Client.Manager -> InfoPriv -> PrivMsg -> Text -> m ()
 dwnfile manager info msg link = do
