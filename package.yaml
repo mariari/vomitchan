@@ -18,6 +18,7 @@ dependencies:
   - directory >= 1.2.5
   - lens
   - monad-loops
+  - network
   - random
   - stm
   - text
@@ -37,8 +38,6 @@ dependencies:
   #########################
   # needed for get requests
   #########################
-  - req >= 3.8.0
-  - modern-uri
   - http-client
   - http-client-tls
   - http-types

@@ -10,7 +10,9 @@ import Bot.MessageParser (parseMessage)
 import Bot.MessageType
 import Bot.Modifier      (applyEffects, Unit(..), Scope(..), TextUnit(..))
 import Bot.StateType
+import Bot.SafeUrl       (isPublicSockAddr, validatedCurlArgs)
 import Bot.Database      (getUserQuantityOfVomitsConn, getLinkConn, getRouletteVomitConn, DBVomit(..))
+import Network.Socket    (SockAddr(..), tupleToHostAddress, tupleToHostAddress6)
 
 main :: IO ()
 main = hspec $ do
@@ -20,6 +22,7 @@ main = hspec $ do
   globalStateSpec
   commandSpec
   uploadSpec
+  safeUrlSpec
   databaseSpec
 
 --------------------------------------------------------------------------------
@@ -150,6 +153,43 @@ uploadSpec = describe "Upload" $ do
 
   it "uploaderPart produces one part" $
     length (exUploaderParts "nick") `shouldBe` 1
+
+--------------------------------------------------------------------------------
+-- URL safety tests
+--------------------------------------------------------------------------------
+
+safeUrlSpec :: Spec
+safeUrlSpec = describe "Safe URL filtering" $ do
+  it "rejects loopback URLs and non-HTTP schemes" $ do
+    validatedCurlArgs "http://127.0.0.1/private.txt" `shouldReturn` Nothing
+    validatedCurlArgs "ftp://8.8.8.8/file.txt" `shouldReturn` Nothing
+
+  it "pins accepted URLs to their validated address" $
+    validatedCurlArgs "https://8.8.8.8/file.txt"
+      >>= (`shouldSatisfy` maybe False (elem "--resolve"))
+
+  it "allows a public IPv4 address" $
+    ipv4 (8, 8, 8, 8) `shouldSatisfy` isPublicSockAddr
+
+  it "rejects loopback and private IPv4 addresses" $
+    mapM_ (`shouldNotSatisfy` isPublicSockAddr)
+      [ ipv4 (127, 0, 0, 1)
+      , ipv4 (10, 0, 0, 1)
+      , ipv4 (172, 16, 0, 1)
+      , ipv4 (192, 168, 1, 1)
+      , ipv4 (169, 254, 169, 254)
+      ]
+
+  it "allows public IPv6 and rejects local IPv6" $ do
+    ipv6 (0x2606, 0x4700, 0x4700, 0, 0, 0, 0, 0x1111)
+      `shouldSatisfy` isPublicSockAddr
+    ipv6 (0, 0, 0, 0, 0, 0, 0, 1)
+      `shouldNotSatisfy` isPublicSockAddr
+    ipv6 (0xfe80, 0, 0, 0, 0, 0, 0, 1)
+      `shouldNotSatisfy` isPublicSockAddr
+  where
+    ipv4 address = SockAddrInet 80 (tupleToHostAddress address)
+    ipv6 address = SockAddrInet6 443 0 (tupleToHostAddress6 address) 0
 
 --------------------------------------------------------------------------------
 -- Database tests

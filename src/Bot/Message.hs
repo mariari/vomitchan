@@ -11,14 +11,11 @@ import qualified Data.ByteString    as BS
 import qualified Data.Set           as S
 import           Data.Foldable
 
-import qualified Control.Exception      as Exception
 import           Control.Concurrent.STM
 import           Control.Monad.Reader
 
-import qualified Text.URI as URI
-
 import qualified Network.HTTP.Client as Client
-import qualified Network.HTTP.Req    as Req
+import           System.Exit         (ExitCode(..))
 
 import qualified Bot.Modifier      as Modifier
 import           Bot.Commands
@@ -27,6 +24,7 @@ import           Bot.FileOps
 import           Bot.MessageType
 import           Bot.NetworkType
 import           Bot.StateType
+import           Bot.SafeUrl
 
 import           Turtle hiding (fold)
 
@@ -148,25 +146,20 @@ processNotice priv process
   | otherwise                 = return NoResponse
   where nickname = usrNick . user
 
--- todo ∷ pass the connection context from main to this
--- this eats another 16 MB of ram, due to using Req's one
 getMimeType :: MonadIO m => Text -> Client.Manager -> m (Maybe BS.ByteString)
-getMimeType link altMngr =
-  liftIO $
-    Exception.catch
-      (Req.runReq Req.defaultHttpConfig { Req.httpConfigAltManager = Just altMngr} $ do
-          uri <- URI.mkURI link
-          case Req.useURI uri of
-            Nothing -> pure Nothing
-            Just t  -> case t of
-              Right x -> response <$> uncurry reqHead x
-              Left x  -> response <$> uncurry reqHead x)
-      (\ (e :: Exception.SomeException) -> do
-          print e
-          pure Nothing)
-  where
-    response t = Req.responseHeader t "content-type"
-
-reqHead ::
-  Req.MonadHttp m => Req.Url scheme -> Req.Option scheme -> m Req.BsResponse
-reqHead x = Req.req Req.HEAD x Req.NoReqBody Req.bsResponse
+getMimeType link _manager = liftIO $ do
+  pinned <- validatedCurlArgs link
+  case pinned of
+    Nothing -> pure Nothing
+    Just resolveArgs -> do
+      (exit, output) <- procStrict "curl"
+        ([ "--fail", "--silent", "--show-error", "--head"
+         , "--proto", "=http,https", "--max-redirs", "0"
+         , "--noproxy", "*"
+         , "--connect-timeout", "10", "--max-time", "15"
+         , "--output", "/dev/null", "--write-out", "%{http_code}\n%{content_type}"
+         ] <> resolveArgs <> [link]) empty
+      pure $ case (exit, T.lines output) of
+        (ExitSuccess, status : mime : _)
+          | "2" `T.isPrefixOf` status && not (T.null mime) -> Just (TE.encodeUtf8 mime)
+        _ -> Nothing

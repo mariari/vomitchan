@@ -55,6 +55,7 @@ import Bot.MessageType
 import Bot.Database
 import Bot.NetworkType
 import Bot.Misc (randElemList)
+import Bot.SafeUrl (validatedCurlArgs)
 
 -- TODO:: Instead of working off PrivMsg, work off UserI and Chan/Target instead!
 
@@ -116,23 +117,38 @@ dwnUsrFileExtension :: MonadIO io => InfoPriv -> PrivMsg -> Text -> Extension ->
 dwnUsrFileExtension info msg url extension
   | shouldDownload (msgContent msg) == False = return ExitSuccess
   | otherwise = do
-      uniqueURL <- uniqueURL (msgContent msg) url extension
-      let filepath = getUsrFldrT msg <> uniqueURL
-      ret <- proc "curl"
-                  ["-fL", "--max-filesize", "504857600", "--range", "0-104857600"
-                  , "-o", filepath, url] empty
-      (_, md5Out) <- TB.procStrict "md5sum" [filepath] empty
-      let md5 = T.stripEnd . TE.decodeUtf8 . BS.takeWhile (/= 0x20) $ md5Out
-      liftIO $ ifBanned (T.unpack filepath) md5 $ do
-        liftIO $ do
-          addVomit (T.unpack . msgNick $ msg) (T.unpack . msgChan $ msg) (T.unpack md5) (T.unpack filepath)
-          succUserQuantityOfVomits (T.unpack . msgNick $ msg) (T.unpack . msgChan $ msg)
-      return ret
+      pinned <- liftIO $ validatedCurlArgs url
+      case pinned of
+        Nothing -> return (ExitFailure 1)
+        Just resolveArgs -> do
+          uniqueURL <- uniqueURL (msgContent msg) url extension
+          let filepath = getUsrFldrT msg <> uniqueURL
+          ret <- proc "curl"
+                      ([ "--fail", "--silent", "--show-error"
+                       , "--proto", "=http,https", "--max-redirs", "0"
+                       , "--noproxy", "*"
+                       , "--connect-timeout", "10", "--max-time", "60"
+                       , "--max-filesize", "104857600", "--range", "0-104857599"
+                       , "-o", filepath] <> resolveArgs <> [url]) empty
+          case ret of
+            ExitFailure _ -> liftIO (removeFileIfExists $ T.unpack filepath) >> return ret
+            ExitSuccess -> do
+              (_, md5Out) <- TB.procStrict "md5sum" [filepath] empty
+              let md5 = T.stripEnd . TE.decodeUtf8 . BS.takeWhile (/= 0x20) $ md5Out
+              liftIO $ ifBanned (T.unpack filepath) md5 $ do
+                liftIO $ do
+                  addVomit (T.unpack . msgNick $ msg) (T.unpack . msgChan $ msg) (T.unpack md5) (T.unpack filepath)
+                  succUserQuantityOfVomits (T.unpack . msgNick $ msg) (T.unpack . msgChan $ msg)
+              return ret
 
         where
           ifBanned filepath md5 cont
             | isBanned info md5 = shredFile filepath >> liftIO exitSuccess
             | otherwise         = cont
+
+          removeFileIfExists filepath = do
+            exists <- doesFileExist filepath
+            when exists (removeFile filepath)
 
 -- | 'currentDate' - gets the current unix time stamp
 currentDate :: MonadIO m => m Text
